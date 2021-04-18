@@ -128,8 +128,6 @@ int ci_reply_decrypt(
 	unsigned char *reply, const size_t reply_size,
 	const unsigned char *privkey, const uint32_t elem_size,
 	const uint8_t dimension, const uint8_t packing, const ci_mG_t *mG, const uint32_t mmax) {
-	// Allocate buffers to decrypt.
-	// Copy the reply to a buffer.
 	size_t mid_count = reply_size / CI_CIPHER_SIZE;
 	for(uint8_t phase=0; phase<dimension; phase++) {
 		bool success = true;
