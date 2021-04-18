@@ -206,7 +206,6 @@ static inline void ci_selectors_create_fast(
  *                   On failure, this data is destroyed and cannot be reused.
  * @param reply_size The number of bytes of `reply`.
  * @param privkey    The private key to use with decryption.
- * @param elem_size  The element size of the database.
  * @param dimension  Dimension.
  * @param packing    Packing count.
  * @param mG         The pre-computed values of [O, P, 2P, ..].
@@ -214,8 +213,7 @@ static inline void ci_selectors_create_fast(
  * @return           The number of bytes decrypted will be returned. On the decryption failure, a negative value will be returned.
  */
 int ci_reply_decrypt(
-	unsigned char *reply, const size_t reply_size,
-	const unsigned char *privkey, const uint32_t elem_size,
+	unsigned char *reply, const size_t reply_size, const unsigned char *privkey,
 	const uint8_t dimension, const uint8_t packing, const ci_mG_t *mG, const size_t mmax);
 
 #ifdef __cplusplus

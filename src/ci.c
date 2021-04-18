@@ -131,8 +131,7 @@ void ci_selectors_create_(
 }
 
 int ci_reply_decrypt(
-	unsigned char *reply, const size_t reply_size,
-	const unsigned char *privkey, const uint32_t elem_size,
+	unsigned char *reply, const size_t reply_size, const unsigned char *privkey,
 	const uint8_t dimension, const uint8_t packing, const ci_mG_t *mG, const size_t mmax) {
 	size_t mid_count = reply_size / CI_CIPHER_SIZE;
 	for(uint8_t phase=0; phase<dimension; phase++) {
@@ -161,9 +160,6 @@ int ci_reply_decrypt(
 			break;
 		}
 		mid_count = mid_count * packing / CI_CIPHER_SIZE;
-	}
-	if(mid_count > elem_size) {
-		mid_count = elem_size;
 	}
 	return mid_count;
 }

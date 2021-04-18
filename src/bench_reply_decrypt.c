@@ -23,10 +23,8 @@ int main(int argc, char *argv[]) {
 	// Decrypt.
 	PRINT_MEASUREMENT(true, "Reply decrypted in %.0fms.\n",
 		const int dataLen = ci_reply_decrypt(
-			bench_reply_decrypt_data_reply, sizeof(bench_reply_decrypt_data_reply),
-			bench_reply_decrypt_data_privkey,
-			ELEM_SIZE, bench_reply_decrypt_data_dimension, bench_reply_decrypt_data_packing,
-			mG, CI_MG_MAX);
+			bench_reply_decrypt_data_reply, sizeof(bench_reply_decrypt_data_reply), bench_reply_decrypt_data_privkey,
+			bench_reply_decrypt_data_dimension, bench_reply_decrypt_data_packing, mG, CI_MG_MAX);
 	);
 	
 	// Data inconsistency check.
