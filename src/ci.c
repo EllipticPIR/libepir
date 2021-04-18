@@ -125,34 +125,33 @@ void ci_selectors_create_(
 }
 
 int ci_reply_decrypt(
-	unsigned char *data,
-	const unsigned char *privkey, const unsigned char *reply, const size_t reply_size, const uint32_t elem_size,
+	unsigned char *reply, const size_t reply_size,
+	const unsigned char *privkey, const uint32_t elem_size,
 	const uint8_t dimension, const uint8_t packing, const ci_mG_t *mG, const uint32_t mmax) {
 	// Allocate buffers to decrypt.
-	unsigned char *mid = malloc(sizeof(unsigned char) * reply_size);
-	unsigned char *mid_next = malloc(sizeof(unsigned char) * reply_size * packing / CI_CIPHER_SIZE);
 	// Copy the reply to a buffer.
-	memcpy(mid, reply, sizeof(unsigned char) * reply_size);
 	size_t mid_count = reply_size / CI_CIPHER_SIZE;
 	for(uint8_t phase=0; phase<dimension; phase++) {
 		bool success = true;
 		#pragma omp parallel for
 		for(size_t i=0; i<mid_count; i++) {
-			const int32_t decrypted = ci_ecelgamal_decrypt(privkey, &mid[i * CI_CIPHER_SIZE], mG, mmax);
+			const int32_t decrypted = ci_ecelgamal_decrypt(privkey, &reply[i * CI_CIPHER_SIZE], mG, mmax);
 			if(decrypted < 0) {
 				success = false;
 				continue;
 			}
 			for(size_t p=0; p<packing; p++) {
-				mid_next[i * packing + p] = (decrypted >> (8 * p)) & 0xFF;
+				reply[i * CI_CIPHER_SIZE + p] = (decrypted >> (8 * p)) & 0xFF;
 			}
 		}
 		if(!success) {
-			free(mid);
-			free(mid_next);
 			return -1;
 		}
-		memcpy(mid, mid_next, mid_count * packing);
+		for(size_t i=0; i<mid_count; i++) {
+			for(size_t p=0; p<packing; p++) {
+				reply[i * packing + p] = reply[i * CI_CIPHER_SIZE + p];
+			}
+		}
 		if(phase == dimension - 1) {
 			mid_count *= packing;
 			break;
@@ -162,9 +161,6 @@ int ci_reply_decrypt(
 	if(mid_count > elem_size) {
 		mid_count = elem_size;
 	}
-	memcpy(data, mid, mid_count);
-	free(mid);
-	free(mid_next);
 	return mid_count;
 }
 
