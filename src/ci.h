@@ -113,13 +113,6 @@ static inline void ci_pubkey_from_privkey(unsigned char *pubkey, const unsigned 
 	crypto_scalarmult_ed25519_base_noclamp(pubkey, privkey);
 }
 
-typedef struct __attribute__((__packed__)) {
-	unsigned char point[CI_POINT_SIZE];
-	uint32_t scalar;
-} ci_mG_t;
-
-int ci_ecelgamal_load_mg(ci_mG_t *mG, const char *path);
-
 /**
  * Create a new EC-ElGamal cipher text (encrypt).
  * @param cipher  Output the ciphertext computed.
@@ -127,7 +120,7 @@ int ci_ecelgamal_load_mg(ci_mG_t *mG, const char *path);
  * @param message A message to encrypt.
  * @param r       A randomness used when the cipher generation. If set to NULL, we will randomly choose the value.
  */
-void ci_ecelgamal_encrypt(unsigned char *cipher, const unsigned char *pubuey, const uint32_t message, const unsigned char *r);
+void ci_ecelgamal_encrypt(unsigned char *cipher, const unsigned char *pubuey, const uint64_t message, const unsigned char *r);
 
 /**
  * Create a new EC-ElGamal cipher text (encrypt) using private key instead of public key (fast).
@@ -136,7 +129,14 @@ void ci_ecelgamal_encrypt(unsigned char *cipher, const unsigned char *pubuey, co
  * @param message A message to encrypt.
  * @param r       A randomness used when the cipher generation. If set to NULL, we will randomly choose the value.
  */
-void ci_ecelgamal_encrypt_fast(unsigned char *cipher, const unsigned char *privkey, const uint32_t message, const unsigned char *r);
+void ci_ecelgamal_encrypt_fast(unsigned char *cipher, const unsigned char *privkey, const uint64_t message, const unsigned char *r);
+
+typedef struct __attribute__((__packed__)) {
+	unsigned char point[CI_POINT_SIZE];
+	uint32_t scalar;
+} ci_mG_t;
+
+int ci_ecelgamal_load_mg(ci_mG_t *mG, const size_t mmax, const char *path);
 
 /**
  * Decrypt a EC-ElGamal ciphertext.
@@ -146,10 +146,18 @@ void ci_ecelgamal_encrypt_fast(unsigned char *cipher, const unsigned char *privk
  * @param         The number of elements in mG.
  * @return Returns a decrypted message. Returns -1 if fail.
  */
-int32_t ci_ecelgamal_decrypt(const unsigned char *privkey, const unsigned char *cipher, const ci_mG_t *mG, const uint32_t mmax);
+int32_t ci_ecelgamal_decrypt(const unsigned char *privkey, const unsigned char *cipher, const ci_mG_t *mG, const size_t mmax);
 
-static inline uint32_t ci_selectors_ciphers_count(const uint32_t *index_counts, const uint32_t n_indexes) {
-	uint32_t ret = 1;
+static inline uint64_t ci_selectors_ciphers_count(const uint64_t *index_counts, const uint8_t n_indexes) {
+	uint64_t ret = 0;
+	for(size_t i=0; i<n_indexes; i++) {
+		ret += index_counts[i];
+	}
+	return ret;
+}
+
+static inline uint64_t ci_selectors_elements_count(const uint64_t *index_counts, const uint8_t n_indexes) {
+	uint64_t ret = 1;
 	for(size_t i=0; i<n_indexes; i++) {
 		ret *= index_counts[i];
 	}
@@ -158,8 +166,8 @@ static inline uint32_t ci_selectors_ciphers_count(const uint32_t *index_counts, 
 
 void ci_selectors_create_(
 	unsigned char *ciphers, const unsigned char *key,
-	const uint32_t *index_counts, const uint32_t n_indexes,
-	const uint32_t idx, void (*encrypt)(unsigned char*, const unsigned char*, const uint32_t, const unsigned char*));
+	const uint64_t *index_counts, const uint8_t n_indexes,
+	const uint64_t idx, void (*encrypt)(unsigned char*, const unsigned char*, const uint64_t, const unsigned char*));
 
 /**
  * Create selectors.
@@ -171,8 +179,8 @@ void ci_selectors_create_(
  */
 static inline void ci_selectors_create(
 	unsigned char *ciphers, const unsigned char *pubkey,
-	const uint32_t *index_counts, const uint32_t n_indexes,
-	const uint32_t idx) {
+	const uint64_t *index_counts, const uint8_t n_indexes,
+	const uint64_t idx) {
 	ci_selectors_create_(ciphers, pubkey, index_counts, n_indexes, idx, ci_ecelgamal_encrypt);
 }
 
@@ -186,8 +194,8 @@ static inline void ci_selectors_create(
  */
 static inline void ci_selectors_create_fast(
 	unsigned char *ciphers, const unsigned char *privkey,
-	const uint32_t *index_counts, const uint32_t n_indexes,
-	const uint32_t idx) {
+	const uint64_t *index_counts, const uint8_t n_indexes,
+	const uint64_t idx) {
 	ci_selectors_create_(ciphers, privkey, index_counts, n_indexes, idx, ci_ecelgamal_encrypt_fast);
 }
 
@@ -208,7 +216,7 @@ static inline void ci_selectors_create_fast(
 int ci_reply_decrypt(
 	unsigned char *reply, const size_t reply_size,
 	const unsigned char *privkey, const uint32_t elem_size,
-	const uint8_t dimension, const uint8_t packing, const ci_mG_t *mG, const uint32_t mmax);
+	const uint8_t dimension, const uint8_t packing, const ci_mG_t *mG, const size_t mmax);
 
 #ifdef __cplusplus
 }

@@ -17,7 +17,7 @@ include(ExternalProject)
 ExternalProject_Add(
 	libsodium
 	SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libsodium
-	CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libsodium/configure --prefix=${CMAKE_CURRENT_SOURCE_DIR}/local
+	CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libsodium/configure --prefix=${CMAKE_CURRENT_SOURCE_DIR}/local --with-pic
 	PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libsodium
 	BUILD_COMMAND make
 	BUILD_IN_SOURCE 1

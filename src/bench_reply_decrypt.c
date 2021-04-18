@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
 	printf("Loading mG.bin...\n");
 	ci_mG_t *mG = (ci_mG_t*)malloc(sizeof(ci_mG_t) * CI_MG_MAX);
 	PRINT_MEASUREMENT(true, "mG.bin loaded in %.0fms.\n",
-		const int elemsRead = ci_ecelgamal_load_mg(mG, CI_MG_PATH);
+		const int elemsRead = ci_ecelgamal_load_mg(mG, CI_MG_MAX, CI_MG_PATH);
 	);
 	if(elemsRead != CI_MG_MAX) {
 		printf("Failed to load mG.bin!\n");
