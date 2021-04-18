@@ -161,6 +161,14 @@ void ci_selectors_create_(
 	const uint32_t *index_counts, const uint32_t n_indexes,
 	const uint32_t idx, void (*encrypt)(unsigned char*, const unsigned char*, const uint32_t, const unsigned char*));
 
+/**
+ * Create selectors.
+ * @param ciphers The output will be written to this pointer.
+ * @param pubkey A public key used to generate selectors.
+ * @param index_counts The index counts of server's data matrix.
+ * @param n_indexes The number of elements in the `index_counts`.
+ * @param idx The index to set.
+ */
 static inline void ci_selectors_create(
 	unsigned char *ciphers, const unsigned char *pubkey,
 	const uint32_t *index_counts, const uint32_t n_indexes,
@@ -168,6 +176,14 @@ static inline void ci_selectors_create(
 	ci_selectors_create_(ciphers, pubkey, index_counts, n_indexes, idx, ci_ecelgamal_encrypt);
 }
 
+/**
+ * Create selectors using a private key (fast).
+ * @param ciphers The output will be written to this pointer.
+ * @param pubkey A public key used to generate selectors.
+ * @param index_counts The index counts of server's data matrix.
+ * @param n_indexes The number of elements in the `index_counts`.
+ * @param idx The index to set.
+ */
 static inline void ci_selectors_create_fast(
 	unsigned char *ciphers, const unsigned char *privkey,
 	const uint32_t *index_counts, const uint32_t n_indexes,
@@ -175,6 +191,19 @@ static inline void ci_selectors_create_fast(
 	ci_selectors_create_(ciphers, privkey, index_counts, n_indexes, idx, ci_ecelgamal_encrypt_fast);
 }
 
+/**
+ * Decrypt a server's reply.
+ * @param data The decrypted message will be written.
+ * @param privkey The private key to use with decryption.
+ * @param reply The server's reply.
+ * @param reply_size The number of bytes of `reply`.
+ * @param elem_size The element size of the database.
+ * @param dimension Dimension.
+ * @param packing Packing count.
+ * @param mG The pre-computed values of [O, P, 2P, ..].
+ * @param mmax The number of points in `mG`.
+ * @return The number of bytes decrypted will be returned. On the decryption failure, a negative value will be returned.
+ */
 int ci_reply_decrypt(
 	unsigned char *data,
 	const unsigned char *privkey, const unsigned char *reply, const size_t reply_size, const uint32_t elem_size,
