@@ -29,3 +29,7 @@ target_link_libraries(ci :libsodium.a)
 add_executable(bench_ecelgamal bench_ecelgamal.c ci.h)
 target_link_libraries(bench_ecelgamal ci)
 
+# ./bench_reply_decrypt
+add_executable(bench_reply_decrypt bench_reply_decrypt.c ci.h bench_reply_decrypt_data.h)
+target_link_libraries(bench_reply_decrypt ci)
+

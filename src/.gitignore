@@ -1,5 +1,6 @@
 
 /bench_ecelgamal
+/bench_reply_decrypt
 /genM
 /libci.a
 

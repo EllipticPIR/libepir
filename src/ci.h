@@ -146,7 +146,39 @@ void ci_ecelgamal_encrypt_fast(unsigned char *cipher, const unsigned char *privk
  * @param The number of elements in mG.
  * @return Returns a decrypted message. Returns -1 if fail.
  */
-int32_t ci_ecelgamal_decrypt(unsigned char *privkey, const unsigned char *cipher, const ci_mG_t *mG, const uint32_t mmax);
+int32_t ci_ecelgamal_decrypt(const unsigned char *privkey, const unsigned char *cipher, const ci_mG_t *mG, const uint32_t mmax);
+
+static inline uint32_t ci_selectors_ciphers_count(const uint32_t *index_counts, const uint32_t n_indexes) {
+	uint32_t ret = 1;
+	for(size_t i=0; i<n_indexes; i++) {
+		ret *= index_counts[i];
+	}
+	return ret;
+}
+
+void ci_selectors_create_(
+	unsigned char *ciphers, const unsigned char *key,
+	const uint32_t *index_counts, const uint32_t n_indexes,
+	const uint32_t idx, void (*encrypt)(unsigned char*, const unsigned char*, const uint32_t, const unsigned char*));
+
+static inline void ci_selectors_create(
+	unsigned char *ciphers, const unsigned char *pubkey,
+	const uint32_t *index_counts, const uint32_t n_indexes,
+	const uint32_t idx) {
+	ci_selectors_create_(ciphers, pubkey, index_counts, n_indexes, idx, ci_ecelgamal_encrypt);
+}
+
+static inline void ci_selectors_create_fast(
+	unsigned char *ciphers, const unsigned char *privkey,
+	const uint32_t *index_counts, const uint32_t n_indexes,
+	const uint32_t idx) {
+	ci_selectors_create_(ciphers, privkey, index_counts, n_indexes, idx, ci_ecelgamal_encrypt_fast);
+}
+
+int ci_reply_decrypt(
+	unsigned char *data,
+	const unsigned char *privkey, const unsigned char *reply, const size_t reply_size, const uint32_t elem_size,
+	const uint8_t dimension, const uint8_t packing, const ci_mG_t *mG, const uint32_t mmax);
 
 #ifdef __cplusplus
 }
