@@ -113,20 +113,19 @@ void ci_selectors_create_(
 	uint64_t idx_ = idx;
 	uint64_t prod = ci_selectors_elements_count(index_counts, n_indexes);
 	size_t offset = 0;
-	bool messages[prod];
 	for(size_t ic=0; ic<n_indexes; ic++) {
 		const uint64_t cols = index_counts[ic];
 		prod /= cols;
 		const uint64_t rows = idx_ / prod;
 		idx_ -= rows * prod;
 		for(uint64_t r=0; r<index_counts[ic]; r++) {
-			messages[offset] = (r == rows);
+			ciphers[offset * CI_CIPHER_SIZE] = (r == rows);
 			offset++;
 		}
 	}
 	OMP_PARALLEL_FOR
 	for(size_t i=0; i<offset; i++) {
-		encrypt(ciphers + i * CI_CIPHER_SIZE, key, messages[i] ? 1 : 0, NULL);
+		encrypt(ciphers + i * CI_CIPHER_SIZE, key, ciphers[i * CI_CIPHER_SIZE] ? 1 : 0, NULL);
 	}
 }
 
