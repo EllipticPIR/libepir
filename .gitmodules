@@ -1,0 +1,3 @@
+[submodule "vendor/libsodium"]
+	path = vendor/libsodium
+	url = https://github.com/crypto-incognito/libsodium.git
