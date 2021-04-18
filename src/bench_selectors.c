@@ -23,12 +23,12 @@ int main(int argc, char *argv[]) {
 	uint8_t *ciphers = malloc(sizeof(uint8_t) * ciphers_count * CI_CIPHER_SIZE);
 	
 	// Run selectors_create().
-	PRINT_MEASUREMENT(true, "Selectors created in %.0fms.\n",
+	PRINT_MEASUREMENT(true, "Selectors created (normal) in %.0fms.\n",
 		ci_selectors_create(ciphers, pubkey, index_counts, N_INDEXES, INDEX);
 	);
 	
 	// Run selectors_create_fast().
-	PRINT_MEASUREMENT(true, "Selectors created in %.0fms.\n",
+	PRINT_MEASUREMENT(true, "Selectors created (fast) in %.0fms.\n",
 		ci_selectors_create_fast(ciphers, privkey, index_counts, N_INDEXES, INDEX);
 	);
 	
