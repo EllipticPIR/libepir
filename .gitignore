@@ -7,4 +7,5 @@ cmake_install.cmake
 /build
 /local
 /node_modules
+/dist
 
