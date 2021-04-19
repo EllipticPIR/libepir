@@ -1,0 +1,44 @@
+{
+  "name": "crypto-incognito",
+  "version": "0.0.1",
+  "description": "Crypto Incognito client-side library.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "prepack": "npm run clean && npm run build",
+    "preinstall": "npm run cpp:build",
+    "install": "",
+    "build": "tsc",
+    "clean": "npm run cpp:clean",
+    "cpp:build": "cmake . -DCMAKE_BUILD_TYPE=Release && make",
+    "cpp:clean": "make clean",
+    "gyp:rebuild": "node-gyp rebuild",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "files": [
+    "vendor/*",
+    "src/*",
+    "dist/*",
+    "binding.gyp"
+  ],
+  "keywords": [
+    "cryptography",
+    "PIR",
+    "ElGamal",
+    "EC-ElGamal",
+    "elliptic curve",
+    "Crypto Incognito"
+  ],
+  "author": "Masahiko Hyuga <mail@mhyuga.jp>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "devDependencies": {
+    "@types/node": "^14.14.37",
+    "node-gyp": "^8.0.0"
+  },
+  "dependencies": {
+    "node-addon-api": "^3.1.0"
+  }
+}

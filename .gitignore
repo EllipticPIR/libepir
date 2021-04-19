@@ -4,5 +4,7 @@ CMakeCache.txt
 Makefile
 cmake_install.cmake
 
+/build
 /local
+/node_modules
 
