@@ -6,10 +6,11 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "prepack": "npm run clean && npm run build",
-    "preinstall": "npm run cpp:build",
-    "install": "",
+    "preinstall": "npm run vendor:autogen && npm run cpp:build",
+    "install": "node-gyp rebuild",
     "build": "tsc",
     "clean": "npm run cpp:clean",
+    "vendor:autogen": "cd vendor/libsodium && ./autogen.sh",
     "cpp:build": "cmake . -DCMAKE_BUILD_TYPE=Release && make",
     "cpp:clean": "make clean",
     "gyp:rebuild": "node-gyp rebuild",
@@ -19,6 +20,7 @@
     "vendor/*",
     "src/*",
     "dist/*",
+    "CMakeLists.txt",
     "binding.gyp"
   ],
   "keywords": [

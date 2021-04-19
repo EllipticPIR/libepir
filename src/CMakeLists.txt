@@ -24,7 +24,7 @@ add_custom_target(mkdatadir COMMAND mkdir -p ${CI_DATA_DIR})
 add_custom_target(mG.bin ALL
 	if [ ! -e ${MG_PATH} ]\; then ./genM ${MG_MAX_BITS} ${MG_PATH}\; fi
 	DEPENDS genM mkdatadir
-	COMMENT "Generating mG.bin (this may take several minute)...")
+	COMMENT "Generating mG.bin (this may take several minutes)...")
 
 # ./libci.a
 add_library(ci STATIC ci.c ci.h)

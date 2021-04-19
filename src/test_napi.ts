@@ -27,7 +27,7 @@ const time = () => new Date().getTime();
 	console.log(`Selector created (fast) in ${(time() - beginSelectorsFastCreate).toLocaleString()}ms.`);
 	// reply_decrypt().
 	const beginDecrypt = time();
-	const data = require('./test_napi_reply_data.json');
+	const data = require('../src/test_napi_reply_data.json');
 	const decrypted = await ci.reply_decrypt(new Uint8Array(data.reply), new Uint8Array(data.privkey), data.dimension, data.packing);
 	for(let i=0; i<data.correct.length; i++) {
 		if(decrypted[i] != data.correct[i]) {
