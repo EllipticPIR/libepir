@@ -5,10 +5,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 
 # Set pre-computed value storage.
 set(CI_DATA_DIR $ENV{HOME}/.crypto-incognito)
-add_custom_command(OUTPUT ${CI_DATA_DIR} COMMAND mkdir -p ${CI_DATA_DIR})
+#add_custom_command(OUTPUT ${CI_DATA_DIR} COMMAND mkdir -p ${CI_DATA_DIR})
 
 # ./genM
-add_executable(genM genM.cpp ${CI_DATA_DIR})
+add_executable(genM genM.cpp)
 target_link_libraries(genM :libsodium.a)
 
 # ~/.crypto-incognito/mG.bin
@@ -17,9 +17,14 @@ add_compile_options(-DCI_MG_MAX_BITS=${MG_MAX_BITS})
 add_compile_options("-DCI_MG_MAX=(1 << ${MG_MAX_BITS})")
 set(MG_PATH ${CI_DATA_DIR}/mG.bin)
 add_compile_options(-DCI_MG_PATH="${MG_PATH}")
-add_custom_command(OUTPUT ${MG_PATH}
-	COMMAND ./genM ${MG_MAX_BITS} ${MG_PATH}
-	DEPENDS genM)
+#add_custom_command(OUTPUT ${MG_PATH}
+#	COMMAND ./genM ${MG_MAX_BITS} ${MG_PATH}
+#	DEPENDS genM)
+add_custom_target(mkdatadir COMMAND mkdir -p ${CI_DATA_DIR})
+add_custom_target(mG.bin ALL
+	if [ ! -e ${MG_PATH} ]\; then ./genM ${MG_MAX_BITS} ${MG_PATH}\; fi
+	DEPENDS genM mkdatadir
+	COMMENT "Generating mG.bin (this may take several minute)...")
 
 # ./libci.a
 add_library(ci STATIC ci.c ci.h)
