@@ -5,6 +5,9 @@
 #ifndef CI_HPP
 #define CI_HPP
 
+#include <vector>
+#include <array>
+
 #include "ci.h"
 
 namespace ci {
