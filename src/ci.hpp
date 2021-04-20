@@ -136,6 +136,11 @@ namespace ci {
 				this->indexCounts.data(), this->indexCounts.size(), idx);
 		}
 		
+		Selector(const std::vector<unsigned char> data): ciphers(data.size() / CI_CIPHER_SIZE) {
+			if(data.size() % CI_CIPHER_SIZE != 0) throw "Invalid data length.";
+			memcpy(this->ciphers.data(), data.data(), data.size());
+		}
+		
 		uint64_t ciphersCount() {
 			return ci_selector_ciphers_count(indexCounts.data(), indexCounts.size());
 		}
