@@ -38,10 +38,8 @@ namespace ci {
 		
 		unsigned char bytes[CI_POINT_SIZE];
 		
-		static PubKey fromPrivKey(const PrivKey &privkey) {
-			PubKey pubkey;
-			ci_pubkey_from_privkey(pubkey.bytes, privkey.bytes);
-			return pubkey;
+		PubKey (const PrivKey &privkey) {
+			ci_pubkey_from_privkey(this->bytes, privkey.bytes);
 		}
 		
 		PubKey operator = (unsigned char *buf) {
