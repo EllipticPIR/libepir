@@ -1,6 +1,6 @@
 {
   "name": "crypto-incognito",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Crypto Incognito client-side library.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -26,16 +26,19 @@
   "keywords": [
     "cryptography",
     "PIR",
+    "private information retrieval",
     "ElGamal",
     "EC-ElGamal",
     "elliptic curve",
     "Crypto Incognito"
   ],
   "author": "Masahiko Hyuga <mail@mhyuga.jp>",
-  "license": "MIT",
-  "publishConfig": {
-    "access": "restricted"
+  "homepage": "https://crypto-incognito.com/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/crypto-incognito/ci-lib.git"
   },
+  "license": "MIT",
   "devDependencies": {
     "@types/node": "^14.14.37",
     "node-gyp": "^8.0.0"
