@@ -54,7 +54,7 @@ typedef struct __attribute__((__packed__)) {
 	uint32_t scalar;
 } ci_mG_t;
 
-int ci_ecelgamal_load_mg(ci_mG_t *mG, const size_t mmax, const char *path);
+size_t ci_ecelgamal_load_mg(ci_mG_t *mG, const size_t mmax, const char *path);
 
 /**
  * Decrypt a EC-ElGamal ciphertext.

@@ -62,7 +62,7 @@ void ci_ecelgamal_encrypt_fast(unsigned char *cipher, const unsigned char *privk
 	ge25519_p3_tobytes(cipher + CI_POINT_SIZE, &c2);
 }
 
-int ci_ecelgamal_load_mg(ci_mG_t *mG, const size_t mmax, const char *path) {
+size_t ci_ecelgamal_load_mg(ci_mG_t *mG, const size_t mmax, const char *path) {
 	FILE *fp = fopen(path, "r");
 	if(fp == NULL) return 0;
 	#define BATCH_SIZE (1 << 10)
