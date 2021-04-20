@@ -37,7 +37,7 @@ namespace ci {
 		
 		unsigned char bytes[CI_POINT_SIZE];
 		
-		PubKey (const PrivKey &privkey) {
+		PubKey(const PrivKey &privkey) {
 			ci_pubkey_from_privkey(this->bytes, privkey.bytes);
 		}
 		
@@ -61,6 +61,19 @@ namespace ci {
 			mmax(mmax), mG(mmax) {
 			int elemsRead = ci_ecelgamal_load_mg(this->mG.data(), mmax, path.c_str());
 			if(elemsRead != mmax) throw "Failed to load mG.bin.";
+		}
+		
+		std::vector<unsigned char> decryptReply(
+			const PrivKey &privkey, const std::vector<unsigned char> &reply,
+			const uint8_t dimension, const uint8_t packing) const {
+			unsigned char *buf = new unsigned char[reply.size()];
+			memcpy(buf, reply.data(), reply.size());
+			int decryptedCount = ci_reply_decrypt(buf, reply.size(), privkey.bytes, dimension, packing, this->mG.data(), this->mmax);
+			if(decryptedCount < 0) throw "Failed to decrypt.";
+			std::vector<unsigned char> ret(decryptedCount);
+			memcpy(ret.data(), buf, decryptedCount);
+			delete buf;
+			return ret;
 		}
 		
 	};
@@ -93,11 +106,11 @@ namespace ci {
 		}
 		
 		void encryptFast(const PrivKey &privkey, const uint64_t message) {
-			ci_ecelgamal_encrypt(this->bytes, privkey.bytes, message, NULL);
+			ci_ecelgamal_encrypt_fast(this->bytes, privkey.bytes, message, NULL);
 		}
 		
 		void encryptFast(const PrivKey &privkey, const uint64_t message, const Scalar &r) {
-			ci_ecelgamal_encrypt(this->bytes, privkey.bytes, message, r.bytes);
+			ci_ecelgamal_encrypt_fast(this->bytes, privkey.bytes, message, r.bytes);
 		}
 		
 		int32_t decrypt(const DecryptionContext &ctx, const PrivKey &privkey) const {

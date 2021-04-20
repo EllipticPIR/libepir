@@ -35,6 +35,10 @@ add_custom_target(mG.bin ALL
 add_executable(bench_ecelgamal bench_ecelgamal.c ci.h)
 target_link_libraries(bench_ecelgamal ci)
 
+# ./bench_ecelgamal_cpp
+add_executable(bench_ecelgamal_cpp bench_ecelgamal.cpp ci.hpp)
+target_link_libraries(bench_ecelgamal_cpp ci)
+
 # ./bench_selector
 add_executable(bench_selector bench_selector.c ci.h)
 target_link_libraries(bench_selector ci)
