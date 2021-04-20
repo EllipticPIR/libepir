@@ -106,12 +106,12 @@ int32_t ci_ecelgamal_decrypt(const unsigned char *privkey, const unsigned char *
 	return m;
 }
 
-void ci_selectors_create_(
+void ci_selector_create_(
 	unsigned char *ciphers, const unsigned char *key,
 	const uint64_t *index_counts, const uint8_t n_indexes,
 	const uint64_t idx, void (*encrypt)(unsigned char*, const unsigned char*, const uint64_t, const unsigned char*)) {
 	uint64_t idx_ = idx;
-	uint64_t prod = ci_selectors_elements_count(index_counts, n_indexes);
+	uint64_t prod = ci_selector_elements_count(index_counts, n_indexes);
 	size_t offset = 0;
 	for(size_t ic=0; ic<n_indexes; ic++) {
 		const uint64_t cols = index_counts[ic];

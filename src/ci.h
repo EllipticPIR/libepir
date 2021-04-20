@@ -148,7 +148,7 @@ int ci_ecelgamal_load_mg(ci_mG_t *mG, const size_t mmax, const char *path);
  */
 int32_t ci_ecelgamal_decrypt(const unsigned char *privkey, const unsigned char *cipher, const ci_mG_t *mG, const size_t mmax);
 
-static inline uint64_t ci_selectors_ciphers_count(const uint64_t *index_counts, const uint8_t n_indexes) {
+static inline uint64_t ci_selector_ciphers_count(const uint64_t *index_counts, const uint8_t n_indexes) {
 	uint64_t ret = 0;
 	for(size_t i=0; i<n_indexes; i++) {
 		ret += index_counts[i];
@@ -156,7 +156,7 @@ static inline uint64_t ci_selectors_ciphers_count(const uint64_t *index_counts, 
 	return ret;
 }
 
-static inline uint64_t ci_selectors_elements_count(const uint64_t *index_counts, const uint8_t n_indexes) {
+static inline uint64_t ci_selector_elements_count(const uint64_t *index_counts, const uint8_t n_indexes) {
 	uint64_t ret = 1;
 	for(size_t i=0; i<n_indexes; i++) {
 		ret *= index_counts[i];
@@ -164,39 +164,39 @@ static inline uint64_t ci_selectors_elements_count(const uint64_t *index_counts,
 	return ret;
 }
 
-void ci_selectors_create_(
+void ci_selector_create_(
 	unsigned char *ciphers, const unsigned char *key,
 	const uint64_t *index_counts, const uint8_t n_indexes,
 	const uint64_t idx, void (*encrypt)(unsigned char*, const unsigned char*, const uint64_t, const unsigned char*));
 
 /**
- * Create selectors.
+ * Create a selector.
  * @param ciphers      The output will be written to this pointer.
- * @param pubkey       A public key used to generate selectors.
+ * @param pubkey       A public key used to generate a selector.
  * @param index_counts The index counts of server's data matrix.
  * @param n_indexes    The number of elements in the `index_counts`.
  * @param idx          The index to set.
  */
-static inline void ci_selectors_create(
+static inline void ci_selector_create(
 	unsigned char *ciphers, const unsigned char *pubkey,
 	const uint64_t *index_counts, const uint8_t n_indexes,
 	const uint64_t idx) {
-	ci_selectors_create_(ciphers, pubkey, index_counts, n_indexes, idx, ci_ecelgamal_encrypt);
+	ci_selector_create_(ciphers, pubkey, index_counts, n_indexes, idx, ci_ecelgamal_encrypt);
 }
 
 /**
- * Create selectors using a private key (fast).
+ * Create a selector using a private key (fast).
  * @param ciphers      The output will be written to this pointer.
- * @param pubkey       A public key used to generate selectors.
+ * @param pubkey       A public key used to generate a selector.
  * @param index_counts The index counts of server's data matrix.
  * @param n_indexes    The number of elements in the `index_counts`.
  * @param idx          The index to set.
  */
-static inline void ci_selectors_create_fast(
+static inline void ci_selector_create_fast(
 	unsigned char *ciphers, const unsigned char *privkey,
 	const uint64_t *index_counts, const uint8_t n_indexes,
 	const uint64_t idx) {
-	ci_selectors_create_(ciphers, privkey, index_counts, n_indexes, idx, ci_ecelgamal_encrypt_fast);
+	ci_selector_create_(ciphers, privkey, index_counts, n_indexes, idx, ci_ecelgamal_encrypt_fast);
 }
 
 /**

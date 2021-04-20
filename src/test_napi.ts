@@ -13,17 +13,17 @@ const time = () => new Date().getTime();
 	// load_mG().
 	console.log('The number of points in mG.bin:',
 		(await ci.load_mG(`${process.env['HOME']}/.crypto-incognito/mG.bin`)).toLocaleString());
-	// selectors_create().
+	// selector_create().
 	const index_counts = new BigUint64Array(3);
 	index_counts[0] = 1000n;
 	index_counts[1] = 1000n;
 	index_counts[2] = 1000n;
 	const beginSelectorsCreate = time();
-	const selectors = ci.selectors_create(pubkey, index_counts, 1024);
+	const selector = ci.selector_create(pubkey, index_counts, 1024);
 	console.log(`Selector created (normal) in ${(time() - beginSelectorsCreate).toLocaleString()}ms.`);
-	// selectors_create_fast().
+	// selector_create_fast().
 	const beginSelectorsFastCreate = time();
-	const selectorsFast = ci.selectors_create_fast(privkey, index_counts, 1024);
+	const selectorFast = ci.selector_create_fast(privkey, index_counts, 1024);
 	console.log(`Selector created (fast) in ${(time() - beginSelectorsFastCreate).toLocaleString()}ms.`);
 	// reply_decrypt().
 	const beginDecrypt = time();

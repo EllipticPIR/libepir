@@ -87,9 +87,9 @@ Napi::Value LoadmG(const Napi::CallbackInfo &info) {
 	return Napi::Number::New(env, elemsRead);
 }
 
-Napi::Value SelectorsCreate_(
+Napi::Value SelectorCreate_(
 	const Napi::CallbackInfo &info,
-	void (*selectors_create)(unsigned char *ciphers, const unsigned char *privkey,
+	void (*selector_create)(unsigned char *ciphers, const unsigned char *privkey,
 		const uint64_t *index_counts, const uint8_t n_indexes, const uint64_t idx)) {
 	Napi::Env env = info.Env();
 	if(info.Length() < 3) {
@@ -120,8 +120,8 @@ Napi::Value SelectorsCreate_(
 		Napi::TypeError::New(env, "The number of elements in `index_counts` should be greater than zero.").ThrowAsJavaScriptException();
 		return env.Null();
 	}
-	const uint64_t elements_count = ci_selectors_elements_count(index_counts, n_indexes);
-	const uint64_t ciphers_count = ci_selectors_ciphers_count(index_counts, n_indexes);
+	const uint64_t elements_count = ci_selector_elements_count(index_counts, n_indexes);
+	const uint64_t ciphers_count = ci_selector_ciphers_count(index_counts, n_indexes);
 	if(elements_count == 0) {
 		Napi::TypeError::New(env, "The total number of `index_counts[i]` should be greater than zero.").ThrowAsJavaScriptException();
 		return env.Null();
@@ -131,20 +131,20 @@ Napi::Value SelectorsCreate_(
 		Napi::TypeError::New(env, "The `idx` has an invalid range.").ThrowAsJavaScriptException();
 		return env.Null();
 	}
-	// Generate selectors.
+	// Generate a selector.
 	std::vector<uint8_t> ciphers(ciphers_count * CI_CIPHER_SIZE);
-	selectors_create(ciphers.data(), key, index_counts, n_indexes, idx);
+	selector_create(ciphers.data(), key, index_counts, n_indexes, idx);
 	return createUint8Array(env, ciphers);
 }
 
-// .selectors_create(pubkey: Uint8Array(32), index_counts: BigUint64Array, idx: number): Uint8Array
-Napi::Value SelectorsCreate(const Napi::CallbackInfo &info) {
-	return SelectorsCreate_(info, ci_selectors_create);
+// .selector_create(pubkey: Uint8Array(32), index_counts: BigUint64Array, idx: number): Uint8Array
+Napi::Value SelectorCreate(const Napi::CallbackInfo &info) {
+	return SelectorCreate_(info, ci_selector_create);
 }
 
-// .selectors_create_fast(privkey: Uint8Array(32), index_counts: BigUint64Array, idx: number): Uint8Array
-Napi::Value SelectorsCreateFast(const Napi::CallbackInfo &info) {
-	return SelectorsCreate_(info, ci_selectors_create_fast);
+// .selector_create_fast(privkey: Uint8Array(32), index_counts: BigUint64Array, idx: number): Uint8Array
+Napi::Value SelectorCreateFast(const Napi::CallbackInfo &info) {
+	return SelectorCreate_(info, ci_selector_create_fast);
 }
 
 // .reply_decrypt(reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number): Uint8Array.
@@ -195,8 +195,8 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
 	exports.Set(Napi::String::New(env, "create_privkey"), Napi::Function::New(env, CreatePrivkey));
 	exports.Set(Napi::String::New(env, "pubkey_from_privkey"), Napi::Function::New(env, PubkeyFromPrivkey));
 	exports.Set(Napi::String::New(env, "load_mG"), Napi::Function::New(env, LoadmG));
-	exports.Set(Napi::String::New(env, "selectors_create"), Napi::Function::New(env, SelectorsCreate));
-	exports.Set(Napi::String::New(env, "selectors_create_fast"), Napi::Function::New(env, SelectorsCreateFast));
+	exports.Set(Napi::String::New(env, "selector_create"), Napi::Function::New(env, SelectorCreate));
+	exports.Set(Napi::String::New(env, "selector_create_fast"), Napi::Function::New(env, SelectorCreateFast));
 	exports.Set(Napi::String::New(env, "reply_decrypt"), Napi::Function::New(env, ReplyDecrypt));
 	return exports;
 }

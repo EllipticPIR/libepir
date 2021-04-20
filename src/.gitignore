@@ -1,6 +1,6 @@
 
 /bench_ecelgamal
-/bench_selectors
+/bench_selector
 /bench_reply_decrypt
 /genM
 /libci.a

@@ -34,9 +34,9 @@ add_custom_target(mG.bin ALL
 add_executable(bench_ecelgamal bench_ecelgamal.c ci.h)
 target_link_libraries(bench_ecelgamal ci)
 
-# ./bench_selectors
-add_executable(bench_selectors bench_selectors.c ci.h)
-target_link_libraries(bench_selectors ci)
+# ./bench_selector
+add_executable(bench_selector bench_selector.c ci.h)
+target_link_libraries(bench_selector ci)
 
 # ./bench_reply_decrypt
 add_executable(bench_reply_decrypt bench_reply_decrypt.c ci.h bench_reply_decrypt_data.h)

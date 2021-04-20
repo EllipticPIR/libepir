@@ -96,24 +96,24 @@ namespace ci {
 		
 		Selector(const std::vector<uint64_t> &indexCounts, const PubKey &pubkey, const uint64_t idx):
 			indexCounts(indexCounts), ciphers(ciphersCount()) {
-			ci_selectors_create(
+			ci_selector_create(
 				(unsigned char*)this->ciphers.data(), pubkey.bytes,
 				this->indexCounts.data(), this->indexCounts.size(), idx);
 		}
 		
 		Selector(const std::vector<uint64_t> &indexCounts, const PrivKey &privkey, const uint64_t idx):
 			indexCounts(indexCounts), ciphers(ciphersCount()) {
-			ci_selectors_create_fast(
+			ci_selector_create_fast(
 				(unsigned char*)this->ciphers.data(), privkey.bytes,
 				this->indexCounts.data(), this->indexCounts.size(), idx);
 		}
 		
 		uint64_t ciphersCount() {
-			return ci_selectors_ciphers_count(indexCounts.data(), indexCounts.size());
+			return ci_selector_ciphers_count(indexCounts.data(), indexCounts.size());
 		}
 		
 		uint64_t elementsCount() {
-			return ci_selectors_elements_count(indexCounts.data(), indexCounts.size());
+			return ci_selector_elements_count(indexCounts.data(), indexCounts.size());
 		}
 		
 	};

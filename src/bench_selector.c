@@ -1,5 +1,5 @@
 /**
- * Run a benchmark of selectors generation.
+ * Run a benchmark of a selector generations.
  */
 
 #include "ci.h"
@@ -19,17 +19,17 @@ int main(int argc, char *argv[]) {
 	
 	uint64_t index_counts[N_INDEXES];
 	for(size_t i=0; i<N_INDEXES; i++) index_counts[i] = ELEMENTS_PER_INDEX;
-	const uint64_t ciphers_count = ci_selectors_ciphers_count(index_counts, N_INDEXES);
+	const uint64_t ciphers_count = ci_selector_ciphers_count(index_counts, N_INDEXES);
 	uint8_t *ciphers = malloc(sizeof(uint8_t) * ciphers_count * CI_CIPHER_SIZE);
 	
-	// Run selectors_create().
+	// Run selector_create().
 	PRINT_MEASUREMENT(true, "Selectors created (normal) in %.0fms.\n",
-		ci_selectors_create(ciphers, pubkey, index_counts, N_INDEXES, INDEX);
+		ci_selector_create(ciphers, pubkey, index_counts, N_INDEXES, INDEX);
 	);
 	
-	// Run selectors_create_fast().
+	// Run selector_create_fast().
 	PRINT_MEASUREMENT(true, "Selectors created (fast) in %.0fms.\n",
-		ci_selectors_create_fast(ciphers, privkey, index_counts, N_INDEXES, INDEX);
+		ci_selector_create_fast(ciphers, privkey, index_counts, N_INDEXES, INDEX);
 	);
 	
 	free(ciphers);

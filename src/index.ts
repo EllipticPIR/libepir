@@ -21,17 +21,17 @@ namespace crypto_incognito {
 		});
 	};
 	
-	export const selectors_create = async (
+	export const selector_create = async (
 		pubkey: Uint8Array, index_counts: BigUint64Array, idx: number): Promise<Uint8Array> => {
 		return new Promise((resolve, reject) => {
-			resolve(ci_lib.selectors_create(pubkey, index_counts, idx));
+			resolve(ci_lib.selector_create(pubkey, index_counts, idx));
 		});
 	};
 	
-	export const selectors_create_fast = async (
+	export const selector_create_fast = async (
 		privkey: Uint8Array, index_counts: BigUint64Array, idx: number): Promise<Uint8Array> => {
 		return new Promise((resolve, reject) => {
-			resolve(ci_lib.selectors_create_fast(privkey, index_counts, idx));
+			resolve(ci_lib.selector_create_fast(privkey, index_counts, idx));
 		});
 	};
 	
