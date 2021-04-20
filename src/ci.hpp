@@ -69,7 +69,6 @@ namespace ci {
 		
 		Cipher(const unsigned char *buf) {
 			memcpy(this->bytes, buf, CI_CIPHER_SIZE);
-			return *this;
 		}
 		
 		void encrypt(const PubKey &pubkey, const uint64_t message) {
