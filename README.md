@@ -4,7 +4,7 @@ Crypto Incognito client library
 This library contains a client-side library accessing [Crypto Incognito](https://crypto-incognito.com/).
 
 *Crypto Incognito* is a web service which **serves Bitcoin's UTXOs** (unspent transaction outputs) database.
-The queries sent tou our servers are just an array of EC-ElGamal ciphertext of which
+The queries sent to our servers are just an array of EC-ElGamal ciphertext of which
 we does not know the private key (nor the public key).
 Hence, you can **query your address to the database without revealing your Bitcoin address**,
 and of course your amount of bitcoins you hold.
