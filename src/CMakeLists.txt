@@ -10,6 +10,7 @@ set(CI_DATA_DIR $ENV{HOME}/.crypto-incognito)
 # ./libci.a
 add_library(ci STATIC ci.c ci.h)
 target_link_libraries(ci :libsodium.a)
+add_dependencies(ci libsodium)
 
 # ./genM
 add_executable(genM genM.cpp)
@@ -41,4 +42,8 @@ target_link_libraries(bench_selector ci)
 # ./bench_reply_decrypt
 add_executable(bench_reply_decrypt bench_reply_decrypt.c ci.h bench_reply_decrypt_data.h)
 target_link_libraries(bench_reply_decrypt ci)
+
+add_test(NAME "bench_ecelgamal"      COMMAND $<TARGET_FILE:bench_ecelgamal>)
+add_test(NAME "bench_selector"       COMMAND $<TARGET_FILE:bench_selector>)
+add_test(NAME "bench_reply_decrypt"  COMMAND $<TARGET_FILE:bench_reply_decrypt>)
 

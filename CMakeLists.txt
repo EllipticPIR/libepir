@@ -23,6 +23,8 @@ ExternalProject_Add(
 	BUILD_IN_SOURCE 1
 )
 
+enable_testing()
+
 # Add "src" directory.
 add_subdirectory(src)
 
