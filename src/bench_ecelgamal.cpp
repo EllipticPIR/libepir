@@ -31,18 +31,16 @@ int main(int argc, char *argv[]) {
 		ci::DecryptionContext decCtx(CI_MG_MAX, CI_MG_PATH);
 	);
 	
-	std::vector<ci::Cipher> ciphers(LOOP);
+	std::vector<ci::Cipher> ciphers;
 	PRINT_MEASUREMENT(true, "Ciphertext encrypted in %.0fms.\n",
-		OMP_PARALLEL_FOR
 		for(size_t i=0; i<LOOP; i++) {
-			ciphers[i].encryptFast(privkey, msg[i]);
+			ciphers.push_back(ci::Cipher(privkey, msg[i]));
 		}
 	);
 	
 	PRINT_MEASUREMENT(true, "Ciphertext decrypted in %.0fms.\n",
-		OMP_PARALLEL_FOR
 		for(size_t i=0; i<LOOP; i++) {
-			int32_t decrypted = ciphers[i].decrypt(decCtx, privkey);
+			int32_t decrypted = decCtx.decryptCipher(privkey, ciphers[i]);
 			if(decrypted != msg[i]) {
 				printf("Decryption error occured! (i=%zd, msg=%ld, decrypted=%d)\n", i, msg[i], decrypted);
 			}

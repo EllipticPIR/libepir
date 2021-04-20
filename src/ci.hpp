@@ -48,36 +48,6 @@ namespace ci {
 		
 	};
 	
-	class DecryptionContext {
-		
-	public:
-		
-		const size_t mmax;
-		std::vector<ci_mG_t> mG;
-		
-		DecryptionContext(
-			const size_t mmax,
-			const std::string path = std::string(getenv("HOME")) + "/.crypto-incognito/mG.bin"):
-			mmax(mmax), mG(mmax) {
-			int elemsRead = ci_ecelgamal_load_mg(this->mG.data(), mmax, path.c_str());
-			if(elemsRead != mmax) throw "Failed to load mG.bin.";
-		}
-		
-		std::vector<unsigned char> decryptReply(
-			const PrivKey &privkey, const std::vector<unsigned char> &reply,
-			const uint8_t dimension, const uint8_t packing) const {
-			unsigned char *buf = new unsigned char[reply.size()];
-			memcpy(buf, reply.data(), reply.size());
-			int decryptedCount = ci_reply_decrypt(buf, reply.size(), privkey.bytes, dimension, packing, this->mG.data(), this->mmax);
-			if(decryptedCount < 0) throw "Failed to decrypt.";
-			std::vector<unsigned char> ret(decryptedCount);
-			memcpy(ret.data(), buf, decryptedCount);
-			delete buf;
-			return ret;
-		}
-		
-	};
-	
 	class Cipher {
 		
 	public:
@@ -97,24 +67,54 @@ namespace ci {
 			memcpy(this->bytes + CI_POINT_SIZE, c2, CI_POINT_SIZE);
 		}
 		
-		void encrypt(const PubKey &pubkey, const uint64_t message) {
+		Cipher(const PubKey &pubkey, const uint64_t message) {
 			ci_ecelgamal_encrypt(this->bytes, pubkey.bytes, message, NULL);
 		}
 		
-		void encrypt(const PubKey &pubkey, const uint64_t message, const Scalar &r) {
+		Cipher(const PubKey &pubkey, const uint64_t message, const Scalar &r) {
 			ci_ecelgamal_encrypt(this->bytes, pubkey.bytes, message, r.bytes);
 		}
 		
-		void encryptFast(const PrivKey &privkey, const uint64_t message) {
+		Cipher(const PrivKey &privkey, const uint64_t message) {
 			ci_ecelgamal_encrypt_fast(this->bytes, privkey.bytes, message, NULL);
 		}
 		
-		void encryptFast(const PrivKey &privkey, const uint64_t message, const Scalar &r) {
+		Cipher(const PrivKey &privkey, const uint64_t message, const Scalar &r) {
 			ci_ecelgamal_encrypt_fast(this->bytes, privkey.bytes, message, r.bytes);
 		}
 		
-		int32_t decrypt(const DecryptionContext &ctx, const PrivKey &privkey) const {
-			return ci_ecelgamal_decrypt(privkey.bytes, this->bytes, ctx.mG.data(), ctx.mmax);
+	};
+	
+	class DecryptionContext {
+		
+	public:
+		
+		const size_t mmax;
+		std::vector<ci_mG_t> mG;
+		
+		DecryptionContext(
+			const size_t mmax,
+			const std::string path = std::string(getenv("HOME")) + "/.crypto-incognito/mG.bin"):
+			mmax(mmax), mG(mmax) {
+			int elemsRead = ci_ecelgamal_load_mg(this->mG.data(), mmax, path.c_str());
+			if(elemsRead != mmax) throw "Failed to load mG.bin.";
+		}
+		
+		int32_t decryptCipher(const PrivKey &privkey, const Cipher &cipher) {
+			return ci_ecelgamal_decrypt(privkey.bytes, cipher.bytes, this->mG.data(), this->mmax);
+		}
+		
+		std::vector<unsigned char> decryptReply(
+			const PrivKey &privkey, const std::vector<unsigned char> &reply,
+			const uint8_t dimension, const uint8_t packing) const {
+			unsigned char *buf = new unsigned char[reply.size()];
+			memcpy(buf, reply.data(), reply.size());
+			int decryptedCount = ci_reply_decrypt(buf, reply.size(), privkey.bytes, dimension, packing, this->mG.data(), this->mmax);
+			if(decryptedCount < 0) throw "Failed to decrypt.";
+			std::vector<unsigned char> ret(decryptedCount);
+			memcpy(ret.data(), buf, decryptedCount);
+			delete buf;
+			return ret;
 		}
 		
 	};

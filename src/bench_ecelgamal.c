@@ -38,7 +38,6 @@ int main(int argc, char *argv[]) {
 	
 	unsigned char ciphers[LOOP][CI_CIPHER_SIZE];
 	PRINT_MEASUREMENT(true, "Ciphertext encrypted in %.0fms.\n",
-		OMP_PARALLEL_FOR
 		for(size_t i=0; i<LOOP; i++) {
 			//ci_ecelgamal_encrypt(ciphers[i], pubkey, msg[i], NULL);
 			ci_ecelgamal_encrypt_fast(ciphers[i], privkey, msg[i], NULL);
@@ -46,7 +45,6 @@ int main(int argc, char *argv[]) {
 	);
 	
 	PRINT_MEASUREMENT(true, "Ciphertext decrypted in %.0fms.\n",
-		OMP_PARALLEL_FOR
 		for(size_t i=0; i<LOOP; i++) {
 			int32_t decrypted = ci_ecelgamal_decrypt(privkey, ciphers[i], mG, CI_MG_MAX);
 			if(decrypted != msg[i]) {
