@@ -3,6 +3,8 @@ CMakeFiles
 CMakeCache.txt
 Makefile
 cmake_install.cmake
+CTestTestfile.cmake
+/Testing
 
 /build
 /local
