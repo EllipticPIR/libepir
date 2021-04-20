@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "ci.h"
+#include "ci.hpp"
 #include "common.h"
 
 int main(int argc, char *argv[]) {

@@ -55,8 +55,12 @@ namespace ci {
 		const size_t mmax;
 		std::vector<ci_mG_t> mG;
 		
-		DecryptionContext(const size_t mmax, const std::string path): mmax(mmax), mG(mmax) {
-			ci_ecelgamal_load_mg(this->mG.data(), mmax, path.c_str());
+		DecryptionContext(
+			const size_t mmax,
+			const std::string path = std::string(getenv("HOME")) + "/.crypto-incognito/mG.bin"):
+			mmax(mmax), mG(mmax) {
+			int elemsRead = ci_ecelgamal_load_mg(this->mG.data(), mmax, path.c_str());
+			if(elemsRead != mmax) throw "Failed to load mG.bin.";
 		}
 		
 	};
