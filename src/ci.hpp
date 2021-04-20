@@ -96,7 +96,7 @@ namespace ci {
 			ci_ecelgamal_encrypt(this->bytes, privkey.bytes, message, r.bytes);
 		}
 		
-		uint64_t decrypt(const DecryptionContext &ctx, const PrivKey &privkey) const {
+		int32_t decrypt(const DecryptionContext &ctx, const PrivKey &privkey) const {
 			return ci_ecelgamal_decrypt(privkey.bytes, this->bytes, ctx.mG.data(), ctx.mmax);
 		}
 		
