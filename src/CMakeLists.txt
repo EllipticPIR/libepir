@@ -13,7 +13,7 @@ target_link_libraries(ci :libsodium.a)
 add_dependencies(ci libsodium)
 
 # ./genM
-add_executable(genM genM.cpp)
+add_executable(genM genM.cpp ci.h common.h)
 target_link_libraries(genM ci :libsodium.a)
 
 # ~/.crypto-incognito/mG.bin

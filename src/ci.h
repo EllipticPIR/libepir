@@ -9,109 +9,27 @@
 extern "C" {
 #endif
 
-#include <stdio.h>
-#include <stdbool.h>
-#include <sys/time.h>
+#include <stdint.h>
+#include <stddef.h>
 
-#define CONFIGURED 1
-#include <sodium/crypto_core_ed25519.h>
-#include <sodium/crypto_scalarmult_ed25519.h>
-#include <sodium/private/ed25519_ref10.h>
-#undef CONFIGURED
-
-#define CI_SCALAR_SIZE  (crypto_core_ed25519_SCALARBYTES)
-#define CI_POINT_SIZE  (crypto_core_ed25519_BYTES)
+//#define CI_SCALAR_SIZE (crypto_core_ed25519_SCALARBYTES)
+#define CI_SCALAR_SIZE (32)
+//#define CI_POINT_SIZE  (crypto_core_ed25519_BYTES)
+#define CI_POINT_SIZE  (32)
 #define CI_CIPHER_SIZE (2 * CI_POINT_SIZE)
-
-#define OMP_MASTER _Pragma("omp master")
-#define OMP_BARRIER _Pragma("omp barrier")
-#define OMP_PARALLEL _Pragma("omp parallel")
-#define OMP_PARALLEL_FOR _Pragma("omp parallel for")
-
-#define CONCAT_AGAIN(x, y) x ## y
-#define CONCAT(x, y) CONCAT_AGAIN(x, y)
-#define PRINT_MEASUREMENT(flag, format, statement) \
-	const double CONCAT(beginMeasurement, __LINE__) = microtime(); \
-	statement \
-	if(flag) printf("\x1b[32m" format "\x1b[39m", (microtime() - CONCAT(beginMeasurement, __LINE__)) / 1000.)
-
-static inline double microtime(){
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	return (double)(1000.0 * 1000.0 * tv.tv_sec + tv.tv_usec);
-}
-
-/**
- * Set the given point to zero.
- */
-static inline void ge25519_p3_0(ge25519_p3 *h) {
-	fe25519_0(h->X);
-	fe25519_1(h->Y);
-	fe25519_1(h->Z);
-	fe25519_0(h->T);
-}
-
-/**
- * Compute p3 + cached => p3.
- */
-static inline void ge25519_add_p3_cached(ge25519_p3 *r, const ge25519_p3 *a, const ge25519_cached *cached) {
-	ge25519_p1p1 p1p1;
-	ge25519_add(&p1p1, a, cached);
-	ge25519_p1p1_to_p3(r, &p1p1);
-}
-
-/**
- * Compute p3 + precomp => p3.
- */
-static inline void ge25519_add_p3_precomp(ge25519_p3 *r, const ge25519_p3 *a, const ge25519_precomp *precomp) {
-	ge25519_p1p1 p1p1;
-	ge25519_madd(&p1p1, a, precomp);
-	ge25519_p1p1_to_p3(r, &p1p1);
-}
-
-/**
- * Compute p3 + p3 => p3.
- */
-static inline void ge25519_add_p3_p3(ge25519_p3 *r, const ge25519_p3 *a, const ge25519_p3 *b) {
-	ge25519_cached cached;
-	ge25519_p3_to_cached(&cached, b);
-	ge25519_add_p3_cached(r, a, &cached);
-}
-
-/**
- * Compute p3 - cached => p3.
- */
-static inline void ge25519_sub_p3_cached(ge25519_p3 *r, const ge25519_p3 *a, const ge25519_cached *cached) {
-	ge25519_p1p1 p1p1;
-	ge25519_sub(&p1p1, a, cached);
-	ge25519_p1p1_to_p3(r, &p1p1);
-}
-
-/**
- * Compute p3 - p3 => p3.
- */
-static inline void ge25519_sub_p3_p3(ge25519_p3 *r, const ge25519_p3 *a, const ge25519_p3 *b) {
-	ge25519_cached cached;
-	ge25519_p3_to_cached(&cached, b);
-	ge25519_sub_p3_cached(r, a, &cached);
-}
 
 /**
  * Generate a new private key.
  * @param privkey The private key to output. The `CI_SCALAR_SIZE` bytes of memory should be allocated.
  */
-static inline void ci_create_privkey(unsigned char *privkey) {
-	crypto_core_ed25519_scalar_random(privkey);
-}
+void ci_create_privkey(unsigned char *privkey);
 
 /**
  * Compute the public key from a private key.
  * @param pubkey  The public key to output. The `CI_POINT_SIZE` bytes of memory should be allocated.
  * @param privkey A private key to compute the public key.
  */
-static inline void ci_pubkey_from_privkey(unsigned char *pubkey, const unsigned char *privkey) {
-	crypto_scalarmult_ed25519_base_noclamp(pubkey, privkey);
-}
+void ci_pubkey_from_privkey(unsigned char *pubkey, const unsigned char *privkey);
 
 /**
  * Create a new EC-ElGamal cipher text (encrypt).

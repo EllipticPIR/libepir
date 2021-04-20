@@ -9,8 +9,11 @@
 #include <fstream>
 #include <string.h>
 #include <omp.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #include "ci.h"
+#include "common.h"
 
 int main(int argc, char *argv[]) {
 	

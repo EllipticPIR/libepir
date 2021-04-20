@@ -2,7 +2,10 @@
  * Run a benchmark of EC-ElGamal ciphertext encryption / decryption.
  */
 
+#include <stdio.h>
+
 #include "ci.h"
+#include "common.h"
 
 #define LOOP (10 * 1000)
 

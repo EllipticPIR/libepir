@@ -2,7 +2,11 @@
  * Run a benchmark of EC-ElGamal ciphertext encryption / decryption.
  */
 
+#include <stdio.h>
+
 #include "ci.h"
+#include "common.h"
+
 #include "bench_reply_decrypt_data.h"
 
 #define ELEM_SIZE (sizeof(bench_reply_decrypt_data_answer))

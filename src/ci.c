@@ -4,21 +4,20 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
 
 #include "ci.h"
+#include "common.h"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
-static inline void sc25519_load_uint64(unsigned char *sc, uint64_t n) {
-	sc[0] = (n      ) & 0xFF;
-	sc[1] = (n >>  8) & 0xFF;
-	sc[2] = (n >> 16) & 0xFF;
-	sc[3] = (n >> 24) & 0xFF;
-	sc[4] = (n >> 32) & 0xFF;
-	sc[5] = (n >> 40) & 0xFF;
-	sc[6] = (n >> 48) & 0xFF;
-	sc[7] = (n >> 56) & 0xFF;
-	memset(sc + 8, 0, CI_SCALAR_SIZE - 8);
+void ci_create_privkey(unsigned char *privkey) {
+	crypto_core_ed25519_scalar_random(privkey);
+}
+
+void ci_pubkey_from_privkey(unsigned char *pubkey, const unsigned char *privkey) {
+	crypto_scalarmult_ed25519_base_noclamp(pubkey, privkey);
 }
 
 void ci_ecelgamal_encrypt(unsigned char *cipher, const unsigned char *pubkey, const uint64_t message, const unsigned char *r) {
@@ -123,7 +122,7 @@ void ci_selector_create_(
 			offset++;
 		}
 	}
-	OMP_PARALLEL_FOR
+	#pragma omp parallel for
 	for(size_t i=0; i<offset; i++) {
 		encrypt(ciphers + i * CI_CIPHER_SIZE, key, ciphers[i * CI_CIPHER_SIZE] ? 1 : 0, NULL);
 	}
