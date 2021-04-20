@@ -28,11 +28,6 @@ namespace ci {
 			memcpy(this->bytes, buf, CI_SCALAR_SIZE);
 		}
 		
-		PrivKey operator = (unsigned char *buf) {
-			memcpy(this->bytes, buf, CI_SCALAR_SIZE);
-			return *this;
-		}
-		
 	};
 	
 	typedef PrivKey Scalar;
@@ -45,11 +40,6 @@ namespace ci {
 		
 		PubKey(const PrivKey &privkey) {
 			ci_pubkey_from_privkey(this->bytes, privkey.bytes);
-		}
-		
-		PubKey operator = (const unsigned char *buf) {
-			memcpy(this->bytes, buf, CI_POINT_SIZE);
-			return *this;
 		}
 		
 	};
