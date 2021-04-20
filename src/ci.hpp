@@ -67,6 +67,10 @@ namespace ci {
 		
 		unsigned char bytes[CI_CIPHER_SIZE];
 		
+		Cipher() {
+			memset(this->bytes, 0, CI_CIPHER_SIZE);
+		}
+		
 		Cipher(const unsigned char *buf) {
 			memcpy(this->bytes, buf, CI_CIPHER_SIZE);
 		}
