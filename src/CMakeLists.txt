@@ -36,7 +36,7 @@ add_executable(bench_ecelgamal bench_ecelgamal.c ci.h)
 target_link_libraries(bench_ecelgamal ci)
 
 # ./bench_ecelgamal_cpp
-add_executable(bench_ecelgamal_cpp bench_ecelgamal.cpp ci.hpp)
+add_executable(bench_ecelgamal_cpp bench_ecelgamal_cpp.cpp ci.hpp)
 target_link_libraries(bench_ecelgamal_cpp ci)
 
 # ./bench_selector
