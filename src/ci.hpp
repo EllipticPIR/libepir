@@ -92,6 +92,8 @@ namespace ci {
 	
 	class Selector {
 		
+	public:
+		
 		const std::vector<uint64_t> indexCounts;
 		std::vector<unsigned char[CI_CIPHER_SIZE]> ciphers;
 		
