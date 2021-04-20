@@ -5,8 +5,10 @@
 #ifndef CI_HPP
 #define CI_HPP
 
+#include <string.h>
 #include <vector>
 #include <array>
+#include <string>
 
 #include "ci.h"
 
@@ -20,6 +22,10 @@ namespace ci {
 		
 		PrivKey() {
 			ci_create_privkey(this->bytes);
+		}
+		
+		PrivKey(const unsigned char *buf) {
+			memcpy(this->bytes, buf, CI_SCALAR_SIZE);
 		}
 		
 		PrivKey operator = (unsigned char *buf) {

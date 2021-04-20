@@ -43,9 +43,17 @@ target_link_libraries(bench_ecelgamal_cpp ci)
 add_executable(bench_selector bench_selector.c ci.h)
 target_link_libraries(bench_selector ci)
 
+# ./bench_selector_cpp
+add_executable(bench_selector_cpp bench_selector_cpp.cpp ci.hpp)
+target_link_libraries(bench_selector_cpp ci)
+
 # ./bench_reply_decrypt
 add_executable(bench_reply_decrypt bench_reply_decrypt.c ci.h bench_reply_decrypt_data.h)
 target_link_libraries(bench_reply_decrypt ci)
+
+# ./bench_reply_decrypt_cpp
+add_executable(bench_reply_decrypt_cpp bench_reply_decrypt_cpp.cpp ci.hpp bench_reply_decrypt_data.h)
+target_link_libraries(bench_reply_decrypt_cpp ci)
 
 # Add install targets.
 install(TARGETS ci DESTINATION lib)
