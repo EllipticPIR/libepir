@@ -71,6 +71,11 @@ namespace ci {
 			memcpy(this->bytes, buf, CI_CIPHER_SIZE);
 		}
 		
+		Cipher(const unsigned char *c1, const unsigned char *c2) {
+			memcpy(this->bytes                , c1, CI_POINT_SIZE);
+			memcpy(this->bytes + CI_POINT_SIZE, c2, CI_POINT_SIZE);
+		}
+		
 		void encrypt(const PubKey &pubkey, const uint64_t message) {
 			ci_ecelgamal_encrypt(this->bytes, pubkey.bytes, message, NULL);
 		}
@@ -87,7 +92,7 @@ namespace ci {
 			ci_ecelgamal_encrypt(this->bytes, privkey.bytes, message, r.bytes);
 		}
 		
-		uint64_t decrypt(const DecryptionContext &ctx, const PrivKey &privkey) {
+		uint64_t decrypt(const DecryptionContext &ctx, const PrivKey &privkey) const {
 			return ci_ecelgamal_decrypt(privkey.bytes, this->bytes, ctx.mG.data(), ctx.mmax);
 		}
 		
