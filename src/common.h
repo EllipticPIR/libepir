@@ -6,6 +6,7 @@
 extern "C" {
 #endif
 
+#include <stdio.h>
 #include <stdbool.h>
 #include <sys/time.h>
 

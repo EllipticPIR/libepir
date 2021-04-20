@@ -2,6 +2,9 @@
  * Crypto Incognito C++ wrapper library.
  */
 
+#ifndef CI_HPP
+#define CI_HPP
+
 #include "ci.h"
 
 namespace ci {
@@ -119,4 +122,6 @@ namespace ci {
 	};
 	
 }
+
+#endif
 
