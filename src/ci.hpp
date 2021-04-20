@@ -95,7 +95,7 @@ namespace ci {
 	public:
 		
 		const std::vector<uint64_t> indexCounts;
-		std::vector<unsigned char[CI_CIPHER_SIZE]> ciphers;
+		std::vector<std::array<unsigned char, CI_CIPHER_SIZE>> ciphers;
 		
 		Selector(const std::vector<uint64_t> &indexCounts, const PubKey &pubkey, const uint64_t idx):
 			indexCounts(indexCounts), ciphers(ciphersCount()) {
