@@ -7,9 +7,13 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 set(CI_DATA_DIR $ENV{HOME}/.crypto-incognito)
 #add_custom_command(OUTPUT ${CI_DATA_DIR} COMMAND mkdir -p ${CI_DATA_DIR})
 
+# ./libci.a
+add_library(ci STATIC ci.c ci.h)
+target_link_libraries(ci :libsodium.a)
+
 # ./genM
 add_executable(genM genM.cpp)
-target_link_libraries(genM :libsodium.a)
+target_link_libraries(genM ci :libsodium.a)
 
 # ~/.crypto-incognito/mG.bin
 set(MG_MAX_BITS 24)
@@ -25,10 +29,6 @@ add_custom_target(mG.bin ALL
 	if [ ! -e ${MG_PATH} ]\; then ./genM ${MG_MAX_BITS} ${MG_PATH}\; fi
 	DEPENDS genM mkdatadir
 	COMMENT "Generating mG.bin (this may take several minutes)...")
-
-# ./libci.a
-add_library(ci STATIC ci.c ci.h)
-target_link_libraries(ci :libsodium.a)
 
 # ./bench_ecelgamal
 add_executable(bench_ecelgamal bench_ecelgamal.c ci.h)

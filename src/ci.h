@@ -120,7 +120,7 @@ static inline void ci_pubkey_from_privkey(unsigned char *pubkey, const unsigned 
  * @param message A message to encrypt.
  * @param r       A randomness used when the cipher generation. If set to NULL, we will randomly choose the value.
  */
-void ci_ecelgamal_encrypt(unsigned char *cipher, const unsigned char *pubuey, const uint64_t message, const unsigned char *r);
+void ci_ecelgamal_encrypt(unsigned char *cipher, const unsigned char *pubkey, const uint64_t message, const unsigned char *r);
 
 /**
  * Create a new EC-ElGamal cipher text (encrypt) using private key instead of public key (fast).
