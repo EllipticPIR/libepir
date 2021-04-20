@@ -22,10 +22,6 @@ namespace ci {
 			ci_create_privkey(this->bytes);
 		}
 		
-		PrivKey(unsigned char *buf) {
-			*this = buf;
-		}
-		
 		PrivKey operator = (unsigned char *buf) {
 			memcpy(this->bytes, buf, CI_SCALAR_SIZE);
 			return *this;
@@ -45,7 +41,7 @@ namespace ci {
 			ci_pubkey_from_privkey(this->bytes, privkey.bytes);
 		}
 		
-		PubKey operator = (unsigned char *buf) {
+		PubKey operator = (const unsigned char *buf) {
 			memcpy(this->bytes, buf, CI_POINT_SIZE);
 			return *this;
 		}
@@ -70,6 +66,11 @@ namespace ci {
 	public:
 		
 		unsigned char bytes[CI_CIPHER_SIZE];
+		
+		Cipher(const unsigned char *buf) {
+			memcpy(this->bytes, buf, CI_CIPHER_SIZE);
+			return *this;
+		}
 		
 		void encrypt(const PubKey &pubkey, const uint64_t message) {
 			ci_ecelgamal_encrypt(this->bytes, pubkey.bytes, message, NULL);
