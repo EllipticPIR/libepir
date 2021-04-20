@@ -59,7 +59,10 @@ target_link_libraries(bench_reply_decrypt_cpp ci)
 install(TARGETS ci DESTINATION lib)
 install(FILES ${PROJECT_BINARY_DIR}/src/ci.h ${PROJECT_BINARY_DIR}/src/ci.hpp DESTINATION include)
 
-add_test(NAME "bench_ecelgamal"      COMMAND $<TARGET_FILE:bench_ecelgamal>)
-add_test(NAME "bench_selector"       COMMAND $<TARGET_FILE:bench_selector>)
-add_test(NAME "bench_reply_decrypt"  COMMAND $<TARGET_FILE:bench_reply_decrypt>)
+add_test(NAME "bench_ecelgamal"         COMMAND $<TARGET_FILE:bench_ecelgamal>)
+add_test(NAME "bench_ecelgamal_cpp"     COMMAND $<TARGET_FILE:bench_ecelgamal_cpp>)
+add_test(NAME "bench_selector"          COMMAND $<TARGET_FILE:bench_selector>)
+add_test(NAME "bench_selector_cpp"      COMMAND $<TARGET_FILE:bench_selector_cpp>)
+add_test(NAME "bench_reply_decrypt"     COMMAND $<TARGET_FILE:bench_reply_decrypt>)
+add_test(NAME "bench_reply_decrypt_cpp" COMMAND $<TARGET_FILE:bench_reply_decrypt_cpp>)
 
