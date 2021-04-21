@@ -7,5 +7,5 @@
 /bench_reply_decrypt
 /bench_reply_decrypt_cpp
 /epir_genm
-/libepir.a
+/libepir.so
 

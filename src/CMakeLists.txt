@@ -20,13 +20,12 @@ find_package(PkgConfig)
 pkg_check_modules(LIBSODIUM REQUIRED libsodium)
 include_directories(${LIBSODIUM_INCLUDE_DIRS})
 
-# ./libepir.a
-add_library(epir STATIC epir.c epir.h)
-target_link_libraries(epir ${LIBSODIUM_LIBRARIES})
+# ./libepir.so
+add_library(epir SHARED epir.c epir.h)
 
 # ./epir_genm
 add_executable(epir_genm epir_genm.cpp epir.h common.h)
-target_link_libraries(epir_genm epir)
+target_link_libraries(epir_genm epir ${LIBSODIUM_LIBRARIES})
 
 # ~/.EllipticPIR/mG.bin
 set(MG_MAX_BITS 24)
@@ -50,27 +49,27 @@ include(CTest)
 if(BUILD_TESTING)
 	# ./bench_ecelgamal
 	add_executable(bench_ecelgamal bench_ecelgamal.c epir.h)
-	target_link_libraries(bench_ecelgamal epir)
+	target_link_libraries(bench_ecelgamal epir ${LIBSODIUM_LIBRARIES})
 	
 	# ./bench_ecelgamal_cpp
 	add_executable(bench_ecelgamal_cpp bench_ecelgamal_cpp.cpp epir.hpp)
-	target_link_libraries(bench_ecelgamal_cpp epir)
+	target_link_libraries(bench_ecelgamal_cpp epir ${LIBSODIUM_LIBRARIES})
 	
 	# ./bench_selector
 	add_executable(bench_selector bench_selector.c epir.h)
-	target_link_libraries(bench_selector epir)
+	target_link_libraries(bench_selector epir ${LIBSODIUM_LIBRARIES})
 	
 	# ./bench_selector_cpp
 	add_executable(bench_selector_cpp bench_selector_cpp.cpp epir.hpp)
-	target_link_libraries(bench_selector_cpp epir)
+	target_link_libraries(bench_selector_cpp epir ${LIBSODIUM_LIBRARIES})
 	
 	# ./bench_reply_decrypt
 	add_executable(bench_reply_decrypt bench_reply_decrypt.c epir.h bench_reply_decrypt_data.h)
-	target_link_libraries(bench_reply_decrypt epir)
+	target_link_libraries(bench_reply_decrypt epir ${LIBSODIUM_LIBRARIES})
 	
 	# ./bench_reply_decrypt_cpp
 	add_executable(bench_reply_decrypt_cpp bench_reply_decrypt_cpp.cpp epir.hpp bench_reply_decrypt_data.h)
-	target_link_libraries(bench_reply_decrypt_cpp epir)
+	target_link_libraries(bench_reply_decrypt_cpp epir ${LIBSODIUM_LIBRARIES})
 	
 	add_test(NAME "bench_ecelgamal"         COMMAND $<TARGET_FILE:bench_ecelgamal>)
 	add_test(NAME "bench_ecelgamal_cpp"     COMMAND $<TARGET_FILE:bench_ecelgamal_cpp>)
