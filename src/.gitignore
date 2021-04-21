@@ -1,4 +1,5 @@
 
+/DartConfiguration.tcl
 /bench_ecelgamal
 /bench_ecelgamal_cpp
 /bench_selector
@@ -6,5 +7,5 @@
 /bench_reply_decrypt
 /bench_reply_decrypt_cpp
 /genM
-/libci.a
+/libepir.a
 
