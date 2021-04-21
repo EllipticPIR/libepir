@@ -8,7 +8,6 @@ Testing/
 install_manifest.txt
 
 /build
-/local
 /node_modules
 /dist
 

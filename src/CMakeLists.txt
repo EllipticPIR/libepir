@@ -7,10 +7,13 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 set(CI_DATA_DIR $ENV{HOME}/.crypto-incognito)
 #add_custom_command(OUTPUT ${CI_DATA_DIR} COMMAND mkdir -p ${CI_DATA_DIR})
 
+find_package(PkgConfig)
+pkg_check_modules(LIBSODIUM REQUIRED libsodium)
+include_directories(${LIBSODIUM_INCLUDE_DIRS})
+
 # ./libci.a
 add_library(ci STATIC ci.c ci.h)
-target_link_libraries(ci :libsodium.a)
-add_dependencies(ci libsodium)
+target_link_libraries(ci ${LIBSODIUM_LIBRARIES})
 
 # ./genM
 add_executable(genM genM.cpp ci.h common.h)
