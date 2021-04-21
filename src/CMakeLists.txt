@@ -36,9 +36,10 @@ add_custom_target(mG.bin
 	COMMENT "Generating mG.bin (this may take several minutes)...")
 
 # Add install targets.
-install(TARGETS epir DESTINATION lib)
-install(FILES ${PROJECT_BINARY_DIR}/epir.h ${PROJECT_BINARY_DIR}/epir.hpp DESTINATION include)
-install(TARGETS epir_genm DESTINATION bin)
+include(GNUInstallDirs)
+install(TARGETS epir epir_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(FILES ${PROJECT_SOURCE_DIR}/src/epir.h ${PROJECT_SOURCE_DIR}/src/epir.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(TARGETS epir_genm DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 include(CTest)
 
