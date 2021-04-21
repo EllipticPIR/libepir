@@ -24,9 +24,9 @@ include_directories(${LIBSODIUM_INCLUDE_DIRS})
 add_library(epir STATIC epir.c epir.h)
 target_link_libraries(epir ${LIBSODIUM_LIBRARIES})
 
-# ./genM
-add_executable(genM genM.cpp epir.h common.h)
-target_link_libraries(genM epir)
+# ./epir_genm
+add_executable(epir_genm epir_genm.cpp epir.h common.h)
+target_link_libraries(epir_genm epir)
 
 # ~/.EllipticPIR/mG.bin
 set(MG_MAX_BITS 24)
@@ -34,13 +34,10 @@ add_compile_options(-DEPIR_MG_MAX_BITS=${MG_MAX_BITS})
 add_compile_options("-DEPIR_MG_MAX=(1 << ${MG_MAX_BITS})")
 set(MG_PATH ${EPIR_DATA_DIR}/mG.bin)
 add_compile_options(-DEPIR_MG_PATH="${MG_PATH}")
-#add_custom_command(OUTPUT ${MG_PATH}
-#	COMMAND ./genM ${MG_MAX_BITS} ${MG_PATH}
-#	DEPENDS genM)
 add_custom_target(mkdatadir COMMAND mkdir -p ${EPIR_DATA_DIR})
 add_custom_target(mG.bin
-	if [ ! -e ${MG_PATH} ]\; then ./genM ${MG_MAX_BITS} ${MG_PATH}\; fi
-	DEPENDS genM mkdatadir
+	./epir_genm ${MG_PATH} ${MG_MAX_BITS}
+	DEPENDS epir_genm mkdatadir
 	COMMENT "Generating mG.bin (this may take several minutes)...")
 
 # Add install targets.

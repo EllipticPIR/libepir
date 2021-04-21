@@ -6,6 +6,6 @@
 /bench_selector_cpp
 /bench_reply_decrypt
 /bench_reply_decrypt_cpp
-/genM
+/epir_genm
 /libepir.a
 

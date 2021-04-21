@@ -3,28 +3,34 @@
  * The result is written to a raw binary file.
  */
 
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <fstream>
 #include <string.h>
 #include <omp.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <fstream>
+#include <filesystem>
 
 #include "epir.hpp"
 #include "common.h"
 
 int main(int argc, char *argv[]) {
 	
-	if(argc < 3) {
-		printf("usage: %s M_MAX_MOD FILE.bin\n", argv[0]);
-		return 1;
+	if(argc > 1 && (std::string(argv[1]) == "-h" || std::string(argv[1]) == "--help")) {
+		printf("usage: %s [PATH=$HOME/.EllipticPIR/mG.bin [M_MAX_MOD=24]]\n", argv[0]);
+		return 0;
 	}
 	
-	const uint8_t mMaxMod = atoi(argv[1]);
+	const std::string path = (argc > 1 ? std::string(argv[1]) : std::string(getenv("HOME")) + "/.EllipticPIR/mG.bin");
+	const uint8_t mMaxMod = (argc > 2 ? atoi(argv[2]) : 24);
 	const uint32_t mMax = (1 << mMaxMod);
-	const char *path = argv[2];
+	
+	if(std::filesystem::exists(path)) {
+		printf("The file mG.bin exists already. Do nothing.\n");
+		return 0;
+	}
 	
 	// Generate points.
 	unsigned char one_c[EPIR_SCALAR_SIZE];
@@ -80,7 +86,7 @@ int main(int argc, char *argv[]) {
 	
 	// Output to a binary file.
 	PRINT_MEASUREMENT(true, "Output written in %.0fms.\n",
-		std::ofstream ofs(std::string(path), std::ios::binary | std::ios::out);
+		std::ofstream ofs(path, std::ios::binary | std::ios::out);
 		if(ofs.fail()) throw "Failed to open UTXO binary file for write.";
 		for(auto p: mG) {
 			ofs.write((char*)p.point, EPIR_POINT_SIZE);
