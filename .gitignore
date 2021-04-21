@@ -6,6 +6,7 @@ cmake_install.cmake
 CTestTestfile.cmake
 Testing/
 install_manifest.txt
+DartConfiguration.tcl
 
 /build
 /node_modules
