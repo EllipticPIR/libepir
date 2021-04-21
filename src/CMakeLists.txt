@@ -42,7 +42,8 @@ add_custom_target(mG.bin
 
 # Add install targets.
 install(TARGETS epir DESTINATION lib)
-install(FILES ${PROJECT_BINARY_DIR}/src/epir.h ${PROJECT_BINARY_DIR}/src/epir.hpp DESTINATION include)
+install(FILES ${PROJECT_BINARY_DIR}/epir.h ${PROJECT_BINARY_DIR}/epir.hpp DESTINATION include)
+install(TARGETS epir_genm DESTINATION bin)
 
 include(CTest)
 
