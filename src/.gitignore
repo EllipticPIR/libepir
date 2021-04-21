@@ -8,4 +8,5 @@
 /bench_reply_decrypt_cpp
 /epir_genm
 /libepir.so
+/libepir.a
 

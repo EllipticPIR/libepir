@@ -23,6 +23,10 @@ include_directories(${LIBSODIUM_INCLUDE_DIRS})
 # ./libepir.so
 add_library(epir SHARED epir.c epir.h)
 
+# ./libepir.a
+add_library(epir_static STATIC epir.c epir.h)
+set_target_properties(epir_static PROPERTIES OUTPUT_NAME epir)
+
 # ./epir_genm
 add_executable(epir_genm epir_genm.cpp epir.h common.h)
 target_link_libraries(epir_genm epir ${LIBSODIUM_LIBRARIES})
