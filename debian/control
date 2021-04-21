@@ -1,0 +1,30 @@
+Source: libepir
+Section: libs
+Priority: optional
+Build-Depends: cmake (>= 3.16), debhelper (>= 11), libsodium-dev (>= 1.0.18+ellipticpir1-0), pkg-config (>= 0.29.2-1ubuntu1)
+Maintainer: Vis Virial <visvirial@gmail.com>
+Standards-Version: 4.4.0
+
+Package: libepir
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Pre-Depends: ${misc:Pre-Depends}
+Architecture: any
+Multi-Arch: no
+Description: EllipticPIR client library
+ EllipticPIR is a private information retrieval (PIR) library
+ which enables servers to answer a user's query without learning
+ anything about the query.
+
+Package: libepir-dev
+Section: libdevel
+Depends: ${misc:Depends}, libepir (= ${binary:Version})
+Architecture: any
+Multi-Arch: no
+Description: EllipticPIR client library (C headers and C++ bindings)
+ EllipticPIR is a private information retrieval (PIR) library
+ which enables servers to answer a user's query without learning
+ anything about the query.
+ .
+ This package provides development headers needed for applications
+ that use libepir.
+
