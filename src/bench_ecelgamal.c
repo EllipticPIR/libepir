@@ -4,7 +4,7 @@
 
 #include <stdio.h>
 
-#include "ci.h"
+#include "epir.h"
 #include "common.h"
 
 #define LOOP (10 * 1000)
@@ -15,38 +15,38 @@ int main(int argc, char *argv[]) {
 	printf("Generatig messages to encrypt...\n");
 	uint32_t *msg = malloc(sizeof(uint32_t) * LOOP);
 	for(size_t i=0; i<LOOP; i++) {
-		msg[i] = rand() & (CI_MG_MAX - 1);
+		msg[i] = rand() & (EPIR_MG_MAX - 1);
 	}
 	
 	// Create key pair.
 	printf("Generatig a key pair...\n");
-	unsigned char privkey[CI_SCALAR_SIZE];
-	ci_create_privkey(privkey);
-	unsigned char pubkey[CI_POINT_SIZE];
-	ci_pubkey_from_privkey(pubkey, privkey);
+	unsigned char privkey[EPIR_SCALAR_SIZE];
+	epir_create_privkey(privkey);
+	unsigned char pubkey[EPIR_POINT_SIZE];
+	epir_pubkey_from_privkey(pubkey, privkey);
 	
 	// Load mG.bin.
 	printf("Loading mG.bin...\n");
-	ci_mG_t *mG = (ci_mG_t*)malloc(sizeof(ci_mG_t) * CI_MG_MAX);
+	epir_mG_t *mG = (epir_mG_t*)malloc(sizeof(epir_mG_t) * EPIR_MG_MAX);
 	PRINT_MEASUREMENT(true, "mG.bin loaded in %.0fms.\n",
-		const int elemsRead = ci_ecelgamal_load_mg(mG, CI_MG_MAX, CI_MG_PATH);
+		const int elemsRead = epir_ecelgamal_load_mg(mG, EPIR_MG_MAX, EPIR_MG_PATH);
 	);
-	if(elemsRead != CI_MG_MAX) {
+	if(elemsRead != EPIR_MG_MAX) {
 		printf("Failed to load mG.bin!\n");
 		exit(1);
 	}
 	
-	unsigned char ciphers[LOOP][CI_CIPHER_SIZE];
+	unsigned char ciphers[LOOP][EPIR_EPIRPHER_SIZE];
 	PRINT_MEASUREMENT(true, "Ciphertext encrypted in %.0fms.\n",
 		for(size_t i=0; i<LOOP; i++) {
-			//ci_ecelgamal_encrypt(ciphers[i], pubkey, msg[i], NULL);
-			ci_ecelgamal_encrypt_fast(ciphers[i], privkey, msg[i], NULL);
+			//epir_ecelgamal_encrypt(ciphers[i], pubkey, msg[i], NULL);
+			epir_ecelgamal_encrypt_fast(ciphers[i], privkey, msg[i], NULL);
 		}
 	);
 	
 	PRINT_MEASUREMENT(true, "Ciphertext decrypted in %.0fms.\n",
 		for(size_t i=0; i<LOOP; i++) {
-			int32_t decrypted = ci_ecelgamal_decrypt(privkey, ciphers[i], mG, CI_MG_MAX);
+			int32_t decrypted = epir_ecelgamal_decrypt(privkey, ciphers[i], mG, EPIR_MG_MAX);
 			if(decrypted != msg[i]) {
 				printf("Decryption error occured! (msg=%d, decrypted=%d)\n", msg[i], decrypted);
 			}

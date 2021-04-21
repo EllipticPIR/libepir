@@ -3,10 +3,10 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
-#include "ci.h"
+#include "epir.h"
 #pragma GCC diagnostic pop
 
-#define CI_MG_MAX (1 << 24)
+#define EPIR_MG_MAX (1 << 24)
 
 static void checkIsTypedArray(const Napi::Value val, const napi_typedarray_type type, const size_t expectedLength) {
 	if(!val.IsTypedArray()) {
@@ -35,8 +35,8 @@ static Napi::TypedArray createUint8Array(const Napi::Env &env, const std::vector
 // .create_privkey(): Uint8Array(32).
 Napi::Value CreatePrivkey(const Napi::CallbackInfo &info) {
 	Napi::Env env = info.Env();
-	std::vector<uint8_t> privkey(CI_SCALAR_SIZE);
-	ci_create_privkey(privkey.data());
+	std::vector<uint8_t> privkey(EPIR_SCALAR_SIZE);
+	epir_create_privkey(privkey.data());
 	return createUint8Array(env, privkey);
 }
 
@@ -49,7 +49,7 @@ Napi::Value PubkeyFromPrivkey(const Napi::CallbackInfo &info) {
 		return env.Null();
 	}
 	try {
-		checkIsUint8Array(info[0], CI_SCALAR_SIZE);
+		checkIsUint8Array(info[0], EPIR_SCALAR_SIZE);
 	} catch(const char *err) {
 		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
 		return env.Null();
@@ -57,13 +57,13 @@ Napi::Value PubkeyFromPrivkey(const Napi::CallbackInfo &info) {
 	// Read arguments.
 	const uint8_t *privkey = info[0].As<Napi::TypedArrayOf<uint8_t>>().Data();
 	// Create return value.
-	std::vector<uint8_t> pubkey(CI_POINT_SIZE);
-	ci_pubkey_from_privkey(pubkey.data(), privkey);
+	std::vector<uint8_t> pubkey(EPIR_POINT_SIZE);
+	epir_pubkey_from_privkey(pubkey.data(), privkey);
 	return createUint8Array(env, pubkey);
 }
 
 // .load_mG(path: string): number.
-static ci_mG_t mG[CI_MG_MAX];
+static epir_mG_t mG[EPIR_MG_MAX];
 static bool ismGInitialized = false;
 Napi::Value LoadmG(const Napi::CallbackInfo &info) {
 	Napi::Env env = info.Env();
@@ -77,10 +77,10 @@ Napi::Value LoadmG(const Napi::CallbackInfo &info) {
 	}
 	// Load mG.bin.
 	const std::string path = std::string(info[0].As<Napi::String>());
-	const int elemsRead = ci_ecelgamal_load_mg(mG, CI_MG_MAX, path.c_str());
-	ismGInitialized = (elemsRead == CI_MG_MAX);
+	const int elemsRead = epir_ecelgamal_load_mg(mG, EPIR_MG_MAX, path.c_str());
+	ismGInitialized = (elemsRead == EPIR_MG_MAX);
 	if(!ismGInitialized) {
-		std::string msg = "Failed to load mG: (read: " + std::to_string(elemsRead) + ", expect: " + std::to_string(CI_MG_MAX) + ").";
+		std::string msg = "Failed to load mG: (read: " + std::to_string(elemsRead) + ", expect: " + std::to_string(EPIR_MG_MAX) + ").";
 		Napi::Error::New(env, msg).ThrowAsJavaScriptException();
 		return env.Null();
 	}
@@ -97,7 +97,7 @@ Napi::Value SelectorCreate_(
 		return env.Null();
 	}
 	try {
-		checkIsUint8Array(info[0], CI_POINT_SIZE);
+		checkIsUint8Array(info[0], EPIR_POINT_SIZE);
 	} catch(const char *err) {
 		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
 		return env.Null();
@@ -120,8 +120,8 @@ Napi::Value SelectorCreate_(
 		Napi::TypeError::New(env, "The number of elements in `index_counts` should be greater than zero.").ThrowAsJavaScriptException();
 		return env.Null();
 	}
-	const uint64_t elements_count = ci_selector_elements_count(index_counts, n_indexes);
-	const uint64_t ciphers_count = ci_selector_ciphers_count(index_counts, n_indexes);
+	const uint64_t elements_count = epir_selector_elements_count(index_counts, n_indexes);
+	const uint64_t ciphers_count = epir_selector_ciphers_count(index_counts, n_indexes);
 	if(elements_count == 0) {
 		Napi::TypeError::New(env, "The total number of `index_counts[i]` should be greater than zero.").ThrowAsJavaScriptException();
 		return env.Null();
@@ -132,19 +132,19 @@ Napi::Value SelectorCreate_(
 		return env.Null();
 	}
 	// Generate a selector.
-	std::vector<uint8_t> ciphers(ciphers_count * CI_CIPHER_SIZE);
+	std::vector<uint8_t> ciphers(ciphers_count * EPIR_EPIRPHER_SIZE);
 	selector_create(ciphers.data(), key, index_counts, n_indexes, idx);
 	return createUint8Array(env, ciphers);
 }
 
 // .selector_create(pubkey: Uint8Array(32), index_counts: BigUint64Array, idx: number): Uint8Array
 Napi::Value SelectorCreate(const Napi::CallbackInfo &info) {
-	return SelectorCreate_(info, ci_selector_create);
+	return SelectorCreate_(info, epir_selector_create);
 }
 
 // .selector_create_fast(privkey: Uint8Array(32), index_counts: BigUint64Array, idx: number): Uint8Array
 Napi::Value SelectorCreateFast(const Napi::CallbackInfo &info) {
-	return SelectorCreate_(info, ci_selector_create_fast);
+	return SelectorCreate_(info, epir_selector_create_fast);
 }
 
 // .reply_decrypt(reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number): Uint8Array.
@@ -165,7 +165,7 @@ Napi::Value ReplyDecrypt(const Napi::CallbackInfo &info) {
 		return env.Null();
 	}
 	try {
-		checkIsUint8Array(info[1], CI_SCALAR_SIZE);
+		checkIsUint8Array(info[1], EPIR_SCALAR_SIZE);
 	} catch(const char *err) {
 		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
 		return env.Null();
@@ -183,7 +183,7 @@ Napi::Value ReplyDecrypt(const Napi::CallbackInfo &info) {
 	// Decrypt.
 	std::vector<uint8_t> reply_v(reply_size);
 	memcpy(reply_v.data(), reply, reply_size);
-	const int decrypted_size = ci_reply_decrypt(reply_v.data(), reply_size, privkey, dimension, packing, mG, CI_MG_MAX);
+	const int decrypted_size = epir_reply_decrypt(reply_v.data(), reply_size, privkey, dimension, packing, mG, EPIR_MG_MAX);
 	if(decrypted_size < 0) {
 		Napi::Error::New(env, "Decryption failed.").ThrowAsJavaScriptException();
 		return env.Null();
@@ -201,5 +201,5 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
 	return exports;
 }
 
-NODE_API_MODULE(ci_lib, Init);
+NODE_API_MODULE(epir_lib, Init);
 

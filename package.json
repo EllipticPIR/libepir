@@ -1,23 +1,21 @@
 {
-  "name": "crypto-incognito",
+  "name": "EllipticPIR",
   "version": "0.0.2",
-  "description": "Crypto Incognito client-side library.",
+  "description": "EllipticPIR client library (Node.js / TypeScript bindings).",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
     "prepack": "npm run clean && npm run build",
-    "preinstall": "npm run vendor:autogen && npm run cpp:build",
+    "preinstall": "npm run cpp:build",
     "install": "node-gyp rebuild",
     "build": "tsc",
     "clean": "npm run cpp:clean",
-    "vendor:autogen": "cd vendor/libsodium && ./autogen.sh",
-    "cpp:build": "cmake . -DCMAKE_BUILD_TYPE=Release && make",
+    "cpp:build": "cd src && cmake . -DCMAKE_BUILD_TYPE=Release && make",
     "cpp:clean": "make clean",
     "gyp:rebuild": "node-gyp rebuild",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "files": [
-    "vendor/*",
     "src/*",
     "dist/*",
     "CMakeLists.txt",
@@ -36,7 +34,7 @@
   "homepage": "https://crypto-incognito.com/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/crypto-incognito/ci-lib.git"
+    "url": "https://github.com/EllipticPIR/EllipticPIR.git"
   },
   "license": "MIT",
   "devDependencies": {

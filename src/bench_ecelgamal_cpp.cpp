@@ -6,7 +6,7 @@
 #include <string.h>
 #include <string>
 
-#include "ci.hpp"
+#include "epir.hpp"
 #include "common.h"
 
 #define LOOP (10 * 1000)
@@ -17,24 +17,24 @@ int main(int argc, char *argv[]) {
 	printf("Generatig messages to encrypt...\n");
 	std::vector<uint64_t> msg(LOOP);
 	for(size_t i=0; i<LOOP; i++) {
-		msg[i] = rand() & (CI_MG_MAX - 1);
+		msg[i] = rand() & (EPIR_MG_MAX - 1);
 	}
 	
 	// Create key pair.
 	printf("Generatig a key pair...\n");
-	const ci::PrivKey privkey;
-	const ci::PubKey pubkey(privkey);
+	const EllipticPIR::PrivKey privkey;
+	const EllipticPIR::PubKey pubkey(privkey);
 	
 	// Load mG.bin.
 	printf("Loading mG.bin...\n");
 	PRINT_MEASUREMENT(true, "mG.bin loaded in %.0fms.\n",
-		ci::DecryptionContext decCtx(CI_MG_MAX, CI_MG_PATH);
+		EllipticPIR::DecryptionContext decCtx(EPIR_MG_MAX, EPIR_MG_PATH);
 	);
 	
-	std::vector<ci::Cipher> ciphers;
+	std::vector<EllipticPIR::Cipher> ciphers;
 	PRINT_MEASUREMENT(true, "Ciphertext encrypted in %.0fms.\n",
 		for(size_t i=0; i<LOOP; i++) {
-			ciphers.push_back(ci::Cipher(privkey, msg[i]));
+			ciphers.push_back(EllipticPIR::Cipher(privkey, msg[i]));
 		}
 	);
 	

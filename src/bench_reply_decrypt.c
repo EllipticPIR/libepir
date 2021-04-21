@@ -4,7 +4,7 @@
 
 #include <stdio.h>
 
-#include "ci.h"
+#include "epir.h"
 #include "common.h"
 
 #include "bench_reply_decrypt_data.h"
@@ -15,20 +15,20 @@ int main(int argc, char *argv[]) {
 	
 	// Load mG.bin.
 	printf("Loading mG.bin...\n");
-	ci_mG_t *mG = (ci_mG_t*)malloc(sizeof(ci_mG_t) * CI_MG_MAX);
+	epir_mG_t *mG = (epir_mG_t*)malloc(sizeof(epir_mG_t) * EPIR_MG_MAX);
 	PRINT_MEASUREMENT(true, "mG.bin loaded in %.0fms.\n",
-		const int elemsRead = ci_ecelgamal_load_mg(mG, CI_MG_MAX, CI_MG_PATH);
+		const int elemsRead = epir_ecelgamal_load_mg(mG, EPIR_MG_MAX, EPIR_MG_PATH);
 	);
-	if(elemsRead != CI_MG_MAX) {
+	if(elemsRead != EPIR_MG_MAX) {
 		printf("Failed to load mG.bin!\n");
 		exit(1);
 	}
 	
 	// Decrypt.
 	PRINT_MEASUREMENT(true, "Reply decrypted in %.0fms.\n",
-		const int dataLen = ci_reply_decrypt(
+		const int dataLen = epir_reply_decrypt(
 			bench_reply_decrypt_data_reply, sizeof(bench_reply_decrypt_data_reply), bench_reply_decrypt_data_privkey,
-			bench_reply_decrypt_data_dimension, bench_reply_decrypt_data_packing, mG, CI_MG_MAX);
+			bench_reply_decrypt_data_dimension, bench_reply_decrypt_data_packing, mG, EPIR_MG_MAX);
 	);
 	
 	// Data inconsistency check.

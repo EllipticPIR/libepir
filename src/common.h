@@ -43,7 +43,7 @@ static inline void sc25519_load_uint64(unsigned char *sc, uint64_t n) {
 	sc[5] = (n >> 40) & 0xFF;
 	sc[6] = (n >> 48) & 0xFF;
 	sc[7] = (n >> 56) & 0xFF;
-	memset(sc + 8, 0, CI_SCALAR_SIZE - 8);
+	memset(sc + 8, 0, EPIR_SCALAR_SIZE - 8);
 }
 
 /**

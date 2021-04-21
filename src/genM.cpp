@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "ci.hpp"
+#include "epir.hpp"
 #include "common.h"
 
 int main(int argc, char *argv[]) {
@@ -27,8 +27,8 @@ int main(int argc, char *argv[]) {
 	const char *path = argv[2];
 	
 	// Generate points.
-	unsigned char one_c[CI_SCALAR_SIZE];
-	memset(one_c, 0, CI_SCALAR_SIZE);
+	unsigned char one_c[EPIR_SCALAR_SIZE];
+	memset(one_c, 0, EPIR_SCALAR_SIZE);
 	one_c[0] = 1;
 	// base_p3 = G.
 	ge25519_p3 base_p3;
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
 	ge25519_p3_to_precomp(&base_precomp, &base_p3);
 	
 	std::vector<ge25519_p3> mG_p3(mMax);
-	std::vector<ci_mG_t> mG(mMax);
+	std::vector<epir_mG_t> mG(mMax);
 	ge25519_precomp tG_precomp;
 	PRINT_MEASUREMENT(true, "Computation done in %.0fms.\n",
 		OMP_PARALLEL
@@ -69,8 +69,8 @@ int main(int argc, char *argv[]) {
 	);
 	
 	struct comparator {
-		bool operator()(const ci_mG_t &a, const ci_mG_t &b) const {
-			return memcmp(a.point, b.point, CI_POINT_SIZE) < 0;
+		bool operator()(const epir_mG_t &a, const epir_mG_t &b) const {
+			return memcmp(a.point, b.point, EPIR_POINT_SIZE) < 0;
 		}
 	};
 	// Sort.
@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
 		std::ofstream ofs(std::string(path), std::ios::binary | std::ios::out);
 		if(ofs.fail()) throw "Failed to open UTXO binary file for write.";
 		for(auto p: mG) {
-			ofs.write((char*)p.point, CI_POINT_SIZE);
+			ofs.write((char*)p.point, EPIR_POINT_SIZE);
 			ofs.write((char*)&p.scalar, sizeof(uint32_t));
 		}
 		ofs.close();

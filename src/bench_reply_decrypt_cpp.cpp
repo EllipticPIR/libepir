@@ -4,7 +4,7 @@
 
 #include <stdio.h>
 
-#include "ci.hpp"
+#include "epir.hpp"
 #include "common.h"
 
 #include "bench_reply_decrypt_data.h"
@@ -16,14 +16,14 @@ int main(int argc, char *argv[]) {
 	// Load mG.bin.
 	printf("Loading mG.bin...\n");
 	PRINT_MEASUREMENT(true, "mG.bin loaded in %.0fms.\n",
-		ci::DecryptionContext decCtx(CI_MG_MAX, CI_MG_PATH);
+		EllipticPIR::DecryptionContext decCtx(EPIR_MG_MAX, EPIR_MG_PATH);
 	);
 	
 	// Decrypt.
 	PRINT_MEASUREMENT(true, "Reply decrypted in %.0fms.\n",
 		const std::vector<unsigned char> reply(
 			bench_reply_decrypt_data_reply, bench_reply_decrypt_data_reply + sizeof(bench_reply_decrypt_data_reply));
-		const ci::PrivKey privkey(bench_reply_decrypt_data_privkey);
+		const EllipticPIR::PrivKey privkey(bench_reply_decrypt_data_privkey);
 		const std::vector<unsigned char> decrypted = decCtx.decryptReply(
 			privkey, reply, bench_reply_decrypt_data_dimension, bench_reply_decrypt_data_packing);
 	);
