@@ -43,40 +43,42 @@ add_custom_target(mG.bin ALL
 	DEPENDS genM mkdatadir
 	COMMENT "Generating mG.bin (this may take several minutes)...")
 
-# ./bench_ecelgamal
-add_executable(bench_ecelgamal bench_ecelgamal.c epir.h)
-target_link_libraries(bench_ecelgamal epir)
-
-# ./bench_ecelgamal_cpp
-add_executable(bench_ecelgamal_cpp bench_ecelgamal_cpp.cpp epir.hpp)
-target_link_libraries(bench_ecelgamal_cpp epir)
-
-# ./bench_selector
-add_executable(bench_selector bench_selector.c epir.h)
-target_link_libraries(bench_selector epir)
-
-# ./bench_selector_cpp
-add_executable(bench_selector_cpp bench_selector_cpp.cpp epir.hpp)
-target_link_libraries(bench_selector_cpp epir)
-
-# ./bench_reply_decrypt
-add_executable(bench_reply_decrypt bench_reply_decrypt.c epir.h bench_reply_decrypt_data.h)
-target_link_libraries(bench_reply_decrypt epir)
-
-# ./bench_reply_decrypt_cpp
-add_executable(bench_reply_decrypt_cpp bench_reply_decrypt_cpp.cpp epir.hpp bench_reply_decrypt_data.h)
-target_link_libraries(bench_reply_decrypt_cpp epir)
-
 # Add install targets.
 install(TARGETS epir DESTINATION lib)
 install(FILES ${PROJECT_BINARY_DIR}/src/epir.h ${PROJECT_BINARY_DIR}/src/epir.hpp DESTINATION include)
 
-enable_testing()
+include(CTest)
 
-add_test(NAME "bench_ecelgamal"         COMMAND $<TARGET_FILE:bench_ecelgamal>)
-add_test(NAME "bench_ecelgamal_cpp"     COMMAND $<TARGET_FILE:bench_ecelgamal_cpp>)
-add_test(NAME "bench_selector"          COMMAND $<TARGET_FILE:bench_selector>)
-add_test(NAME "bench_selector_cpp"      COMMAND $<TARGET_FILE:bench_selector_cpp>)
-add_test(NAME "bench_reply_decrypt"     COMMAND $<TARGET_FILE:bench_reply_decrypt>)
-add_test(NAME "bench_reply_decrypt_cpp" COMMAND $<TARGET_FILE:bench_reply_decrypt_cpp>)
+if(BUILD_TESTING)
+	# ./bench_ecelgamal
+	add_executable(bench_ecelgamal bench_ecelgamal.c epir.h)
+	target_link_libraries(bench_ecelgamal epir)
+	
+	# ./bench_ecelgamal_cpp
+	add_executable(bench_ecelgamal_cpp bench_ecelgamal_cpp.cpp epir.hpp)
+	target_link_libraries(bench_ecelgamal_cpp epir)
+	
+	# ./bench_selector
+	add_executable(bench_selector bench_selector.c epir.h)
+	target_link_libraries(bench_selector epir)
+	
+	# ./bench_selector_cpp
+	add_executable(bench_selector_cpp bench_selector_cpp.cpp epir.hpp)
+	target_link_libraries(bench_selector_cpp epir)
+	
+	# ./bench_reply_decrypt
+	add_executable(bench_reply_decrypt bench_reply_decrypt.c epir.h bench_reply_decrypt_data.h)
+	target_link_libraries(bench_reply_decrypt epir)
+	
+	# ./bench_reply_decrypt_cpp
+	add_executable(bench_reply_decrypt_cpp bench_reply_decrypt_cpp.cpp epir.hpp bench_reply_decrypt_data.h)
+	target_link_libraries(bench_reply_decrypt_cpp epir)
+	
+	add_test(NAME "bench_ecelgamal"         COMMAND $<TARGET_FILE:bench_ecelgamal>)
+	add_test(NAME "bench_ecelgamal_cpp"     COMMAND $<TARGET_FILE:bench_ecelgamal_cpp>)
+	add_test(NAME "bench_selector"          COMMAND $<TARGET_FILE:bench_selector>)
+	add_test(NAME "bench_selector_cpp"      COMMAND $<TARGET_FILE:bench_selector_cpp>)
+	add_test(NAME "bench_reply_decrypt"     COMMAND $<TARGET_FILE:bench_reply_decrypt>)
+	add_test(NAME "bench_reply_decrypt_cpp" COMMAND $<TARGET_FILE:bench_reply_decrypt_cpp>)
+endif()
 
