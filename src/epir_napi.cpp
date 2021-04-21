@@ -132,7 +132,7 @@ Napi::Value SelectorCreate_(
 		return env.Null();
 	}
 	// Generate a selector.
-	std::vector<uint8_t> ciphers(ciphers_count * EPIR_EPIRPHER_SIZE);
+	std::vector<uint8_t> ciphers(ciphers_count * EPIR_CIPHER_SIZE);
 	selector_create(ciphers.data(), key, index_counts, n_indexes, idx);
 	return createUint8Array(env, ciphers);
 }

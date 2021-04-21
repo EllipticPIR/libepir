@@ -48,14 +48,14 @@ namespace EllipticPIR {
 		
 	public:
 		
-		unsigned char bytes[EPIR_EPIRPHER_SIZE];
+		unsigned char bytes[EPIR_CIPHER_SIZE];
 		
 		Cipher() {
-			memset(this->bytes, 0, EPIR_EPIRPHER_SIZE);
+			memset(this->bytes, 0, EPIR_CIPHER_SIZE);
 		}
 		
 		Cipher(const unsigned char *buf) {
-			memcpy(this->bytes, buf, EPIR_EPIRPHER_SIZE);
+			memcpy(this->bytes, buf, EPIR_CIPHER_SIZE);
 		}
 		
 		Cipher(const unsigned char *c1, const unsigned char *c2) {
@@ -120,7 +120,7 @@ namespace EllipticPIR {
 	public:
 		
 		const std::vector<uint64_t> indexCounts;
-		std::vector<std::array<unsigned char, EPIR_EPIRPHER_SIZE>> ciphers;
+		std::vector<std::array<unsigned char, EPIR_CIPHER_SIZE>> ciphers;
 		
 		Selector(const std::vector<uint64_t> &indexCounts, const PubKey &pubkey, const uint64_t idx):
 			indexCounts(indexCounts), ciphers(ciphersCount()) {
@@ -136,8 +136,8 @@ namespace EllipticPIR {
 				this->indexCounts.data(), this->indexCounts.size(), idx);
 		}
 		
-		Selector(const std::vector<unsigned char> data): ciphers(data.size() / EPIR_EPIRPHER_SIZE) {
-			if(data.size() % EPIR_EPIRPHER_SIZE != 0) throw "Invalid data length.";
+		Selector(const std::vector<unsigned char> data): ciphers(data.size() / EPIR_CIPHER_SIZE) {
+			if(data.size() % EPIR_CIPHER_SIZE != 0) throw "Invalid data length.";
 			memcpy(this->ciphers.data(), data.data(), data.size());
 		}
 		

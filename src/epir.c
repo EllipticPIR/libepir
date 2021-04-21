@@ -118,31 +118,31 @@ void epir_selector_create_(
 		const uint64_t rows = idx_ / prod;
 		idx_ -= rows * prod;
 		for(uint64_t r=0; r<index_counts[ic]; r++) {
-			ciphers[offset * EPIR_EPIRPHER_SIZE] = (r == rows);
+			ciphers[offset * EPIR_CIPHER_SIZE] = (r == rows);
 			offset++;
 		}
 	}
 	#pragma omp parallel for
 	for(size_t i=0; i<offset; i++) {
-		encrypt(ciphers + i * EPIR_EPIRPHER_SIZE, key, ciphers[i * EPIR_EPIRPHER_SIZE] ? 1 : 0, NULL);
+		encrypt(ciphers + i * EPIR_CIPHER_SIZE, key, ciphers[i * EPIR_CIPHER_SIZE] ? 1 : 0, NULL);
 	}
 }
 
 int epir_reply_decrypt(
 	unsigned char *reply, const size_t reply_size, const unsigned char *privkey,
 	const uint8_t dimension, const uint8_t packing, const epir_mG_t *mG, const size_t mmax) {
-	size_t mid_count = reply_size / EPIR_EPIRPHER_SIZE;
+	size_t mid_count = reply_size / EPIR_CIPHER_SIZE;
 	for(uint8_t phase=0; phase<dimension; phase++) {
 		bool success = true;
 		#pragma omp parallel for
 		for(size_t i=0; i<mid_count; i++) {
-			const int32_t decrypted = epir_ecelgamal_decrypt(privkey, &reply[i * EPIR_EPIRPHER_SIZE], mG, mmax);
+			const int32_t decrypted = epir_ecelgamal_decrypt(privkey, &reply[i * EPIR_CIPHER_SIZE], mG, mmax);
 			if(decrypted < 0) {
 				success = false;
 				continue;
 			}
 			for(uint8_t p=0; p<packing; p++) {
-				reply[i * EPIR_EPIRPHER_SIZE + p] = (decrypted >> (8 * p)) & 0xFF;
+				reply[i * EPIR_CIPHER_SIZE + p] = (decrypted >> (8 * p)) & 0xFF;
 			}
 		}
 		if(!success) {
@@ -150,14 +150,14 @@ int epir_reply_decrypt(
 		}
 		for(size_t i=0; i<mid_count; i++) {
 			for(uint8_t p=0; p<packing; p++) {
-				reply[i * packing + p] = reply[i * EPIR_EPIRPHER_SIZE + p];
+				reply[i * packing + p] = reply[i * EPIR_CIPHER_SIZE + p];
 			}
 		}
 		if(phase == dimension - 1) {
 			mid_count *= packing;
 			break;
 		}
-		mid_count = mid_count * packing / EPIR_EPIRPHER_SIZE;
+		mid_count = mid_count * packing / EPIR_CIPHER_SIZE;
 	}
 	return mid_count;
 }

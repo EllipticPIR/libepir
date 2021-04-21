@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
 	uint64_t index_counts[N_INDEXES];
 	for(size_t i=0; i<N_INDEXES; i++) index_counts[i] = ELEMENTS_PER_INDEX;
 	const uint64_t ciphers_count = epir_selector_ciphers_count(index_counts, N_INDEXES);
-	uint8_t *ciphers = malloc(sizeof(uint8_t) * ciphers_count * EPIR_EPIRPHER_SIZE);
+	uint8_t *ciphers = malloc(sizeof(uint8_t) * ciphers_count * EPIR_CIPHER_SIZE);
 	
 	// Run selector_create().
 	PRINT_MEASUREMENT(true, "Selectors created (normal) in %.0fms.\n",

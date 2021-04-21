@@ -10,7 +10,7 @@
     "install": "node-gyp rebuild",
     "build": "tsc",
     "clean": "npm run cpp:clean",
-    "cpp:build": "cd src && cmake . -DCMAKE_BUILD_TYPE=Release && make",
+    "cpp:build": "cmake . -DCMAKE_BUILD_TYPE=Release && make",
     "cpp:clean": "make clean",
     "gyp:rebuild": "node-gyp rebuild",
     "test": "echo \"Error: no test specified\" && exit 1"

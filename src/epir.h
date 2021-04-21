@@ -16,7 +16,7 @@ extern "C" {
 #define EPIR_SCALAR_SIZE (32)
 //#define EPIR_POINT_SIZE  (crypto_core_ed25519_BYTES)
 #define EPIR_POINT_SIZE  (32)
-#define EPIR_EPIRPHER_SIZE (2 * EPIR_POINT_SIZE)
+#define EPIR_CIPHER_SIZE (2 * EPIR_POINT_SIZE)
 
 /**
  * Generate a new private key.

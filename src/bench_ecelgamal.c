@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 	
-	unsigned char ciphers[LOOP][EPIR_EPIRPHER_SIZE];
+	unsigned char ciphers[LOOP][EPIR_CIPHER_SIZE];
 	PRINT_MEASUREMENT(true, "Ciphertext encrypted in %.0fms.\n",
 		for(size_t i=0; i<LOOP; i++) {
 			//epir_ecelgamal_encrypt(ciphers[i], pubkey, msg[i], NULL);
