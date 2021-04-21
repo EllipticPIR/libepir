@@ -38,7 +38,7 @@ add_compile_options(-DEPIR_MG_PATH="${MG_PATH}")
 #	COMMAND ./genM ${MG_MAX_BITS} ${MG_PATH}
 #	DEPENDS genM)
 add_custom_target(mkdatadir COMMAND mkdir -p ${EPIR_DATA_DIR})
-add_custom_target(mG.bin ALL
+add_custom_target(mG.bin
 	if [ ! -e ${MG_PATH} ]\; then ./genM ${MG_MAX_BITS} ${MG_PATH}\; fi
 	DEPENDS genM mkdatadir
 	COMMENT "Generating mG.bin (this may take several minutes)...")
