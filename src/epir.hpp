@@ -141,12 +141,20 @@ namespace EllipticPIR {
 			memcpy(this->ciphers.data(), data.data(), data.size());
 		}
 		
-		uint64_t ciphersCount() {
+		static uint64_t ciphersCount(std::vector<uint64_t> indexCounts) {
 			return epir_selector_ciphers_count(indexCounts.data(), indexCounts.size());
 		}
 		
-		uint64_t elementsCount() {
+		static uint64_t elementsCount(std::vector<uint64_t> indexCounts) {
 			return epir_selector_elements_count(indexCounts.data(), indexCounts.size());
+		}
+		
+		uint64_t ciphersCount() {
+			return Selector::ciphersCount(this->indexCounts);
+		}
+		
+		uint64_t elementsCount() {
+			return Selector::elementsCount(this->indexCounts);
 		}
 		
 	};

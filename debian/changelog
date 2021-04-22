@@ -1,3 +1,9 @@
+libepir (0.0.7-1) groovy; urgency=medium
+
+  * New upstream release.
+
+ -- Vis Virial <visvirial@gmail.com>  Thu, 22 Apr 2021 12:46:16 +0900
+
 libepir (0.0.5-1) groovy; urgency=medium
 
   * New upstream release.
