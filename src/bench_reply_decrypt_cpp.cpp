@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
 	// Load mG.bin.
 	printf("Loading mG.bin...\n");
 	PRINT_MEASUREMENT(true, "mG.bin loaded in %.0fms.\n",
-		EllipticPIR::DecryptionContext decCtx(EPIR_MG_MAX, EPIR_MG_PATH);
+		EllipticPIR::DecryptionContext decCtx;
 	);
 	
 	// Decrypt.

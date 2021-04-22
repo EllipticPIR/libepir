@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
 	printf("Generatig messages to encrypt...\n");
 	std::vector<uint64_t> msg(LOOP);
 	for(size_t i=0; i<LOOP; i++) {
-		msg[i] = rand() & (EPIR_MG_MAX - 1);
+		msg[i] = rand() & (EPIR_DEFAULT_MG_MAX - 1);
 	}
 	
 	// Create key pair.
@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
 	// Load mG.bin.
 	printf("Loading mG.bin...\n");
 	PRINT_MEASUREMENT(true, "mG.bin loaded in %.0fms.\n",
-		EllipticPIR::DecryptionContext decCtx(EPIR_MG_MAX, EPIR_MG_PATH);
+		EllipticPIR::DecryptionContext decCtx;
 	);
 	
 	std::vector<EllipticPIR::Cipher> ciphers;

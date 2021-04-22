@@ -89,10 +89,10 @@ namespace EllipticPIR {
 		std::vector<epir_mG_t> mG;
 		
 		DecryptionContext(
-			const size_t mmax,
-			const std::string path = std::string(getenv("HOME")) + "/.crypto-incognito/mG.bin"):
+			const size_t mmax = EPIR_DEFAULT_MG_MAX,
+			const std::string path = ""):
 			mmax(mmax), mG(mmax) {
-			size_t elemsRead = epir_ecelgamal_load_mg(this->mG.data(), mmax, path.c_str());
+			size_t elemsRead = epir_ecelgamal_load_mg(this->mG.data(), mmax, (path == "" ? NULL : path.c_str()));
 			if(elemsRead != mmax) throw "Failed to load mG.bin.";
 		}
 		

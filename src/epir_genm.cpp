@@ -7,6 +7,7 @@
 #include <omp.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/stat.h>
 #include <iostream>
 #include <vector>
 #include <algorithm>
@@ -18,18 +19,32 @@
 
 int main(int argc, char *argv[]) {
 	
+	char path_default[epir_ecelgamal_default_mg_path_length() + 1];
+	epir_ecelgamal_default_mg_path(path_default, epir_ecelgamal_default_mg_path_length() + 1);
+	
 	if(argc > 1 && (std::string(argv[1]) == "-h" || std::string(argv[1]) == "--help")) {
-		printf("usage: %s [PATH=$HOME/.EllipticPIR/mG.bin [M_MAX_MOD=24]]\n", argv[0]);
+		printf("usage: %s [PATH=%s [M_MAX_MOD=24]]\n", argv[0], path_default);
 		return 0;
 	}
 	
-	const std::string path = (argc > 1 ? std::string(argv[1]) : std::string(getenv("HOME")) + "/.EllipticPIR/mG.bin");
+	const std::string path = std::string(argc > 1 ? argv[1] : path_default);
 	const uint8_t mMaxMod = (argc > 2 ? atoi(argv[2]) : 24);
 	const uint32_t mMax = (1 << mMaxMod);
 	
 	if(std::filesystem::exists(path)) {
 		printf("The file mG.bin exists already. Do nothing.\n");
 		return 0;
+	}
+	
+	// Create data directory.
+	if(argc < 2) {
+		const std::string dataDir = std::string(getenv("HOME")) + "/" + EPIR_DEFAULT_DATA_DIR;
+		if(mkdir(dataDir.c_str(), 0775)) {
+			if(errno != EEXIST) {
+				printf("Failed to create the data directory.\n");
+				return 1;
+			}
+		}
 	}
 	
 	// Generate points.
@@ -87,7 +102,10 @@ int main(int argc, char *argv[]) {
 	// Output to a binary file.
 	PRINT_MEASUREMENT(true, "Output written in %.0fms.\n",
 		std::ofstream ofs(path, std::ios::binary | std::ios::out);
-		if(ofs.fail()) throw "Failed to open UTXO binary file for write.";
+		if(ofs.fail()) {
+			printf("Failed to open UTXO binary file for write.\n");
+			return 1;
+		}
 		for(auto p: mG) {
 			ofs.write((char*)p.point, EPIR_POINT_SIZE);
 			ofs.write((char*)&p.scalar, sizeof(uint32_t));

@@ -63,12 +63,18 @@ void epir_ecelgamal_encrypt_fast(unsigned char *cipher, const unsigned char *pri
 }
 
 size_t epir_ecelgamal_load_mg(epir_mG_t *mG, const size_t mmax, const char *path) {
-	FILE *fp = fopen(path, "r");
+	const size_t mmax_ = (mmax == 0 ? EPIR_DEFAULT_MG_MAX : mmax);
+	char path_default[epir_ecelgamal_default_mg_path_length() + 1];
+	if(!path) {
+		epir_ecelgamal_default_mg_path(path_default, epir_ecelgamal_default_mg_path_length() + 1);
+	}
+	const char *path_ = (path ? path : path_default);
+	FILE *fp = fopen(path_, "r");
 	if(fp == NULL) return 0;
 	#define BATCH_SIZE (1 << 10)
 	size_t elemsRead = 0;
 	for(;;) {
-		const size_t read = fread(&mG[elemsRead], sizeof(epir_mG_t), min(BATCH_SIZE, mmax - elemsRead), fp);
+		const size_t read = fread(&mG[elemsRead], sizeof(epir_mG_t), min(BATCH_SIZE, mmax_ - elemsRead), fp);
 		elemsRead += read;
 		if(read < BATCH_SIZE) break;
 	}

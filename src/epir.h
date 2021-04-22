@@ -9,14 +9,22 @@
 extern "C" {
 #endif
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <string.h>
 
 //#define EPIR_SCALAR_SIZE (crypto_core_ed25519_SCALARBYTES)
 #define EPIR_SCALAR_SIZE (32)
 //#define EPIR_POINT_SIZE  (crypto_core_ed25519_BYTES)
 #define EPIR_POINT_SIZE  (32)
 #define EPIR_CIPHER_SIZE (2 * EPIR_POINT_SIZE)
+
+#define EPIR_DEFAULT_MG_MAX_BITS (24)
+#define EPIR_DEFAULT_MG_MAX (1 << EPIR_DEFAULT_MG_MAX_BITS)
+#define EPIR_DEFAULT_DATA_DIR (".EllipticPIR")
+#define EPIR_DEFAULT_MG_FILE ("mG.bin")
 
 /**
  * Generate a new private key.
@@ -53,6 +61,14 @@ typedef struct __attribute__((__packed__)) {
 	unsigned char point[EPIR_POINT_SIZE];
 	uint32_t scalar;
 } epir_mG_t;
+
+static inline size_t epir_ecelgamal_default_mg_path_length() {
+	return strlen(getenv("HOME")) + 1 + sizeof(EPIR_DEFAULT_DATA_DIR) + 1 + sizeof(EPIR_DEFAULT_MG_FILE);
+}
+
+static inline void epir_ecelgamal_default_mg_path(char *path, const size_t len) {
+	snprintf(path, len, "%s/%s/%s", getenv("HOME"), EPIR_DEFAULT_DATA_DIR, EPIR_DEFAULT_MG_FILE);
+}
 
 size_t epir_ecelgamal_load_mg(epir_mG_t *mG, const size_t mmax, const char *path);
 

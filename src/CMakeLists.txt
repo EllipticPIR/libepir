@@ -4,10 +4,6 @@ find_package(OpenMP REQUIRED)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 
-# Set pre-computed value storage.
-set(EPIR_DATA_DIR $ENV{HOME}/.EllipticPIR)
-#add_custom_command(OUTPUT ${EPIR_DATA_DIR} COMMAND mkdir -p ${EPIR_DATA_DIR})
-
 find_package(PkgConfig)
 pkg_check_modules(LIBSODIUM REQUIRED libsodium)
 include_directories(${LIBSODIUM_INCLUDE_DIRS})
@@ -24,14 +20,11 @@ add_executable(epir_genm epir_genm.cpp epir.h common.h)
 target_link_libraries(epir_genm epir ${LIBSODIUM_LIBRARIES})
 
 # ~/.EllipticPIR/mG.bin
-set(MG_MAX_BITS 24)
-add_compile_options(-DEPIR_MG_MAX_BITS=${MG_MAX_BITS})
-add_compile_options("-DEPIR_MG_MAX=(1 << ${MG_MAX_BITS})")
-set(MG_PATH ${EPIR_DATA_DIR}/mG.bin)
-add_compile_options(-DEPIR_MG_PATH="${MG_PATH}")
+set(EPIR_DATA_DIR $ENV{HOME}/.EllipticPIR)
+set(EPIR_MG_PATH ${EPIR_DATA_DIR}/mG.bin)
 add_custom_target(mkdatadir COMMAND mkdir -p ${EPIR_DATA_DIR})
 add_custom_target(mG.bin
-	./epir_genm ${MG_PATH} ${MG_MAX_BITS}
+	./epir_genm ${EPIR_MG_PATH}
 	DEPENDS epir_genm mkdatadir
 	COMMENT "Generating mG.bin (this may take several minutes)...")
 
