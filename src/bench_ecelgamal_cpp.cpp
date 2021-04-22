@@ -13,6 +13,8 @@
 
 int main(int argc, char *argv[]) {
 	
+	const char *mG_path = (argc < 2 ? NULL : argv[1]);
+	
 	// Generate messages to encrypt.
 	printf("Generatig messages to encrypt...\n");
 	std::vector<uint64_t> msg(LOOP);
@@ -28,7 +30,7 @@ int main(int argc, char *argv[]) {
 	// Load mG.bin.
 	printf("Loading mG.bin...\n");
 	PRINT_MEASUREMENT(true, "mG.bin loaded in %.0fms.\n",
-		EllipticPIR::DecryptionContext decCtx;
+		EllipticPIR::DecryptionContext decCtx(EPIR_DEFAULT_MG_MAX, (mG_path ? std::string(mG_path) : ""));
 	);
 	
 	std::vector<EllipticPIR::Cipher> ciphers;

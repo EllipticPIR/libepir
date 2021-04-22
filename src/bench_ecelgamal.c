@@ -11,6 +11,8 @@
 
 int main(int argc, char *argv[]) {
 	
+	const char *mG_path = (argc < 2 ? NULL : argv[1]);
+	
 	// Generate messages to encrypt.
 	printf("Generatig messages to encrypt...\n");
 	uint32_t *msg = malloc(sizeof(uint32_t) * LOOP);
@@ -29,7 +31,7 @@ int main(int argc, char *argv[]) {
 	printf("Loading mG.bin...\n");
 	epir_mG_t *mG = (epir_mG_t*)malloc(sizeof(epir_mG_t) * EPIR_DEFAULT_MG_MAX);
 	PRINT_MEASUREMENT(true, "mG.bin loaded in %.0fms.\n",
-		const int elemsRead = epir_ecelgamal_load_mg(mG, EPIR_DEFAULT_MG_MAX, NULL);
+		const int elemsRead = epir_ecelgamal_load_mg(mG, EPIR_DEFAULT_MG_MAX, mG_path);
 	);
 	if(elemsRead != EPIR_DEFAULT_MG_MAX) {
 		printf("Failed to load mG.bin!\n");

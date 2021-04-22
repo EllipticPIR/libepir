@@ -13,10 +13,12 @@
 
 int main(int argc, char *argv[]) {
 	
+	const char *mG_path = (argc < 2 ? NULL : argv[1]);
+	
 	// Load mG.bin.
 	printf("Loading mG.bin...\n");
 	PRINT_MEASUREMENT(true, "mG.bin loaded in %.0fms.\n",
-		EllipticPIR::DecryptionContext decCtx;
+		EllipticPIR::DecryptionContext decCtx(EPIR_DEFAULT_MG_MAX, mG_path ? std::string(mG_path) : "");
 	);
 	
 	// Decrypt.
