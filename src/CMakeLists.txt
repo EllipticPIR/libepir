@@ -44,6 +44,7 @@ install(TARGETS epir_genm DESTINATION ${CMAKE_INSTALL_BINDIR})
 include(CTest)
 
 if(BUILD_TESTING)
+	
 	# ./bench_ecelgamal
 	add_executable(bench_ecelgamal bench_ecelgamal.c epir.h)
 	target_link_libraries(bench_ecelgamal epir ${LIBSODIUM_LIBRARIES})
@@ -74,5 +75,6 @@ if(BUILD_TESTING)
 	add_test(NAME "bench_selector_cpp"      COMMAND $<TARGET_FILE:bench_selector_cpp>)
 	add_test(NAME "bench_reply_decrypt"     COMMAND $<TARGET_FILE:bench_reply_decrypt>)
 	add_test(NAME "bench_reply_decrypt_cpp" COMMAND $<TARGET_FILE:bench_reply_decrypt_cpp>)
+	
 endif()
 
