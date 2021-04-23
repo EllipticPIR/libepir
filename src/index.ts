@@ -1,9 +1,8 @@
+/**
+ * Node.js (TypeScript) bindings for Native C EllipticPIR library interface.
+ */
 
 namespace epir {
-	
-	/**
-	 * Register native bindings.
-	 */
 	
 	const epir = require('../build/Release/epir');
 	
@@ -22,14 +21,14 @@ namespace epir {
 	};
 	
 	export const selector_create = async (
-		pubkey: Uint8Array, index_counts: BigUint64Array, idx: number): Promise<Uint8Array> => {
+		pubkey: Uint8Array, index_counts: number[], idx: number): Promise<Uint8Array> => {
 		return new Promise((resolve, reject) => {
 			resolve(epir.selector_create(pubkey, index_counts, idx));
 		});
 	};
 	
 	export const selector_create_fast = async (
-		privkey: Uint8Array, index_counts: BigUint64Array, idx: number): Promise<Uint8Array> => {
+		privkey: Uint8Array, index_counts: number[], idx: number): Promise<Uint8Array> => {
 		return new Promise((resolve, reject) => {
 			resolve(epir.selector_create_fast(privkey, index_counts, idx));
 		});

@@ -40,7 +40,7 @@ Napi::Value CreatePrivkey(const Napi::CallbackInfo &info) {
 	return createUint8Array(env, privkey);
 }
 
-// .pubkey_from_privkey(privkey: Uint8Array(32)): Uint8Array.
+// .pubkey_from_privkey(privkey: Uint8Array(32)): Uint8Array(32).
 Napi::Value PubkeyFromPrivkey(const Napi::CallbackInfo &info) {
 	// Check arguments.
 	Napi::Env env = info.Env();
@@ -102,10 +102,8 @@ Napi::Value SelectorCreate_(
 		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
 		return env.Null();
 	}
-	try {
-		checkIsBigUint64Array(info[1], 0);
-	} catch(const char *err) {
-		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
+	if(!info[1].IsArray()) {
+		Napi::TypeError::New(env, "The parameter `index_counts` is not an array.").ThrowAsJavaScriptException();
 		return env.Null();
 	}
 	if(!info[2].IsNumber()) {
@@ -114,14 +112,27 @@ Napi::Value SelectorCreate_(
 	}
 	// Load arguments.
 	const uint8_t *key = info[0].As<Napi::TypedArrayOf<uint8_t>>().Data();
-	const uint64_t *index_counts = info[1].As<Napi::TypedArrayOf<uint64_t>>().Data();
-	const uint8_t n_indexes = info[1].As<Napi::TypedArrayOf<uint32_t>>().ElementLength();
+	const uint32_t n_indexes = info[1].As<Napi::Array>().Length();
 	if(n_indexes == 0) {
-		Napi::TypeError::New(env, "The number of elements in `index_counts` should be greater than zero.").ThrowAsJavaScriptException();
+		Napi::RangeError::New(env, "The number of elements in `index_counts` should be greater than zero.").ThrowAsJavaScriptException();
 		return env.Null();
 	}
-	const uint64_t elements_count = epir_selector_elements_count(index_counts, n_indexes);
-	const uint64_t ciphers_count = epir_selector_ciphers_count(index_counts, n_indexes);
+	std::vector<uint64_t> index_counts(n_indexes);
+	for(uint32_t i=0; i<n_indexes; i++) {
+		Napi::Value v = info[1].As<Napi::Array>()[i];
+		if(!v.IsNumber()) {
+			Napi::TypeError::New(env, "The parameter `index_counts` has an element which is not a number.").ThrowAsJavaScriptException();
+			return env.Null();
+		}
+		const int64_t tmp = v.As<Napi::Number>().Int64Value();
+		if(tmp <= 0) {
+			Napi::RangeError::New(env, "The parameter `index_counts` has an element which is less than one.").ThrowAsJavaScriptException();
+			return env.Null();
+		}
+		index_counts[i] = tmp;
+	}
+	const uint64_t elements_count = epir_selector_elements_count(index_counts.data(), n_indexes);
+	const uint64_t ciphers_count = epir_selector_ciphers_count(index_counts.data(), n_indexes);
 	if(elements_count == 0) {
 		Napi::TypeError::New(env, "The total number of `index_counts[i]` should be greater than zero.").ThrowAsJavaScriptException();
 		return env.Null();
@@ -133,16 +144,16 @@ Napi::Value SelectorCreate_(
 	}
 	// Generate a selector.
 	std::vector<uint8_t> ciphers(ciphers_count * EPIR_CIPHER_SIZE);
-	selector_create(ciphers.data(), key, index_counts, n_indexes, idx);
+	selector_create(ciphers.data(), key, index_counts.data(), n_indexes, idx);
 	return createUint8Array(env, ciphers);
 }
 
-// .selector_create(pubkey: Uint8Array(32), index_counts: BigUint64Array, idx: number): Uint8Array
+// .selector_create(pubkey: Uint8Array(32), index_counts: number[], idx: number): Uint8Array
 Napi::Value SelectorCreate(const Napi::CallbackInfo &info) {
 	return SelectorCreate_(info, epir_selector_create);
 }
 
-// .selector_create_fast(privkey: Uint8Array(32), index_counts: BigUint64Array, idx: number): Uint8Array
+// .selector_create_fast(privkey: Uint8Array(32), index_counts: number[], idx: number): Uint8Array
 Napi::Value SelectorCreateFast(const Napi::CallbackInfo &info) {
 	return SelectorCreate_(info, epir_selector_create_fast);
 }

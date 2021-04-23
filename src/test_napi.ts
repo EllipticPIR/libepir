@@ -14,10 +14,7 @@ const time = () => new Date().getTime();
 	console.log('The number of points in mG.bin:',
 		(await epir.load_mG(`${process.env['HOME']}/.EllipticPIR/mG.bin`)).toLocaleString());
 	// selector_create().
-	const index_counts = new BigUint64Array(3);
-	index_counts[0] = 1000n;
-	index_counts[1] = 1000n;
-	index_counts[2] = 1000n;
+	const index_counts = [1000, 1000, 1000];
 	const beginSelectorsCreate = time();
 	const selector = epir.selector_create(pubkey, index_counts, 1024);
 	console.log(`Selector created (normal) in ${(time() - beginSelectorsCreate).toLocaleString()}ms.`);
