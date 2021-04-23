@@ -1,19 +1,22 @@
 {
-  "name": "EllipticPIR",
-  "version": "0.0.2",
+  "name": "epir",
+  "version": "0.0.1",
   "description": "EllipticPIR client library (Node.js / TypeScript bindings).",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "prepack": "npm run clean && npm run build",
-    "preinstall": "npm run cpp:build",
+    "prepack": "npm run build",
+    "preinstall": "",
     "install": "node-gyp rebuild",
+    "postinstall": "epir_genm",
     "build": "tsc",
-    "clean": "npm run cpp:clean",
-    "cpp:build": "cmake . -DCMAKE_BUILD_TYPE=Release && make",
-    "cpp:clean": "make clean",
+    "clean": "rm -rf build",
+    "cpp:build": "mkdir -p build && cd build && cmake ../ -DCMAKE_BUILD_TYPE=Release && make",
     "gyp:rebuild": "node-gyp rebuild",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "epir_genm": "build/src/epir_genm"
   },
   "files": [
     "src/*",
