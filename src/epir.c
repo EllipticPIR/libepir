@@ -155,9 +155,7 @@ int epir_reply_decrypt(
 			return -1;
 		}
 		for(size_t i=0; i<mid_count; i++) {
-			for(uint8_t p=0; p<packing; p++) {
-				reply[i * packing + p] = reply[i * EPIR_CIPHER_SIZE + p];
-			}
+			memcpy(&reply[i * packing], &reply[i * EPIR_CIPHER_SIZE], packing);
 		}
 		if(phase == dimension - 1) {
 			mid_count *= packing;
