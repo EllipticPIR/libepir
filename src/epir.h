@@ -15,6 +15,12 @@ extern "C" {
 #include <stddef.h>
 #include <string.h>
 
+#ifdef __EMSCRIPTEN__
+#  include <emscripten.h>
+#else
+#  define EMSCRIPTEN_KEEPALIVE
+#endif
+
 //#define EPIR_SCALAR_SIZE (crypto_core_ed25519_SCALARBYTES)
 #define EPIR_SCALAR_SIZE (32)
 //#define EPIR_POINT_SIZE  (crypto_core_ed25519_BYTES)
@@ -26,10 +32,14 @@ extern "C" {
 #define EPIR_DEFAULT_DATA_DIR (".EllipticPIR")
 #define EPIR_DEFAULT_MG_FILE ("mG.bin")
 
+EMSCRIPTEN_KEEPALIVE
+void epir_randombytes_init();
+
 /**
  * Generate a new private key.
  * @param privkey The private key to output. The `EPIR_SCALAR_SIZE` bytes of memory should be allocated.
  */
+EMSCRIPTEN_KEEPALIVE
 void epir_create_privkey(unsigned char *privkey);
 
 /**
@@ -37,6 +47,7 @@ void epir_create_privkey(unsigned char *privkey);
  * @param pubkey  The public key to output. The `EPIR_POINT_SIZE` bytes of memory should be allocated.
  * @param privkey A private key to compute the public key.
  */
+EMSCRIPTEN_KEEPALIVE
 void epir_pubkey_from_privkey(unsigned char *pubkey, const unsigned char *privkey);
 
 /**
@@ -46,6 +57,7 @@ void epir_pubkey_from_privkey(unsigned char *pubkey, const unsigned char *privke
  * @param message A message to encrypt.
  * @param r       A randomness used when the cipher generation. If set to NULL, we will randomly choose the value.
  */
+EMSCRIPTEN_KEEPALIVE
 void epir_ecelgamal_encrypt(unsigned char *cipher, const unsigned char *pubkey, const uint64_t message, const unsigned char *r);
 
 /**
@@ -55,6 +67,7 @@ void epir_ecelgamal_encrypt(unsigned char *cipher, const unsigned char *pubkey, 
  * @param message A message to encrypt.
  * @param r       A randomness used when the cipher generation. If set to NULL, we will randomly choose the value.
  */
+EMSCRIPTEN_KEEPALIVE
 void epir_ecelgamal_encrypt_fast(unsigned char *cipher, const unsigned char *privkey, const uint64_t message, const unsigned char *r);
 
 typedef struct __attribute__((__packed__)) {
@@ -70,6 +83,7 @@ static inline void epir_ecelgamal_default_mg_path(char *path, const size_t len) 
 	snprintf(path, len, "%s/%s/%s", getenv("HOME"), EPIR_DEFAULT_DATA_DIR, EPIR_DEFAULT_MG_FILE);
 }
 
+EMSCRIPTEN_KEEPALIVE
 size_t epir_ecelgamal_load_mg(epir_mG_t *mG, const size_t mmax, const char *path);
 
 /**
@@ -80,8 +94,10 @@ size_t epir_ecelgamal_load_mg(epir_mG_t *mG, const size_t mmax, const char *path
  * @param         The number of elements in mG.
  * @return Returns a decrypted message. Returns -1 if fail.
  */
+EMSCRIPTEN_KEEPALIVE
 int32_t epir_ecelgamal_decrypt(const unsigned char *privkey, const unsigned char *cipher, const epir_mG_t *mG, const size_t mmax);
 
+EMSCRIPTEN_KEEPALIVE
 static inline uint64_t epir_selector_ciphers_count(const uint64_t *index_counts, const uint8_t n_indexes) {
 	uint64_t ret = 0;
 	for(size_t i=0; i<n_indexes; i++) {
@@ -90,6 +106,7 @@ static inline uint64_t epir_selector_ciphers_count(const uint64_t *index_counts,
 	return ret;
 }
 
+EMSCRIPTEN_KEEPALIVE
 static inline uint64_t epir_selector_elements_count(const uint64_t *index_counts, const uint8_t n_indexes) {
 	uint64_t ret = 1;
 	for(size_t i=0; i<n_indexes; i++) {
@@ -111,6 +128,7 @@ void epir_selector_create_(
  * @param n_indexes    The number of elements in the `index_counts`.
  * @param idx          The index to set.
  */
+EMSCRIPTEN_KEEPALIVE
 static inline void epir_selector_create(
 	unsigned char *ciphers, const unsigned char *pubkey,
 	const uint64_t *index_counts, const uint8_t n_indexes,
@@ -126,6 +144,7 @@ static inline void epir_selector_create(
  * @param n_indexes    The number of elements in the `index_counts`.
  * @param idx          The index to set.
  */
+EMSCRIPTEN_KEEPALIVE
 static inline void epir_selector_create_fast(
 	unsigned char *ciphers, const unsigned char *privkey,
 	const uint64_t *index_counts, const uint8_t n_indexes,
@@ -146,6 +165,7 @@ static inline void epir_selector_create_fast(
  * @param mmax       The number of points in `mG`.
  * @return           The number of bytes decrypted will be returned. On the decryption failure, a negative value will be returned.
  */
+EMSCRIPTEN_KEEPALIVE
 int epir_reply_decrypt(
 	unsigned char *reply, const size_t reply_size, const unsigned char *privkey,
 	const uint8_t dimension, const uint8_t packing, const epir_mG_t *mG, const size_t mmax);

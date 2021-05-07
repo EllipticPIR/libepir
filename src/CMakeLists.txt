@@ -1,4 +1,18 @@
 
+if(EMSCRIPTEN)
+	# Load sodium.
+	find_package(PkgConfig)
+	set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/${SODIUM_PATH}/libsodium-js-sumo")
+	pkg_check_modules(LIBSODIUM REQUIRED libsodium)
+	include_directories(${LIBSODIUM_INCLUDE_DIRS})
+	link_directories(${LIBSODIUM_LIBRARY_DIRS})
+	# ./epir.js
+	add_executable(epir epir.c epir.h)
+	target_link_libraries(epir ${LIBSODIUM_LIBRARIES})
+	target_link_options(epir PUBLIC "SHELL:-s MODULARIZE" "SHELL:-s ALLOW_MEMORY_GROWTH=1" "SHELL:-s EXPORTED_FUNCTIONS=['_malloc, _free']")
+	return()
+endif()
+
 # Enable OpenMP.
 find_package(OpenMP REQUIRED)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")

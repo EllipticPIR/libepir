@@ -12,6 +12,10 @@
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
+void epir_randombytes_init() {
+	randombytes_stir();
+}
+
 void epir_create_privkey(unsigned char *privkey) {
 	crypto_core_ed25519_scalar_random(privkey);
 }

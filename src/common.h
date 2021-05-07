@@ -11,6 +11,7 @@ extern "C" {
 #include <sys/time.h>
 
 #define CONFIGURED 1
+#include <sodium/randombytes.h>
 #include <sodium/crypto_core_ed25519.h>
 #include <sodium/crypto_scalarmult_ed25519.h>
 #include <sodium/private/ed25519_ref10.h>
