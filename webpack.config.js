@@ -1,5 +1,6 @@
 
 const webpack = require('webpack');
+const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
 	mode: 'production',
@@ -31,6 +32,11 @@ module.exports = {
 		new webpack.ProvidePlugin({
 			process: 'process/browser',
 		}),
+		new CopyPlugin({
+			patterns: [
+				{ from: './build_em/src/epir.wasm', to: './epir.wasm' }
+			],
+		})
 	]
 };
 

@@ -106,6 +106,7 @@ const epir = async () => {
 	};
 	
 	return {
+		epir,
 		create_privkey,
 		pubkey_from_privkey,
 		load_mG,
