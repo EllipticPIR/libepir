@@ -1,6 +1,10 @@
 
 import epir_t from './epir_t';
 
+const MMAX_MOD = 24
+const MMAX = 1 << MMAX_MOD;
+const MG_SIZE = 36;
+
 type Wasm = {
 	HEAPU8: {
 		subarray: (begin: number, end: number) => Uint8Array;
@@ -16,7 +20,7 @@ class DecryptionContext {
 		this.mG = mG;
 	}
 	getMG(): Uint8Array {
-		const mGBuf = this.wasm.HEAPU8.subarray(this.mG, this.mG + 36 * (1 << 24));
+		const mGBuf = this.wasm.HEAPU8.subarray(this.mG, this.mG + MG_SIZE * MMAX);
 		return new Uint8Array(mGBuf);
 	}
 	delete() {
@@ -50,33 +54,19 @@ const epir = async (): Promise<epir_t<DecryptionContext>> => {
 		return pubkey;
 	};
 	
-	const load_mG = async (mG: Uint8Array): Promise<number> => {
-		return new Promise(async (resolve, reject) => {
-			const mG_ = wasm._malloc(36 * (1 << 24));
-			wasm.HEAPU8.set(mG, mG_);
-			resolve(mG_);
-		});
-	};
-	
-	const generate_mG = async(mmax: number = (1 << 24), print_progress: boolean = false): Promise<number> => {
-		return new Promise(async (resolve, reject) => {
-			const mG_ = wasm._malloc(36 * mmax);
-			wasm._epir_ecelgamal_mg_generate(mG_, mmax, print_progress);
-			resolve(mG_);
-		});
-	}
-	
 	const get_decryption_context = async (param?: string | Uint8Array): Promise<DecryptionContext> => {
 		if(param === undefined) {
-			const mG = await generate_mG();
+			const mG = wasm._malloc(MG_SIZE * MMAX);
+			wasm._epir_ecelgamal_mg_generate(mG, MMAX, false);
 			return new DecryptionContext(wasm, mG);
 		} else if(typeof param == 'string') {
 			throw new Error('Loading mG.bin from file system is not supported in the WebAssembly implementation.');
 		} else {
-			if(param.length != 36 * (1 << 24)) {
+			if(param.length != MG_SIZE * MMAX) {
 				throw new Error('The parameter has an invalid length.');
 			}
-			const mG = await load_mG(param);
+			const mG = wasm._malloc(MG_SIZE * MMAX);
+			wasm.HEAPU8.set(param, mG);
 			return new DecryptionContext(wasm, mG);
 		}
 	};
@@ -129,7 +119,7 @@ const epir = async (): Promise<epir_t<DecryptionContext>> => {
 			wasm.HEAPU8.set(reply, reply_);
 			const privkey_ = wasm._malloc(32);
 			wasm.HEAPU8.set(privkey, privkey_);
-			const bytes = wasm._epir_reply_decrypt(reply_, reply.length, privkey_, dimension, packing, ctx.mG, 1 << 24);
+			const bytes = wasm._epir_reply_decrypt(reply_, reply.length, privkey_, dimension, packing, ctx.mG, MMAX);
 			if(bytes < 0) {
 				reject('Failed to decrypt.');
 				return;
