@@ -37,6 +37,14 @@ const epir = async () => {
 		epir._free(mG);
 	}
 	
+	const generate_mG = async(mmax: number = (1 << 24), print_progress: boolean = false): Promise<number> => {
+		return new Promise(async (resolve, reject) => {
+			const mG_ = epir._malloc(36 * mmax);
+			epir._epir_ecelgamal_mg_generate(mG_, mmax, print_progress);
+			resolve(mG_);
+		});
+	}
+	
 	const store_uint64_t = (offset: number, n: number) => {
 		for(let i=0; i<8; i++) {
 			epir.HEAPU8[offset + i] = n & 0xff;
@@ -78,13 +86,14 @@ const epir = async () => {
 	};
 	
 	const reply_decrypt = async (
-		reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number, mG: number): Promise<Uint8Array> => {
+		reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number, mG: number, mmax: number = 1 << 24):
+		Promise<Uint8Array> => {
 		return new Promise((resolve, reject) => {
 			const reply_ = epir._malloc(reply.length);
 			epir.HEAPU8.set(reply, reply_);
 			const privkey_ = epir._malloc(32);
 			epir.HEAPU8.set(privkey, privkey_);
-			const bytes = epir._epir_reply_decrypt(reply_, reply.length, privkey_, dimension, packing, mG, 1 << 24);
+			const bytes = epir._epir_reply_decrypt(reply_, reply.length, privkey_, dimension, packing, mG, mmax);
 			if(bytes < 0) {
 				reject('Failed to decrypt.');
 				return;
@@ -101,6 +110,7 @@ const epir = async () => {
 		pubkey_from_privkey,
 		load_mG,
 		delete_mG,
+		generate_mG,
 		selector_create,
 		selector_create_fast,
 		reply_decrypt,

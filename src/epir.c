@@ -86,6 +86,39 @@ size_t epir_ecelgamal_load_mg(epir_mG_t *mG, const size_t mmax, const char *path
 	return elemsRead;
 }
 
+int mG_compare(const void *a, const void *b) {
+	epir_mG_t *x = (epir_mG_t*)a;
+	epir_mG_t *y = (epir_mG_t*)b;
+	return memcmp(x->point, y->point, EPIR_POINT_SIZE);
+}
+
+void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, const bool print_progress) {
+	unsigned char one_c[EPIR_SCALAR_SIZE];
+	memset(one_c, 0, EPIR_SCALAR_SIZE);
+	one_c[0] = 1;
+	// p3 = G.
+	ge25519_p3 p3;
+	ge25519_scalarmult_base(&p3, one_c);
+	// base_precomp = G.
+	ge25519_precomp base_precomp;
+	ge25519_p3_to_precomp(&base_precomp, &p3);
+	// Compute for m == 0.
+	ge25519_p3_0(&p3);
+	ge25519_p3_tobytes(mG[0].point, &p3);
+	mG[0].scalar = 0;
+	// Compute for m > 0.
+	for(size_t m=1; m<mmax; m++) {
+		if(print_progress && (m % (100 * 1000) == 0 || m == mmax - 1)) {
+			printf("Computing m = %zd of %zd (%.02f%%)\n", m, mmax, 100.0 * (m - 1) / mmax);
+		}
+		ge25519_add_p3_precomp(&p3, &p3, &base_precomp);
+		ge25519_p3_tobytes(mG[m].point, &p3);
+		mG[m].scalar = m;
+	}
+	// Sort.
+	qsort(mG, mmax, sizeof(epir_mG_t), mG_compare);
+}
+
 static inline uint32_t load_uint32_t(const unsigned char *n) {
 	return ((uint32_t)n[0] << 24) | ((uint32_t)n[1] << 16) | ((uint32_t)n[2] << 8) | ((uint32_t)n[3] << 0);
 }
@@ -102,10 +135,10 @@ static inline int32_t interpolation_search(const unsigned char *find, const epir
 		const int cmp = memcmp(mG[imid].point, find, EPIR_POINT_SIZE);
 		if(cmp < 0) {
 			imin = imid + 1;
-			left = load_uint32_t(mG[imin].point);
+			left = load_uint32_t(mG[imid].point);
 		} else if(cmp > 0) {
 			imax = imid - 1;
-			right = load_uint32_t(mG[imax].point);
+			right = load_uint32_t(mG[imid].point);
 		} else {
 			return mG[imid].scalar;
 		}

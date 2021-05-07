@@ -14,9 +14,12 @@ const time = () => new Date().getTime();
 	const pubkey = epir.pubkey_from_privkey(privkey);
 	console.log('privkey:', pubkey);
 	// load_mG().
+	const beginMG = time();
+	console.log('Loading mG.bin...');
 	const mGBuf = new Uint8Array(await fs.readFile(`${process.env['HOME']}/.EllipticPIR/mG.bin`));
 	const { mG, elemsRead } = await epir.load_mG(mGBuf);
 	console.log('The number of points in mG.bin:', elemsRead.toLocaleString());
+	console.log(`mG.bin loaded in ${(time() - beginMG).toLocaleString()}ms.`);
 	// selector_create().
 	const index_counts = [1000, 1000, 1000];
 	const beginSelectorsCreate = time();

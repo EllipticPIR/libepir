@@ -86,6 +86,9 @@ static inline void epir_ecelgamal_default_mg_path(char *path, const size_t len) 
 EMSCRIPTEN_KEEPALIVE
 size_t epir_ecelgamal_load_mg(epir_mG_t *mG, const size_t mmax, const char *path);
 
+EMSCRIPTEN_KEEPALIVE
+void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, const bool print_progress);
+
 /**
  * Decrypt a EC-ElGamal ciphertext.
  * @param privkey A private key to use with decryption.
