@@ -1,7 +1,7 @@
 
 const epir = async () => {
 	
-	const epir_ = require('../build_em/src/epir.js');
+	const epir_ = require('../dist/epir.js');
 	const epir = await epir_();
 	
 	epir._epir_randombytes_init();
