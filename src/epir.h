@@ -97,8 +97,12 @@ size_t epir_ecelgamal_load_mg(epir_mG_t *mG, const size_t mmax, const char *path
 EMSCRIPTEN_KEEPALIVE
 int32_t epir_ecelgamal_decrypt(const unsigned char *privkey, const unsigned char *cipher, const epir_mG_t *mG, const size_t mmax);
 
+#ifdef __EMSCRIPTEN__
 EMSCRIPTEN_KEEPALIVE
-static inline uint64_t epir_selector_ciphers_count(const uint64_t *index_counts, const uint8_t n_indexes) {
+#else
+static inline
+#endif
+uint64_t epir_selector_ciphers_count(const uint64_t *index_counts, const uint8_t n_indexes) {
 	uint64_t ret = 0;
 	for(size_t i=0; i<n_indexes; i++) {
 		ret += index_counts[i];
@@ -106,8 +110,12 @@ static inline uint64_t epir_selector_ciphers_count(const uint64_t *index_counts,
 	return ret;
 }
 
+#ifdef __EMSCRIPTEN__
 EMSCRIPTEN_KEEPALIVE
-static inline uint64_t epir_selector_elements_count(const uint64_t *index_counts, const uint8_t n_indexes) {
+#else
+static inline
+#endif
+uint64_t epir_selector_elements_count(const uint64_t *index_counts, const uint8_t n_indexes) {
 	uint64_t ret = 1;
 	for(size_t i=0; i<n_indexes; i++) {
 		ret *= index_counts[i];
@@ -128,8 +136,12 @@ void epir_selector_create_(
  * @param n_indexes    The number of elements in the `index_counts`.
  * @param idx          The index to set.
  */
+#ifdef __EMSCRIPTEN__
 EMSCRIPTEN_KEEPALIVE
-static inline void epir_selector_create(
+#else
+static inline
+#endif
+void epir_selector_create(
 	unsigned char *ciphers, const unsigned char *pubkey,
 	const uint64_t *index_counts, const uint8_t n_indexes,
 	const uint64_t idx) {
@@ -144,8 +156,12 @@ static inline void epir_selector_create(
  * @param n_indexes    The number of elements in the `index_counts`.
  * @param idx          The index to set.
  */
+#ifdef __EMSCRIPTEN__
 EMSCRIPTEN_KEEPALIVE
-static inline void epir_selector_create_fast(
+#else
+static inline
+#endif
+void epir_selector_create_fast(
 	unsigned char *ciphers, const unsigned char *privkey,
 	const uint64_t *index_counts, const uint8_t n_indexes,
 	const uint64_t idx) {

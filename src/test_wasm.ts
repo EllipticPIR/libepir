@@ -1,9 +1,10 @@
 
-import epir from './addon';
+import epir_ from './wasm';
 
 const time = () => new Date().getTime();
 
 (async () => {
+	const epir = await epir_();
 	// create_privkey().
 	const privkey = epir.create_privkey();
 	console.log('privkey:', privkey);
@@ -11,8 +12,8 @@ const time = () => new Date().getTime();
 	const pubkey = epir.pubkey_from_privkey(privkey);
 	console.log('privkey:', pubkey);
 	// load_mG().
-	console.log('The number of points in mG.bin:',
-		(await epir.load_mG(`${process.env['HOME']}/.EllipticPIR/mG.bin`)).toLocaleString());
+	const { mG, elemsRead } = await epir.load_mG(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
+	console.log('The number of points in mG.bin:', elemsRead.toLocaleString());
 	// selector_create().
 	const index_counts = [1000, 1000, 1000];
 	const beginSelectorsCreate = time();
@@ -25,7 +26,8 @@ const time = () => new Date().getTime();
 	// reply_decrypt().
 	const data = require('../src/test_napi_reply_data.json');
 	const beginDecrypt = time();
-	const decrypted = await epir.reply_decrypt(new Uint8Array(data.reply), new Uint8Array(data.privkey), data.dimension, data.packing);
+	const decrypted = await epir.reply_decrypt(
+		new Uint8Array(data.reply), new Uint8Array(data.privkey), data.dimension, data.packing, mG);
 	console.log(`Reply decrypted in ${(time() - beginDecrypt).toLocaleString()}ms.`);
 	for(let i=0; i<data.correct.length; i++) {
 		if(decrypted[i] != data.correct[i]) {
