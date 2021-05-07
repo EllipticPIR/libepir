@@ -6,10 +6,15 @@ if(EMSCRIPTEN)
 	pkg_check_modules(LIBSODIUM REQUIRED libsodium)
 	include_directories(${LIBSODIUM_INCLUDE_DIRS})
 	link_directories(${LIBSODIUM_LIBRARY_DIRS})
+	# Enable optimizations.
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -flto=full -O3")
 	# ./epir.js
 	add_executable(epir epir.c epir.h)
 	target_link_libraries(epir ${LIBSODIUM_LIBRARIES})
-	target_link_options(epir PUBLIC "SHELL:-s MODULARIZE" "SHELL:-s ALLOW_MEMORY_GROWTH=1" "SHELL:-s EXPORTED_FUNCTIONS=['_malloc, _free']")
+	target_link_options(epir PUBLIC
+		"SHELL:-s MODULARIZE"
+		"SHELL:-s ALLOW_MEMORY_GROWTH=1"
+		"SHELL:-s EXPORTED_FUNCTIONS=['_malloc, _free']")
 	return()
 endif()
 
