@@ -3,4 +3,5 @@
 /build_em
 /node_modules
 /dist
+/.env
 
