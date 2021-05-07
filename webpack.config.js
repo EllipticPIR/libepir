@@ -1,6 +1,6 @@
 module.exports = {
 	mode: 'production',
-	entry: './src/index.ts',
+	entry: './src/wasm.ts',
 	module: {
 		rules: [
 			{

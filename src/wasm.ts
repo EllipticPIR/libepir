@@ -25,26 +25,17 @@ const epir = async () => {
 		return pubkey;
 	};
 	
-	const load_mG = async (param: string | Uint8Array): Promise<{ mG: number, elemsRead: number }> => {
+	const load_mG = async (mG: Uint8Array): Promise<{ mG: number, elemsRead: number }> => {
 		return new Promise(async (resolve, reject) => {
-			const mG = epir._malloc(36 * (1 << 24));
-			if(typeof param == 'string') {
-				const handle = await require('fs/promises').open(param, 'r');
-				if(!handle) {
-					reject('Failed to open mG.bin.');
-					return;
-				}
-				const { bytesRead } = await handle.read(epir.HEAPU8, mG, 36 * (1 << 24));
-				handle.close();
-				const elemsRead = bytesRead / 36;
-				resolve({mG, elemsRead});
-			} else {
-				const buf = epir.HEAPU8.subarray(mG, mG + param.length);
-				buf.set(param);
-				resolve({mG, elemsRead: param.length / 36});
-			}
+			const mG_ = epir._malloc(36 * (1 << 24));
+			epir.HEAPU8.set(mG, mG_);
+			resolve({mG: mG_, elemsRead: mG.length / 36});
 		});
 	};
+	
+	const delete_mG = (mG: number) => {
+		epir._free(mG);
+	}
 	
 	const store_uint64_t = (offset: number, n: number) => {
 		for(let i=0; i<8; i++) {
@@ -109,6 +100,7 @@ const epir = async () => {
 		create_privkey,
 		pubkey_from_privkey,
 		load_mG,
+		delete_mG,
 		selector_create,
 		selector_create_fast,
 		reply_decrypt,
