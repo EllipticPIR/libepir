@@ -34,16 +34,15 @@ class MGDatabase extends Dexie {
 	// load_mG().
 	const db = new MGDatabase();
 	const mGDB = await db.mG.get(0);
-	let mG: number = -1;
-	if(mGDB) {
-		const t = await epir.load_mG(mGDB.value);
-		mG = t.mG;
-	} else {
-		mG = await epir.generate_mG(MG_MAX, true);
-		//mG = epir.epir._malloc(36 * MG_MAX);
-		const mGBuf = epir.epir.HEAPU8.subarray(mG, mG + 36 * MG_MAX);
-		await db.mG.put({ key: 0, value: new Uint8Array(mGBuf) });
-	}
+	const decCtx = await (async () => {
+		if(mGDB) {
+			return await epir.get_decryption_context(mGDB.value);
+		} else {
+			const decCtx = await epir.get_decryption_context();
+			await db.mG.put({ key: 0, value: decCtx.getMG() });
+			return decCtx;
+		}
+	})();
 	// selector_create().
 	const index_counts = [1000, 1000, 1000];
 	const beginSelectorsCreate = time();
@@ -57,13 +56,13 @@ class MGDatabase extends Dexie {
 	const data = require('../src/test_napi_reply_data.json');
 	const beginDecrypt = time();
 	const decrypted = await epir.reply_decrypt(
-		new Uint8Array(data.reply), new Uint8Array(data.privkey), data.dimension, data.packing, mG, MG_MAX);
+		decCtx, new Uint8Array(data.reply), new Uint8Array(data.privkey), data.dimension, data.packing);
 	console.log(`Reply decrypted in ${(time() - beginDecrypt).toLocaleString()}ms.`);
 	for(let i=0; i<data.correct.length; i++) {
 		if(decrypted[i] != data.correct[i]) {
 			throw new Error('Decrypted is not correct.');
 		}
 	}
-	epir.delete_mG(mG);
+	decCtx.delete();
 })();
 

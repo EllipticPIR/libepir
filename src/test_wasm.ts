@@ -17,8 +17,7 @@ const time = () => new Date().getTime();
 	const beginMG = time();
 	console.log('Loading mG.bin...');
 	const mGBuf = new Uint8Array(await fs.readFile(`${process.env['HOME']}/.EllipticPIR/mG.bin`));
-	const { mG, elemsRead } = await epir.load_mG(mGBuf);
-	console.log('The number of points in mG.bin:', elemsRead.toLocaleString());
+	const decCtx = await epir.get_decryption_context(mGBuf);
 	console.log(`mG.bin loaded in ${(time() - beginMG).toLocaleString()}ms.`);
 	// selector_create().
 	const index_counts = [1000, 1000, 1000];
@@ -33,13 +32,13 @@ const time = () => new Date().getTime();
 	const data = require('../src/test_napi_reply_data.json');
 	const beginDecrypt = time();
 	const decrypted = await epir.reply_decrypt(
-		new Uint8Array(data.reply), new Uint8Array(data.privkey), data.dimension, data.packing, mG);
+		decCtx, new Uint8Array(data.reply), new Uint8Array(data.privkey), data.dimension, data.packing);
 	console.log(`Reply decrypted in ${(time() - beginDecrypt).toLocaleString()}ms.`);
 	for(let i=0; i<data.correct.length; i++) {
 		if(decrypted[i] != data.correct[i]) {
 			throw new Error('Decrypted is not correct.');
 		}
 	}
-	epir.delete_mG(mG);
+	decCtx.delete();
 })();
 
