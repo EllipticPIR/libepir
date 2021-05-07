@@ -86,16 +86,26 @@ size_t epir_ecelgamal_load_mg(epir_mG_t *mG, const size_t mmax, const char *path
 	return elemsRead;
 }
 
-static inline int32_t epir_ecelgamal_binary_search(const unsigned char *find, const epir_mG_t *mG, const size_t mmax) {
+static inline uint32_t load_uint32_t(const unsigned char *n) {
+	return ((uint32_t)n[0] << 24) | ((uint32_t)n[1] << 16) | ((uint32_t)n[2] << 8) | ((uint32_t)n[3] << 0);
+}
+
+static inline int32_t interpolation_search(const unsigned char *find, const epir_mG_t *mG, const size_t mmax) {
 	size_t imin = 0;
 	size_t imax = mmax - 1;
+	uint32_t left = load_uint32_t(mG[0].point);
+	uint32_t right = load_uint32_t(mG[mmax-1].point);
+	const uint32_t my = load_uint32_t(find);
 	for(; imin<=imax; ) {
-		const size_t imid = imin + ((imax - imin) >> 1);
+		//const size_t imid = imin + ((imax - imin) >> 1);
+		const size_t imid = imin + (uint64_t)(imax - imin) * (my - left) / (right - left);
 		const int cmp = memcmp(mG[imid].point, find, EPIR_POINT_SIZE);
 		if(cmp < 0) {
 			imin = imid + 1;
+			left = load_uint32_t(mG[imin].point);
 		} else if(cmp > 0) {
 			imax = imid - 1;
+			right = load_uint32_t(mG[imax].point);
 		} else {
 			return mG[imid].scalar;
 		}
@@ -111,7 +121,7 @@ int32_t epir_ecelgamal_decrypt(const unsigned char *privkey, const unsigned char
 	ge25519_sub_p3_p3(&M, &c2, &tmp);
 	unsigned char Mc[EPIR_SCALAR_SIZE];
 	ge25519_p3_tobytes(Mc, &M);
-	const int32_t m = epir_ecelgamal_binary_search(Mc, mG, mmax);
+	const int32_t m = interpolation_search(Mc, mG, mmax);
 	return m;
 }
 
