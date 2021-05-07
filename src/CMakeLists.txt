@@ -2,7 +2,7 @@
 if(EMSCRIPTEN)
 	# Load sodium.
 	find_package(PkgConfig)
-	set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/${SODIUM_PATH}/libsodium-js-sumo")
+	set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/$ENV{LIBSODIUM_PATH}/libsodium-js-sumo")
 	pkg_check_modules(LIBSODIUM REQUIRED libsodium)
 	include_directories(${LIBSODIUM_INCLUDE_DIRS})
 	link_directories(${LIBSODIUM_LIBRARY_DIRS})

@@ -5,15 +5,15 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "prepack": "npm run build && npm run em:build",
+    "prepack": "npm run clean && npm run build && npm run em:build",
     "preinstall": "",
     "install": "node-gyp rebuild",
     "postinstall": "npm run cpp:build && epir_genm",
     "build": "tsc",
-    "clean": "rm -rf build",
+    "clean": "rm -rf build build_em dist",
     "cpp:build": "mkdir -p build && cd build && cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && make",
     "gyp:rebuild": "node-gyp rebuild",
-    "em:build": "mkdir -p build_em && cd build_em && emcmake cmake -DCMAKE_INSTALL_PREFIX=../dist .. && make all install",
+    "em:build": "mkdir -p build_em && cd build_em && dotenv -e ../.env -- emcmake cmake -DCMAKE_INSTALL_PREFIX=../dist .. && make all install",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "bin": {
@@ -45,6 +45,7 @@
     "@types/node": "^14.14.37",
     "copy-webpack-plugin": "^8.1.1",
     "dexie": "^3.0.3",
+    "dotenv-cli": "^4.0.0",
     "node-gyp": "^8.0.0",
     "process": "^0.11.10",
     "ts-loader": "^9.1.2",
