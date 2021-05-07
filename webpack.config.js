@@ -1,6 +1,12 @@
+
+const webpack = require('webpack');
+
 module.exports = {
 	mode: 'production',
-	entry: './src/wasm.ts',
+	entry: './src/browser.ts',
+	output: {
+		filename: 'bundle.js',
+	},
 	module: {
 		rules: [
 			{
@@ -13,5 +19,18 @@ module.exports = {
 		extensions: [
 			'.ts', '.js',
 		],
+		fallback: {
+			crypto: false,
+			path: false,
+			buffer: false,
+			stream: false,
+			fs: false,
+		},
 	},
+	plugins: [
+		new webpack.ProvidePlugin({
+			process: 'process/browser',
+		}),
+	]
 };
+
