@@ -16,6 +16,7 @@ if(EMSCRIPTEN)
 		"SHELL:-s ALLOW_MEMORY_GROWTH=1"
 		"SHELL:-s SINGLE_FILE=1"
 		"SHELL:-s EXPORTED_FUNCTIONS=['_malloc, _free']")
+	install(TARGETS epir DESTINATION .)
 	return()
 endif()
 
