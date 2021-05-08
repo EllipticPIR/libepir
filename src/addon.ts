@@ -21,8 +21,8 @@ const epir = async (): Promise<epir_t<DecryptionContext>> => {
 		return epir_napi.pubkey_from_privkey(pubkey);
 	};
 	
-	const get_decryption_context = async (param?: string | Uint8Array): Promise<DecryptionContext> => {
-		if(param === undefined) {
+	const get_decryption_context = async (param?: string | Uint8Array | ((p: number) => void)): Promise<DecryptionContext> => {
+		if(param === undefined || typeof param == 'function') {
 			// XXX:
 			throw new Error('Generating mG.bin is not supported.');
 		} else if(typeof param == 'string') {

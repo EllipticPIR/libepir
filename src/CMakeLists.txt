@@ -14,8 +14,10 @@ if(EMSCRIPTEN)
 	target_link_options(epir PUBLIC
 		"SHELL:-s MODULARIZE"
 		"SHELL:-s ALLOW_MEMORY_GROWTH=1"
+		"SHELL:-s ALLOW_TABLE_GROWTH=1"
 		"SHELL:-s SINGLE_FILE=1"
-		"SHELL:-s EXPORTED_FUNCTIONS=['_malloc, _free']")
+		"SHELL:-s EXPORTED_FUNCTIONS=['_malloc, _free']"
+		"SHELL:-s EXTRA_EXPORTED_RUNTIME_METHODS=['addFunction, removeFunction']")
 	install(TARGETS epir DESTINATION .)
 	return()
 endif()

@@ -54,10 +54,18 @@ const epir = async (): Promise<epir_t<DecryptionContext>> => {
 		return pubkey;
 	};
 	
-	const get_decryption_context = async (param?: string | Uint8Array): Promise<DecryptionContext> => {
+	const get_decryption_context = async (param?: string | Uint8Array | ((p: number) => void)): Promise<DecryptionContext> => {
 		if(param === undefined) {
 			const mG = wasm._malloc(MG_SIZE * MMAX);
-			wasm._epir_ecelgamal_mg_generate(mG, MMAX, false);
+			wasm._epir_ecelgamal_mg_generate(mG, MMAX, null, null);
+			return new DecryptionContext(wasm, mG);
+		} else if(typeof param == 'function') {
+			const mG = wasm._malloc(MG_SIZE * MMAX);
+			const cb = wasm.addFunction((pc: number, data: any) => {
+				param(pc);
+			}, 'vii');
+			wasm._epir_ecelgamal_mg_generate(mG, MMAX, cb, null);
+			wasm.removeFunction(cb);
 			return new DecryptionContext(wasm, mG);
 		} else if(typeof param == 'string') {
 			const mGBuf = new Uint8Array(await require('fs/promises').readFile(param));
