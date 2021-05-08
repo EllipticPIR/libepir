@@ -2,46 +2,69 @@
  * Node.js (TypeScript) bindings for Native C EllipticPIR library interface.
  */
 
-namespace epir {
+import epir_t from './epir_t';
+
+const epir_napi = require('../build/Release/epir');
+
+export interface DecryptionContext {
+	constructor(path: string): DecryptionContext;
+	replyDecrypt: (reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number) => Uint8Array;
+}
+
+const epir = async (): Promise<epir_t<DecryptionContext>> => {
 	
-	const epir = require('../build/Release/epir');
-	
-	export const create_privkey = (): Uint8Array => {
-		return epir.create_privkey();
+	const create_privkey = (): Uint8Array => {
+		return epir_napi.create_privkey();
 	};
 	
-	export const pubkey_from_privkey = (pubkey: Uint8Array): Uint8Array => {
-		return epir.pubkey_from_privkey(pubkey);
+	const pubkey_from_privkey = (pubkey: Uint8Array): Uint8Array => {
+		return epir_napi.pubkey_from_privkey(pubkey);
 	};
 	
-	export const load_mG = async (path: string): Promise<number> => {
-		return new Promise((resolve, reject) => {
-			resolve(epir.load_mG(path));
-		});
+	const get_decryption_context = async (param?: string | Uint8Array): Promise<DecryptionContext> => {
+		if(param === undefined) {
+			// XXX:
+			throw new Error('Generating mG.bin is not supported.');
+		} else if(typeof param == 'string') {
+			return new epir_napi.DecryptionContext(param);
+		} else {
+			// XXX:
+			throw new Error('Loading from Uint8Array is not supported.');
+		}
 	};
 	
-	export const selector_create = async (
+	const selector_create = async (
 		pubkey: Uint8Array, index_counts: number[], idx: number): Promise<Uint8Array> => {
 		return new Promise((resolve, reject) => {
-			resolve(epir.selector_create(pubkey, index_counts, idx));
+			resolve(epir_napi.selector_create(pubkey, index_counts, idx));
 		});
 	};
 	
-	export const selector_create_fast = async (
+	const selector_create_fast = async (
 		privkey: Uint8Array, index_counts: number[], idx: number): Promise<Uint8Array> => {
 		return new Promise((resolve, reject) => {
-			resolve(epir.selector_create_fast(privkey, index_counts, idx));
+			resolve(epir_napi.selector_create_fast(privkey, index_counts, idx));
 		});
 	};
 	
-	export const reply_decrypt = async (
-		reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number): Promise<Uint8Array> => {
+	const reply_decrypt = async (
+		decCtx: DecryptionContext, reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number):
+		Promise<Uint8Array> => {
 		return new Promise((resolve, reject) => {
-			resolve(epir.reply_decrypt(reply, privkey, dimension, packing));
+			resolve(decCtx.replyDecrypt(reply, privkey, dimension, packing));
 		});
 	};
 	
-}
+	return {
+		create_privkey,
+		pubkey_from_privkey,
+		get_decryption_context,
+		selector_create,
+		selector_create_fast,
+		reply_decrypt,
+	};
+	
+};
 
 export default epir;
 

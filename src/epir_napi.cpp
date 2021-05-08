@@ -62,29 +62,94 @@ Napi::Value PubkeyFromPrivkey(const Napi::CallbackInfo &info) {
 	return createUint8Array(env, pubkey);
 }
 
-// .load_mG(path: string): number.
-static epir_mG_t mG[EPIR_MG_MAX];
-static bool ismGInitialized = false;
-Napi::Value LoadmG(const Napi::CallbackInfo &info) {
+class DecryptionContext : public Napi::ObjectWrap<DecryptionContext> {
+	
+private:
+	
+	static Napi::FunctionReference constructor;
+	
+	epir_mG_t mG[EPIR_MG_MAX];
+	
+	Napi::Value ReplyDecrypt(const Napi::CallbackInfo& info);
+	
+public:
+	
+	static Napi::Object Init(Napi::Env env, Napi::Object exports);
+	DecryptionContext(const Napi::CallbackInfo &info);
+	
+};
+
+Napi::Object DecryptionContext::Init(Napi::Env env, Napi::Object exports) {
+	Napi::Function func = DefineClass(env, "DecryptionContext", {
+		InstanceMethod("replyDecrypt", &DecryptionContext::ReplyDecrypt),
+	});
+	constructor = Napi::Persistent(func);
+	constructor.SuppressDestruct();
+	exports.Set("DecryptionContext", func);
+	return exports;
+}
+
+// new DecrytionContext(path: string);
+DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::ObjectWrap<DecryptionContext>(info) {
 	Napi::Env env = info.Env();
 	if(info.Length() < 1) {
 		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
-		return env.Null();
+		return;
 	}
 	if(!info[0].IsString()) {
 		Napi::TypeError::New(env, "The parameter `path` is not a string.").ThrowAsJavaScriptException();
-		return env.Null();
+		return;
 	}
 	// Load mG.bin.
 	const std::string path = std::string(info[0].As<Napi::String>());
-	const int elemsRead = epir_ecelgamal_load_mg(mG, EPIR_MG_MAX, path.c_str());
-	ismGInitialized = (elemsRead == EPIR_MG_MAX);
-	if(!ismGInitialized) {
+	const int elemsRead = epir_ecelgamal_load_mg(this->mG, EPIR_MG_MAX, path.c_str());
+	if(elemsRead != EPIR_MG_MAX) {
 		std::string msg = "Failed to load mG: (read: " + std::to_string(elemsRead) + ", expect: " + std::to_string(EPIR_MG_MAX) + ").";
 		Napi::Error::New(env, msg).ThrowAsJavaScriptException();
+		return;
+	}
+}
+
+Napi::FunctionReference DecryptionContext::constructor;
+
+// DecryptionContext.replyDecrypt(reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number): Uint8Array;
+Napi::Value DecryptionContext::ReplyDecrypt(const Napi::CallbackInfo& info) {
+	Napi::Env env = info.Env();
+	if(info.Length() < 4) {
+		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
 		return env.Null();
 	}
-	return Napi::Number::New(env, elemsRead);
+	try {
+		checkIsUint8Array(info[0], 0);
+	} catch(const char *err) {
+		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	try {
+		checkIsUint8Array(info[1], EPIR_SCALAR_SIZE);
+	} catch(const char *err) {
+		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	if(!info[2].IsNumber() || !info[3].IsNumber()) {
+		Napi::TypeError::New(env, "The parameter `dimension` and/or `packing` is not a number.").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	// Load arguments.
+	const uint8_t *reply = info[0].As<Napi::TypedArrayOf<uint8_t>>().Data();
+	const size_t reply_size = info[0].As<Napi::TypedArrayOf<uint8_t>>().ElementLength();
+	const uint8_t *privkey = info[1].As<Napi::TypedArrayOf<uint8_t>>().Data();
+	const uint32_t dimension = info[2].As<Napi::Number>().Uint32Value();
+	const uint32_t packing = info[3].As<Napi::Number>().Uint32Value();
+	// Decrypt.
+	std::vector<uint8_t> reply_v(reply_size);
+	memcpy(reply_v.data(), reply, reply_size);
+	const int decrypted_size = epir_reply_decrypt(reply_v.data(), reply_size, privkey, dimension, packing, this->mG, EPIR_MG_MAX);
+	if(decrypted_size < 0) {
+		Napi::Error::New(env, "Decryption failed.").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	return createUint8Array(env, reply_v, decrypted_size);
 }
 
 Napi::Value SelectorCreate_(
@@ -158,57 +223,12 @@ Napi::Value SelectorCreateFast(const Napi::CallbackInfo &info) {
 	return SelectorCreate_(info, epir_selector_create_fast);
 }
 
-// .reply_decrypt(reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number): Uint8Array.
-Napi::Value ReplyDecrypt(const Napi::CallbackInfo &info) {
-	Napi::Env env = info.Env();
-	if(!ismGInitialized) {
-		Napi::Error::New(env, "mG is not loaded yet. Please call load_mG() first.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	if(info.Length() < 4) {
-		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	try {
-		checkIsUint8Array(info[0], 0);
-	} catch(const char *err) {
-		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	try {
-		checkIsUint8Array(info[1], EPIR_SCALAR_SIZE);
-	} catch(const char *err) {
-		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	if(!info[2].IsNumber() || !info[3].IsNumber()) {
-		Napi::TypeError::New(env, "The parameter `dimension` and/or `packing` is not a number.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	// Load arguments.
-	const uint8_t *reply = info[0].As<Napi::TypedArrayOf<uint8_t>>().Data();
-	const size_t reply_size = info[0].As<Napi::TypedArrayOf<uint8_t>>().ElementLength();
-	const uint8_t *privkey = info[1].As<Napi::TypedArrayOf<uint8_t>>().Data();
-	const uint32_t dimension = info[2].As<Napi::Number>().Uint32Value();
-	const uint32_t packing = info[3].As<Napi::Number>().Uint32Value();
-	// Decrypt.
-	std::vector<uint8_t> reply_v(reply_size);
-	memcpy(reply_v.data(), reply, reply_size);
-	const int decrypted_size = epir_reply_decrypt(reply_v.data(), reply_size, privkey, dimension, packing, mG, EPIR_MG_MAX);
-	if(decrypted_size < 0) {
-		Napi::Error::New(env, "Decryption failed.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	return createUint8Array(env, reply_v, decrypted_size);
-}
-
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
 	exports.Set(Napi::String::New(env, "create_privkey"), Napi::Function::New(env, CreatePrivkey));
 	exports.Set(Napi::String::New(env, "pubkey_from_privkey"), Napi::Function::New(env, PubkeyFromPrivkey));
-	exports.Set(Napi::String::New(env, "load_mG"), Napi::Function::New(env, LoadmG));
 	exports.Set(Napi::String::New(env, "selector_create"), Napi::Function::New(env, SelectorCreate));
 	exports.Set(Napi::String::New(env, "selector_create_fast"), Napi::Function::New(env, SelectorCreateFast));
-	exports.Set(Napi::String::New(env, "reply_decrypt"), Napi::Function::New(env, ReplyDecrypt));
+	DecryptionContext::Init(env, exports);
 	return exports;
 }
 
