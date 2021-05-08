@@ -14,7 +14,7 @@
     "cpp:build": "mkdir -p build && cd build && cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && make",
     "gyp:rebuild": "node-gyp rebuild",
     "em:build": "mkdir -p build_em && cd build_em && dotenv -e ../.env -- emcmake cmake -DCMAKE_INSTALL_PREFIX=../dist .. && make all install",
-    "test": "ts-node ./src/test_napi.ts && ts-node ./src/test_wasm.ts"
+    "test": "ts-node ./src/bench_js.ts"
   },
   "bin": {
     "epir_genm": "build/src/epir_genm"
