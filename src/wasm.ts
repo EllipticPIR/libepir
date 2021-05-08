@@ -60,7 +60,8 @@ const epir = async (): Promise<epir_t<DecryptionContext>> => {
 			wasm._epir_ecelgamal_mg_generate(mG, MMAX, false);
 			return new DecryptionContext(wasm, mG);
 		} else if(typeof param == 'string') {
-			throw new Error('Loading mG.bin from file system is not supported in the WebAssembly implementation.');
+			const mGBuf = new Uint8Array(await require('fs/promises').readFile(param));
+			return await get_decryption_context(mGBuf);
 		} else {
 			if(param.length != MG_SIZE * MMAX) {
 				throw new Error('The parameter has an invalid length.');

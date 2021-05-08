@@ -12,7 +12,10 @@ const time = () => new Date().getTime();
 	const pubkey = epir.pubkey_from_privkey(privkey);
 	console.log('privkey:', pubkey);
 	// load_mG().
+	const beginMG = time();
+	console.log('Loading mG.bin...');
 	const decCtx = await epir.get_decryption_context(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
+	console.log(`mG.bin loaded in ${(time() - beginMG).toLocaleString()}ms.`);
 	// selector_create().
 	const index_counts = [1000, 1000, 1000];
 	const beginSelectorsCreate = time();

@@ -1,6 +1,4 @@
 
-import fs from 'fs/promises';
-
 import epir_ from './wasm';
 
 const time = () => new Date().getTime();
@@ -16,8 +14,7 @@ const time = () => new Date().getTime();
 	// load_mG().
 	const beginMG = time();
 	console.log('Loading mG.bin...');
-	const mGBuf = new Uint8Array(await fs.readFile(`${process.env['HOME']}/.EllipticPIR/mG.bin`));
-	const decCtx = await epir.get_decryption_context(mGBuf);
+	const decCtx = await epir.get_decryption_context(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
 	console.log(`mG.bin loaded in ${(time() - beginMG).toLocaleString()}ms.`);
 	// selector_create().
 	const index_counts = [1000, 1000, 1000];
