@@ -88,7 +88,7 @@ EMSCRIPTEN_KEEPALIVE
 size_t epir_ecelgamal_load_mg(epir_mG_t *mG, const size_t mmax, const char *path);
 
 EMSCRIPTEN_KEEPALIVE
-void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, const bool print_progress);
+void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data);
 
 /**
  * Decrypt a EC-ElGamal ciphertext.

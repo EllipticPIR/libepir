@@ -47,57 +47,22 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	
-	// Generate points.
-	unsigned char one_c[EPIR_SCALAR_SIZE];
-	memset(one_c, 0, EPIR_SCALAR_SIZE);
-	one_c[0] = 1;
-	// base_p3 = G.
-	ge25519_p3 base_p3;
-	ge25519_scalarmult_base(&base_p3, one_c);
-	// base_precomp = G.
-	ge25519_precomp base_precomp;
-	ge25519_p3_to_precomp(&base_precomp, &base_p3);
-	
-	std::vector<ge25519_p3> mG_p3(mMax);
 	std::vector<epir_mG_t> mG(mMax);
-	ge25519_precomp tG_precomp;
-	PRINT_MEASUREMENT(true, "Computation done in %.0fms.\n",
-		OMP_PARALLEL
-		{
-			const uint32_t ompThreads = omp_get_num_threads();
-			const uint32_t ompID = omp_get_thread_num();
-			// Compute [O, .., ompThreads*G]_precomp.
-			OMP_MASTER
-			{
-				ge25519_p3_0(&mG_p3[0]);
-				ge25519_p3_tobytes(mG[0].point, &mG_p3[0]);
-				mG[0].scalar = 0;
-				for(size_t m=0; m<ompThreads; m++) {
-					ge25519_add_p3_precomp(&mG_p3[m+1], &mG_p3[m], &base_precomp);
-					ge25519_p3_tobytes(mG[m+1].point, &mG_p3[m+1]);
-					mG[m+1].scalar = m + 1;
-				}
-				ge25519_p3_to_precomp(&tG_precomp, &mG_p3[ompThreads]);
-			}
-			OMP_BARRIER
-			for(size_t m=1; m<mMax/ompThreads; m++) {
-				const size_t idx = m * ompThreads + ompID;
-				ge25519_add_p3_precomp(&mG_p3[idx], &mG_p3[idx-ompThreads], &tG_precomp);
-				ge25519_p3_tobytes(mG[idx].point, &mG_p3[idx]);
-				mG[idx].scalar = idx;
-			}
-		}
-	);
-	
-	struct comparator {
-		bool operator()(const epir_mG_t &a, const epir_mG_t &b) const {
-			return memcmp(a.point, b.point, EPIR_POINT_SIZE) < 0;
+	typedef struct {
+		size_t mMax;
+		double beginCompute;
+		double beginSort;
+	} cb_data_t;
+	cb_data_t cb_data = { mMax, microtime(), -1 };
+	auto cb = [](const size_t pointsComputed, void *cb_data_) {
+		cb_data_t *cb_data = (cb_data_t*)cb_data_;
+		if(pointsComputed == cb_data->mMax - 1) {
+			printf("\x1b[32mComputation done in %.0fms.\x1b[39m\n", (microtime() - cb_data->beginCompute) / 1000.);
+			cb_data->beginSort = microtime();
 		}
 	};
-	// Sort.
-	PRINT_MEASUREMENT(true, "Points sorted in %.0fms.\n",
-		std::sort(mG.begin(), mG.end(), comparator{});
-	);
+	epir_ecelgamal_mg_generate(mG.data(), mMax, cb, &cb_data);
+	printf("\x1b[32mPoints sorted in %.0fms.\x1b[39m\n", (microtime() - cb_data.beginSort) / 1000.);
 	
 	// Output to a binary file.
 	PRINT_MEASUREMENT(true, "Output written in %.0fms.\n",

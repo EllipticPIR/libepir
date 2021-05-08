@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#ifndef __EMSCRIPTEN__
+#include <omp.h>
+#endif
 
 #include "epir.h"
 #include "common.h"
@@ -92,28 +95,73 @@ int mG_compare(const void *a, const void *b) {
 	return memcmp(x->point, y->point, EPIR_POINT_SIZE);
 }
 
-void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, const bool print_progress) {
-	unsigned char one_c[EPIR_SCALAR_SIZE];
-	memset(one_c, 0, EPIR_SCALAR_SIZE);
-	one_c[0] = 1;
-	// p3 = G.
-	ge25519_p3 p3;
-	ge25519_scalarmult_base(&p3, one_c);
+static inline uint32_t get_omp_threads() {
+#ifdef __EMSCRIPTEN__
+	return 1;
+#else
+	uint32_t omp_threads;
+	#pragma omp parallel
+	{
+		#pragma omp master
+		{
+			omp_threads = omp_get_num_threads();
+		}
+	}
+	return omp_threads;
+#endif
+}
+
+void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data) {
+	const uint32_t omp_threads = get_omp_threads();
+	// base_p3 = G.
+	ge25519_p3 base_p3;
+	{
+		unsigned char one_c[EPIR_SCALAR_SIZE];
+		memset(one_c, 0, EPIR_SCALAR_SIZE);
+		one_c[0] = 1;
+		ge25519_scalarmult_base(&base_p3, one_c);
+	}
 	// base_precomp = G.
 	ge25519_precomp base_precomp;
-	ge25519_p3_to_precomp(&base_precomp, &p3);
-	// Compute for m == 0.
-	ge25519_p3_0(&p3);
-	ge25519_p3_tobytes(mG[0].point, &p3);
+	ge25519_p3_to_precomp(&base_precomp, &base_p3);
+	// Compute [O, .., (omp_threads-1)*G]_precomp.
+	ge25519_p3 mG_p3[omp_threads];
+	ge25519_p3_0(&mG_p3[0]);
+	ge25519_p3_tobytes(mG[0].point, &mG_p3[0]);
 	mG[0].scalar = 0;
-	// Compute for m > 0.
-	for(size_t m=1; m<mmax; m++) {
-		if(print_progress && (m % (100 * 1000) == 0 || m == mmax - 1)) {
-			printf("Computing m = %zd of %zd (%.02f%%)\n", m, mmax, 100.0 * (m - 1) / mmax);
-		}
-		ge25519_add_p3_precomp(&p3, &p3, &base_precomp);
-		ge25519_p3_tobytes(mG[m].point, &p3);
+	if(cb) cb(0, cb_data);
+	for(size_t m=1; m<omp_threads; m++) {
+		ge25519_add_p3_precomp(&mG_p3[m], &mG_p3[m-1], &base_precomp);
+		ge25519_p3_tobytes(mG[m].point, &mG_p3[m]);
 		mG[m].scalar = m;
+		if(cb) cb(m, cb_data);
+	}
+	// tG_precomp = omp_threads*G
+	ge25519_precomp tG_precomp;
+	{
+		ge25519_p3 tG_p3;
+		ge25519_add_p3_precomp(&tG_p3, &mG_p3[omp_threads-1], &base_precomp);
+		ge25519_p3_to_precomp(&tG_precomp, &tG_p3);
+	}
+	size_t points_computed = omp_threads - 1;
+	#pragma omp parallel
+	{
+		#ifdef __EMSCRIPTEN__
+		const uint32_t omp_id = 0;
+		#else
+		const uint32_t omp_id = omp_get_thread_num();
+		#endif
+		for(size_t m=1; ; m++) {
+			const size_t idx = m * omp_threads + omp_id;
+			if(idx >= mmax) break;
+			ge25519_add_p3_precomp(&mG_p3[omp_id], &mG_p3[omp_id], &tG_precomp);
+			ge25519_p3_tobytes(mG[idx].point, &mG_p3[omp_id]);
+			mG[idx].scalar = idx;
+			size_t pc;
+			#pragma omp critical
+			pc = ++points_computed;
+			if(cb) cb(pc, cb_data);
+		}
 	}
 	// Sort.
 	qsort(mG, mmax, sizeof(epir_mG_t), mG_compare);
