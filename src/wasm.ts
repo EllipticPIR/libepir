@@ -27,18 +27,67 @@ type Wasm = {
 };
 
 class DecryptionContext {
-	wasm: Wasm;
-	mG: number;
-	constructor(wasm: Wasm, mG: number) {
-		this.wasm = wasm;
-		this.mG = mG;
+	nThreads: number;
+	workers: EPIRWorker[] = [];
+	mG_: number[] = [];
+	mmax: number = -1;
+	constructor(nThreads: number = navigator.hardwareConcurrency) {
+		this.nThreads = nThreads;
+		for(let i=0; i<this.nThreads; i++) {
+			this.workers.push(new EPIRWorker());
+		}
+		this.mG_ = new Array(nThreads);
 	}
-	getMG(): Uint8Array {
-		const mGBuf = this.wasm.HEAPU8.subarray(this.mG, this.mG + MG_SIZE * MMAX);
-		return new Uint8Array(mGBuf);
+	async init(mG: Uint8Array): Promise<void> {
+		this.mG_ = await Promise.all(this.workers.map((worker): Promise<number> => {
+			return new Promise((resolve, reject) => {
+				worker.addEventListener('message', (ev) => {
+					switch(ev.data.method) {
+						case 'malloc':
+							resolve(ev.data.buf_);
+							break;
+					}
+				});
+				worker.postMessage({ method: 'malloc', buf: mG });
+			});
+		}));
+		this.mmax = mG.length / MG_SIZE;
 	}
-	delete() {
-		this.wasm._free(this.mG);
+	async delete() {
+		await Promise.all(this.workers.map((worker, i): Promise<void> => {
+			return new Promise((resolve, reject) => {
+				worker.addEventListener('message', (ev) => {
+					switch(ev.data.method) {
+						case 'free':
+							resolve();
+							break;
+					}
+				});
+				worker.postMessage({ method: 'free', buf_: this.mG_[i] });
+			});
+		}));
+	}
+	async decrypt(ciphers: Uint8Array, privkey: Uint8Array, packing: number): Promise<Uint8Array> {
+		const decrypted = await Promise.all(this.workers.map((worker, i): Promise<Uint8Array> => {
+			return new Promise((resolve, reject) => {
+				worker.addEventListener('message', (ev) => {
+					switch(ev.data.method) {
+						case 'decrypt_many':
+							resolve(ev.data.decrypted);
+							break;
+					}
+				});
+				
+				const ciphersPerThread = Math.ceil((ciphers.length / 64) / this.nThreads);
+				const begin = i * ciphersPerThread;
+				const end = Math.min((ciphers.length / 64) + 1, (i + 1) * ciphersPerThread);
+				const ciphersMy = ciphers.subarray(begin * 64, end * 64);
+				worker.postMessage({
+					method: 'decrypt_many', ciphers: ciphersMy , privkey: privkey, packing: packing, mG_: this.mG_[i] , mmax: this.mmax
+				});
+			});
+		}));
+		return uint8ArrayConcat(decrypted);
 	}
 }
 
@@ -126,26 +175,23 @@ export const epir = async (): Promise<epir_t<DecryptionContext>> => {
 		});
 	}
 	
-	const get_decryption_context = async (param?: string | Uint8Array | ((p: number) => void)): Promise<DecryptionContext> => {
-		if(param === undefined) {
-			const mG = wasm._malloc(MG_SIZE * MMAX);
-			await mg_generate(mG, null);
-			return new DecryptionContext(wasm, mG);
-		} else if(typeof param == 'function') {
-			const mG = wasm._malloc(MG_SIZE * MMAX);
-			await mg_generate(mG, param);
-			return new DecryptionContext(wasm, mG);
-		} else if(typeof param == 'string') {
-			const mGBuf = new Uint8Array(await require('fs/promises').readFile(param));
-			return await get_decryption_context(mGBuf);
+	const get_mG = async (param?: string | ((p: number) => void)): Promise<Uint8Array> => {
+		if(typeof param == 'string') {
+			return new Uint8Array(await require('fs/promises').readFile(param));
 		} else {
-			if(param.length != MG_SIZE * MMAX) {
-				throw new Error('The parameter has an invalid length.');
-			}
-			const mG = wasm._malloc(MG_SIZE * MMAX);
-			wasm.HEAPU8.set(param, mG);
-			return new DecryptionContext(wasm, mG);
+			const mG_ = wasm._malloc(MG_SIZE * MMAX);
+			await mg_generate(mG_, param === undefined ? null : param);
+			const mG = wasm.HEAPU8.slice(mG_, mG_ + MG_SIZE * MMAX);
+			wasm._free(mG_);
+			return mG;
 		}
+	};
+	
+	const get_decryption_context = async (param?: string | Uint8Array | ((p: number) => void)): Promise<DecryptionContext> => {
+		const mG = (param instanceof Uint8Array ? param : await get_mG(param));
+		const decCtx = new DecryptionContext();
+		await decCtx.init(mG);
+		return decCtx;
 	};
 	
 	const selector_create_ = async (key: Uint8Array, index_counts: number[], idx: number, isFast: boolean): Promise<Uint8Array> => {
@@ -199,26 +245,22 @@ export const epir = async (): Promise<epir_t<DecryptionContext>> => {
 	const reply_decrypt = async (
 		ctx: DecryptionContext, reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number):
 		Promise<Uint8Array> => {
-		return new Promise((resolve, reject) => {
-			const reply_ = wasm._malloc(reply.length);
-			wasm.HEAPU8.set(reply, reply_);
-			const privkey_ = wasm._malloc(32);
-			wasm.HEAPU8.set(privkey, privkey_);
-			const bytes = wasm._epir_reply_decrypt(reply_, reply.length, privkey_, dimension, packing, ctx.mG, MMAX);
-			if(bytes < 0) {
-				reject('Failed to decrypt.');
-				return;
+		let midstate = reply;
+		for(let phase=0; phase<dimension; phase++) {
+			const decrypted = await ctx.decrypt(midstate, privkey, packing);
+			if(phase == dimension - 1) {
+				midstate = decrypted;
+			} else {
+				midstate = decrypted.subarray(0, decrypted.length - (decrypted.length % 64));
 			}
-			const decrypted = new Uint8Array(wasm.HEAPU8.subarray(reply_, reply_ + bytes));
-			wasm._free(reply_);
-			wasm._free(privkey_);
-			resolve(decrypted);
-		});
+		}
+		return midstate;
 	};
 	
 	return {
 		create_privkey,
 		pubkey_from_privkey,
+		get_mG,
 		get_decryption_context,
 		selector_create,
 		selector_create_fast,

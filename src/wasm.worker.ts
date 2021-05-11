@@ -1,5 +1,5 @@
 
-const wasm_ = require('../dist/epir.js');
+const wasm_ = require('../dist/epir.js')();
 
 const CTX_SIZE = 124;
 const MG_SIZE = 36;
@@ -27,7 +27,7 @@ interface KeyValue {
 const funcs: KeyValue = {
 	// For mG.bin generation.
 	mg_generate_prepare: async (params: { nThreads: number, mmax: number }) => {
-		const wasm = await wasm_();
+		const wasm = await wasm_;
 		const ctx_ = wasm._malloc(CTX_SIZE);
 		store_uint32_t(wasm, ctx_, params.mmax);
 		const mG_ = wasm._malloc(params.nThreads * MG_SIZE);
@@ -50,7 +50,7 @@ const funcs: KeyValue = {
 		wasm._free(mG_p3_);
 	},
 	mg_generate_compute: async (params: { nThreads: number, mmax: number, ctx: Uint8Array, mG_p3: Uint8Array, threadId: number }) => {
-		const wasm = await wasm_();
+		const wasm = await wasm_;
 		const mG_count = Math.ceil(params.mmax / params.nThreads) - 1;
 		const ctx_ = wasm._malloc(CTX_SIZE);
 		wasm.HEAPU8.set(params.ctx, ctx_);
@@ -74,7 +74,7 @@ const funcs: KeyValue = {
 	},
 	// For selector creation.
 	selector_create_choice: async (params: { index_counts: number[], idx: number }) => {
-		const wasm = await wasm_();
+		const wasm = await wasm_;
 		const ic_ = wasm._malloc(8 * params.index_counts.length);
 		for(let i=0; i<params.index_counts.length; i++) {
 			store_uint64_t(wasm, ic_ + 8 * i, params.index_counts[i]);
@@ -91,7 +91,7 @@ const funcs: KeyValue = {
 		wasm._free(ic_);
 	},
 	selector_create: async (params: { selector: Uint8Array, key: Uint8Array, random: Uint8Array, isFast: boolean }) => {
-		const wasm = await wasm_();
+		const wasm = await wasm_;
 		const key_ = wasm._malloc(32);
 		wasm.HEAPU8.set(params.key, key_);
 		const cipher_ = wasm._malloc(64);
@@ -109,6 +109,38 @@ const funcs: KeyValue = {
 		wasm._free(key_);
 		wasm._free(cipher_);
 		wasm._free(random_);
+	},
+	// For reply decryption.
+	malloc: async (params: { buf: Uint8Array }) => {
+		const wasm = await wasm_;
+		const buf_ = wasm._malloc(params.buf.length);
+		wasm.HEAPU8.set(params.buf, buf_);
+		worker.postMessage({ method: 'malloc', buf_: buf_ });
+	},
+	free: async (params: { buf_: number }) => {
+		const wasm = await wasm_;
+		wasm._free(params.buf_);
+		worker.postMessage({ method: 'free' });
+	},
+	decrypt_many: async (params: { ciphers: Uint8Array, privkey: Uint8Array, packing: number, mG_: number, mmax: number }) => {
+		const wasm = await wasm_;
+		const privkey_ = wasm._malloc(32);
+		wasm.HEAPU8.set(params.privkey, privkey_);
+		const cipher_ = wasm._malloc(64);
+		const ret = new Uint8Array(params.packing * (params.ciphers.length / 64));
+		for(let i=0; 64*i<params.ciphers.length; i++) {
+			wasm.HEAPU8.set(params.ciphers.subarray(i * 64, (i + 1) * 64), cipher_);
+			const decrypted = wasm._epir_ecelgamal_decrypt(privkey_, cipher_, params.mG_, params.mmax);
+			if(decrypted < 0) throw new Error('Failed to decrypt.');
+			for(let p=0; p<params.packing; p++) {
+				ret[i * params.packing + p] = (decrypted >> (8 * p)) & 0xff;
+			}
+		}
+		worker.postMessage({
+			method: 'decrypt_many', decrypted: ret,
+		}, [ret.buffer]);
+		wasm._free(privkey_);
+		wasm._free(cipher_);
 	},
 };
 
