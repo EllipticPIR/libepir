@@ -9,6 +9,16 @@ export const MMAX = 1 << MMAX_MOD;
 export const MG_SIZE = 36;
 export const MG_P3_SIZE = 4 * 40;
 
+const uint8ArrayConcat = (arr: Uint8Array[]) => {
+	const len = arr.reduce((acc, v) => acc + v.length, 0);
+	const ret = new Uint8Array(len);
+	for(let i=0, offset=0; i<arr.length; i++) {
+		ret.set(arr[i], offset);
+		offset += arr[i].length;
+	}
+	return ret;
+}
+
 type Wasm = {
 	HEAPU8: {
 		subarray: (begin: number, end: number) => Uint8Array;
@@ -139,28 +149,42 @@ export const epir = async (): Promise<epir_t<DecryptionContext>> => {
 	};
 	
 	const selector_create_ = async (key: Uint8Array, index_counts: number[], idx: number, isFast: boolean): Promise<Uint8Array> => {
-		return new Promise((resolve, reject) => {
-			const nThreads = 1;//navigator.hardwareConcurrency;
-			const worker = new EPIRWorker();
-			worker.onmessage = (e) => {
-				switch(e.data.method) {
-					case 'selector_create_choice':
-						const random = new Uint8Array(e.data.selector.length >> 1);
-						for(let i=0; i*64<e.data.selector.length; i++) {
-							const tmp = new Uint8Array(32);
-							window.crypto.getRandomValues(tmp);
-							random.set(tmp, i * 32);
+		return new Promise(async (resolve, reject) => {
+			const nThreads = navigator.hardwareConcurrency;
+			const workers: EPIRWorker[] = [];
+			const promises: Promise<Uint8Array>[] = [];
+			for(let i=0; i<nThreads; i++) {
+				workers.push(new EPIRWorker());
+				promises.push(new Promise((resolve, reject) => {
+					workers[i].addEventListener('message', (ev) => {
+						switch(ev.data.method) {
+							case 'selector_create_choice':
+								const ciphersPerThread = Math.ceil((ev.data.selector.length / 64) / nThreads);
+								for(let t=0; t<nThreads; t++) {
+									const begin = t * ciphersPerThread;
+									const end = Math.min((ev.data.selector.length / 64) + 1, (t + 1) * ciphersPerThread);
+									const random = new Uint8Array((end - begin) * 32);
+									for(let j=0; j*32<random.length; j++) {
+										const tmp = new Uint8Array(32);
+										window.crypto.getRandomValues(tmp);
+										random.set(tmp, j * 32);
+									}
+									const selector_t = ev.data.selector.subarray(begin * 64, end * 64);
+									workers[t].postMessage({
+										method: 'selector_create', selector: selector_t, key: key, random: random, isFast: isFast
+									}, [random.buffer]);
+								}
+								break;
+							case 'selector_create':
+								resolve(ev.data.selector);
+								break;
 						}
-						worker.postMessage({
-							method: 'selector_create', selector: e.data.selector, key: key, random: random, isFast: isFast
-						}, [e.data.selector.buffer, random.buffer]);
-						break;
-					case 'selector_create':
-						resolve(e.data.selector);
-						break;
-				}
-			};
-			worker.postMessage({ method: 'selector_create_choice', index_counts: index_counts, idx: idx });
+					});
+				}));
+			}
+			workers[0].postMessage({ method: 'selector_create_choice', index_counts: index_counts, idx: idx });
+			const selectors = await Promise.all(promises);
+			resolve(uint8ArrayConcat(selectors));
 		});
 	}
 	
