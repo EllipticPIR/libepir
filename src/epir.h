@@ -16,6 +16,10 @@ extern "C" {
 #include <stddef.h>
 #include <string.h>
 
+#define CONFIGURED 1
+#include <sodium/private/ed25519_ref10.h>
+#undef CONFIGURED
+
 #ifdef __EMSCRIPTEN__
 #  include <emscripten.h>
 #else
@@ -87,6 +91,22 @@ static inline void epir_ecelgamal_default_mg_path(char *path, const size_t len) 
 EMSCRIPTEN_KEEPALIVE
 size_t epir_ecelgamal_load_mg(epir_mG_t *mG, const size_t mmax, const char *path);
 
+typedef struct {
+	uint32_t n_threads;
+	epir_mG_t *mG;
+	size_t mmax;
+	ge25519_p3 *mG_p3;
+	ge25519_precomp tG_precomp;
+	size_t points_computed;
+} epir_ecelgamal_mg_generate_context;
+
+EMSCRIPTEN_KEEPALIVE
+void epir_ecelgamal_mg_generate_prepare(epir_ecelgamal_mg_generate_context *ctx, void (*cb)(const size_t, void*), void *cb_data);
+EMSCRIPTEN_KEEPALIVE
+void epir_ecelgamal_mg_generate_compute(
+	epir_ecelgamal_mg_generate_context *ctx, uint32_t thread_id, void (*cb)(const size_t, void*), void *cb_data);
+EMSCRIPTEN_KEEPALIVE
+void epir_ecelgamal_mg_generate_sort(epir_ecelgamal_mg_generate_context *ctx);
 EMSCRIPTEN_KEEPALIVE
 void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data);
 

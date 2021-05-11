@@ -111,8 +111,7 @@ static inline uint32_t get_omp_threads() {
 #endif
 }
 
-void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data) {
-	const uint32_t omp_threads = get_omp_threads();
+void epir_ecelgamal_mg_generate_prepare(epir_ecelgamal_mg_generate_context *ctx, void (*cb)(const size_t, void*), void *cb_data) {
 	// base_p3 = G.
 	ge25519_p3 base_p3;
 	{
@@ -124,26 +123,54 @@ void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(con
 	// base_precomp = G.
 	ge25519_precomp base_precomp;
 	ge25519_p3_to_precomp(&base_precomp, &base_p3);
-	// Compute [O, .., (omp_threads-1)*G]_precomp.
-	ge25519_p3 mG_p3[omp_threads];
-	ge25519_p3_0(&mG_p3[0]);
-	ge25519_p3_tobytes(mG[0].point, &mG_p3[0]);
-	mG[0].scalar = 0;
-	if(cb) cb(0, cb_data);
-	for(size_t m=1; m<omp_threads; m++) {
-		ge25519_add_p3_precomp(&mG_p3[m], &mG_p3[m-1], &base_precomp);
-		ge25519_p3_tobytes(mG[m].point, &mG_p3[m]);
-		mG[m].scalar = m;
-		if(cb) cb(m, cb_data);
+	// Compute [O, .., (ctx->n_threads-1)*G]_precomp.
+	ge25519_p3_0(&ctx->mG_p3[0]);
+	ge25519_p3_tobytes(ctx->mG[0].point, &ctx->mG_p3[0]);
+	ctx->mG[0].scalar = 0;
+	if(cb) cb(ctx->points_computed = 0, cb_data);
+	for(size_t m=1; m<ctx->n_threads; m++) {
+		ge25519_add_p3_precomp(&ctx->mG_p3[m], &ctx->mG_p3[m-1], &base_precomp);
+		ge25519_p3_tobytes(ctx->mG[m].point, &ctx->mG_p3[m]);
+		ctx->mG[m].scalar = m;
+		if(cb) cb(ctx->points_computed = m, cb_data);
 	}
-	// tG_precomp = omp_threads*G
-	ge25519_precomp tG_precomp;
+	// ctx->tG_precomp = ctx->n_threads*G
 	{
 		ge25519_p3 tG_p3;
-		ge25519_add_p3_precomp(&tG_p3, &mG_p3[omp_threads-1], &base_precomp);
-		ge25519_p3_to_precomp(&tG_precomp, &tG_p3);
+		ge25519_add_p3_precomp(&tG_p3, &ctx->mG_p3[ctx->n_threads-1], &base_precomp);
+		ge25519_p3_to_precomp(&ctx->tG_precomp, &tG_p3);
 	}
-	size_t points_computed = omp_threads - 1;
+}
+
+void epir_ecelgamal_mg_generate_compute(
+	epir_ecelgamal_mg_generate_context *ctx, uint32_t thread_id, void (*cb)(const size_t, void*), void *cb_data) {
+	for(size_t m=1; ; m++) {
+		const size_t idx = m * ctx->n_threads + thread_id;
+		if(idx >= ctx->mmax) break;
+		ge25519_add_p3_precomp(&ctx->mG_p3[thread_id], &ctx->mG_p3[thread_id], &ctx->tG_precomp);
+		ge25519_p3_tobytes(ctx->mG[idx].point, &ctx->mG_p3[thread_id]);
+		ctx->mG[idx].scalar = idx;
+		size_t pc;
+		#pragma omp critical
+		pc = ++ctx->points_computed;
+		if(cb) cb(pc, cb_data);
+	}
+}
+
+void epir_ecelgamal_mg_generate_sort(epir_ecelgamal_mg_generate_context *ctx) {
+	qsort(ctx->mG, ctx->mmax, sizeof(epir_mG_t), mG_compare);
+}
+
+void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data) {
+	const uint32_t omp_threads = get_omp_threads();
+	ge25519_p3 mG_p3[omp_threads];
+	epir_ecelgamal_mg_generate_context ctx = {
+		omp_threads,
+		mG,
+		mmax,
+		mG_p3
+	};
+	epir_ecelgamal_mg_generate_prepare(&ctx, cb, cb_data);
 	#pragma omp parallel
 	{
 		#ifdef __EMSCRIPTEN__
@@ -151,20 +178,9 @@ void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(con
 		#else
 		const uint32_t omp_id = omp_get_thread_num();
 		#endif
-		for(size_t m=1; ; m++) {
-			const size_t idx = m * omp_threads + omp_id;
-			if(idx >= mmax) break;
-			ge25519_add_p3_precomp(&mG_p3[omp_id], &mG_p3[omp_id], &tG_precomp);
-			ge25519_p3_tobytes(mG[idx].point, &mG_p3[omp_id]);
-			mG[idx].scalar = idx;
-			size_t pc;
-			#pragma omp critical
-			pc = ++points_computed;
-			if(cb) cb(pc, cb_data);
-		}
+		epir_ecelgamal_mg_generate_compute(&ctx, omp_id, cb, cb_data);
 	}
-	// Sort.
-	qsort(mG, mmax, sizeof(epir_mG_t), mG_compare);
+	epir_ecelgamal_mg_generate_sort(&ctx);
 }
 
 static inline uint32_t load_uint32_t(const unsigned char *n) {
