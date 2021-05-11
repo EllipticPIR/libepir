@@ -236,10 +236,7 @@ int32_t epir_ecelgamal_decrypt(const unsigned char *privkey, const unsigned char
 	return m;
 }
 
-void epir_selector_create_(
-	unsigned char *ciphers, const unsigned char *key,
-	const uint64_t *index_counts, const uint8_t n_indexes,
-	const uint64_t idx, void (*encrypt)(unsigned char*, const unsigned char*, const uint64_t, const unsigned char*)) {
+void epir_selector_create_choice(unsigned char *ciphers, const uint64_t *index_counts, const uint8_t n_indexes, const uint64_t idx) {
 	uint64_t idx_ = idx;
 	uint64_t prod = epir_selector_elements_count(index_counts, n_indexes);
 	size_t offset = 0;
@@ -253,8 +250,16 @@ void epir_selector_create_(
 			offset++;
 		}
 	}
+}
+
+void epir_selector_create_(
+	unsigned char *ciphers, const unsigned char *key,
+	const uint64_t *index_counts, const uint8_t n_indexes,
+	const uint64_t idx, void (*encrypt)(unsigned char*, const unsigned char*, const uint64_t, const unsigned char*)) {
+	const uint64_t n_ciphers = epir_selector_ciphers_count(index_counts, n_indexes);
+	epir_selector_create_choice(ciphers, index_counts, n_indexes, idx);
 	#pragma omp parallel for
-	for(size_t i=0; i<offset; i++) {
+	for(size_t i=0; i<n_ciphers; i++) {
 		encrypt(ciphers + i * EPIR_CIPHER_SIZE, key, ciphers[i * EPIR_CIPHER_SIZE] ? 1 : 0, NULL);
 	}
 }

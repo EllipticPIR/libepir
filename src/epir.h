@@ -151,6 +151,9 @@ uint64_t epir_selector_elements_count(const uint64_t *index_counts, const uint8_
 	return ret;
 }
 
+EMSCRIPTEN_KEEPALIVE
+void epir_selector_create_choice(unsigned char *ciphers, const uint64_t *index_counts, const uint8_t n_indexes, const uint64_t idx);
+
 void epir_selector_create_(
 	unsigned char *ciphers, const unsigned char *key,
 	const uint64_t *index_counts, const uint8_t n_indexes,

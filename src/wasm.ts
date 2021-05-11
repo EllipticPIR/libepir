@@ -138,37 +138,38 @@ export const epir = async (): Promise<epir_t<DecryptionContext>> => {
 		}
 	};
 	
-	type SelectorCreateFunction = (
-		selector: number, key: number, index_counts: BigUint64Array, n_index_counts: number,
-		idx_low: number, idex_high: number) => void;
-	
-	const selector_create_ = async (
-		key: Uint8Array, index_counts: number[], idx: number, func: SelectorCreateFunction):
-		Promise<Uint8Array> => {
+	const selector_create_ = async (key: Uint8Array, index_counts: number[], idx: number, isFast: boolean): Promise<Uint8Array> => {
 		return new Promise((resolve, reject) => {
-			const key_ = wasm._malloc(32);
-			wasm.HEAPU8.set(key, key_);
-			const ic_ = wasm._malloc(8 * index_counts.length);
-			for(let i=0; i<index_counts.length; i++) {
-				store_uint64_t(ic_ + 8 * i, index_counts[i]);
-			}
-			const ciphers = wasm._epir_selector_ciphers_count(ic_, index_counts.length);
-			const selector_ = wasm._malloc(64 * ciphers);
-			func(selector_, key_, ic_, index_counts.length, idx&0xffffffff, Math.floor(idx / 0xffffffff)&0xffffffff);
-			const selector = new Uint8Array(wasm.HEAPU8.subarray(selector_, selector_ + 64 * ciphers));
-			wasm._free(selector_);
-			wasm._free(key_);
-			wasm._free(ic_);
-			resolve(selector);
+			const nThreads = 1;//navigator.hardwareConcurrency;
+			const worker = new EPIRWorker();
+			worker.onmessage = (e) => {
+				switch(e.data.method) {
+					case 'selector_create_choice':
+						const random = new Uint8Array(e.data.selector.length >> 1);
+						for(let i=0; i*64<e.data.selector.length; i++) {
+							const tmp = new Uint8Array(32);
+							window.crypto.getRandomValues(tmp);
+							random.set(tmp, i * 32);
+						}
+						worker.postMessage({
+							method: 'selector_create', selector: e.data.selector, key: key, random: random, isFast: isFast
+						}, [e.data.selector.buffer, random.buffer]);
+						break;
+					case 'selector_create':
+						resolve(e.data.selector);
+						break;
+				}
+			};
+			worker.postMessage({ method: 'selector_create_choice', index_counts: index_counts, idx: idx });
 		});
-	};
+	}
 	
 	const selector_create = (pubkey: Uint8Array, index_counts: number[], idx: number): Promise<Uint8Array> => {
-		return selector_create_(pubkey, index_counts, idx, wasm._epir_selector_create);
+		return selector_create_(pubkey, index_counts, idx, false);
 	};
 	
 	const selector_create_fast = (privkey: Uint8Array, index_counts: number[], idx: number): Promise<Uint8Array> => {
-		return selector_create_(privkey, index_counts, idx, wasm._epir_selector_create_fast);
+		return selector_create_(privkey, index_counts, idx, true);
 	};
 	
 	const reply_decrypt = async (
