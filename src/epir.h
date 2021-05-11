@@ -92,8 +92,8 @@ EMSCRIPTEN_KEEPALIVE
 size_t epir_ecelgamal_load_mg(epir_mG_t *mG, const size_t mmax, const char *path);
 
 typedef struct {
-	size_t          mmax;       // +  4 =  12
-	ge25519_precomp tG_precomp; // +120 = 136
+	size_t          mmax;       // +  4 =   4.
+	ge25519_precomp tG_precomp; // +120 = 124.
 } epir_ecelgamal_mg_generate_context;
 
 EMSCRIPTEN_KEEPALIVE
@@ -101,13 +101,16 @@ void epir_ecelgamal_mg_generate_prepare(
 	epir_ecelgamal_mg_generate_context *ctx,
 	epir_mG_t *mG, ge25519_p3 *mG_p3, const uint32_t n_threads,
 	void (*cb)(void*), void *cb_data);
+
 EMSCRIPTEN_KEEPALIVE
 void epir_ecelgamal_mg_generate_compute(
 	epir_ecelgamal_mg_generate_context *ctx,
 	epir_mG_t *mG, ge25519_p3 *mG_p3, const uint32_t offset, const uint32_t interval,
 	void (*cb)(void*), void *cb_data);
+
 EMSCRIPTEN_KEEPALIVE
 void epir_ecelgamal_mg_generate_sort(epir_ecelgamal_mg_generate_context *ctx, epir_mG_t *mG);
+
 EMSCRIPTEN_KEEPALIVE
 void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data);
 
