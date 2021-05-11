@@ -13,6 +13,10 @@ module.exports = {
 				test: /\.ts$/,
 				use: 'ts-loader',
 			},
+			{
+				test: /\.worker\.js$/,
+				use: { loader: 'worker-loader' },
+			},
 		],
 	},
 	resolve: {

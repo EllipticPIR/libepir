@@ -1,9 +1,13 @@
 
 import epir_t from './epir_t';
+import EPIRWorker from 'worker-loader!./wasm.worker';
 
-const MMAX_MOD = 24
-const MMAX = 1 << MMAX_MOD;
-const MG_SIZE = 36;
+const time = () => new Date().getTime();
+
+export const MMAX_MOD = 24;
+export const MMAX = 1 << MMAX_MOD;
+export const MG_SIZE = 36;
+export const MG_P3_SIZE = 4 * 40;
 
 type Wasm = {
 	HEAPU8: {
@@ -28,12 +32,19 @@ class DecryptionContext {
 	}
 }
 
-const epir = async (): Promise<epir_t<DecryptionContext>> => {
+export const epir = async (): Promise<epir_t<DecryptionContext>> => {
 	
 	const wasm_ = require('../dist/epir.js');
 	const wasm = await wasm_();
 	
 	wasm._epir_randombytes_init();
+	
+	const store_uint64_t = (offset: number, n: number) => {
+		for(let i=0; i<8; i++) {
+			wasm.HEAPU8[offset + i] = n & 0xff;
+			n >>= 8;
+		}
+	}
 	
 	const create_privkey = (): Uint8Array => {
 		const privkey_ = wasm._malloc(32);
@@ -54,18 +65,65 @@ const epir = async (): Promise<epir_t<DecryptionContext>> => {
 		return pubkey;
 	};
 	
+	const uint8ArrayCompare = (a: Uint8Array, b: Uint8Array): number => {
+		for(let i=0; i<Math.min(a.length, b.length); i++) {
+			if(a[i] == b[i]) continue;
+			return a[i] - b[i];
+		}
+		return 0;
+	}
+	
+	const mg_generate = async (mG_: number, cb: ((p: number) => void) | null): Promise<void> => {
+		return new Promise((resolve, reject) => {
+			const nThreads = 1;//navigator.hardwareConcurrency;
+			const worker = new EPIRWorker();
+			let mG: Uint8Array[] = [];
+			worker.onmessage = (e) => {
+				switch(e.data.method) {
+					case 'mg_generate_cb':
+						if(cb) cb(e.data.pointsComputed);
+						break;
+					case 'mg_generate_prepare':
+						//console.log('mg_generate_prepare DONE.');
+						const threadId = 0;
+						for(let i=0; i<nThreads; i++) {
+							mG.push(e.data.mG.slice(i * MG_SIZE, (i + 1) * MG_SIZE));
+						}
+						worker.postMessage({
+							method: 'mg_generate_compute', nThreads: nThreads, mmax: MMAX,
+							ctx: e.data.ctx, mG_p3: e.data.mG_p3.slice(MG_P3_SIZE * threadId, MG_P3_SIZE * (threadId + 1)), threadId: threadId,
+						});
+						break;
+					case 'mg_generate_compute':
+						//console.log('mg_generate_compute DONE.');
+						for(let i=0; i*MG_SIZE<e.data.mG.length; i++) {
+							mG.push(e.data.mG.slice(i * MG_SIZE, (i + 1) * MG_SIZE));
+						}
+						//console.log('Sorting...');
+						const beginSort = time();
+						mG.sort((a, b) => {
+							return uint8ArrayCompare(a, b);
+						});
+						//console.log(`Sorting done in ${(time() - beginSort).toLocaleString()}ms.`);
+						for(let i=0; i<MMAX; i++) {
+							wasm.HEAPU8.set(mG[i], mG_ + i * MG_SIZE);
+						}
+						resolve();
+						break;
+				}
+			};
+			worker.postMessage({ method: 'mg_generate_prepare', nThreads: nThreads, mmax: MMAX });
+		});
+	}
+	
 	const get_decryption_context = async (param?: string | Uint8Array | ((p: number) => void)): Promise<DecryptionContext> => {
 		if(param === undefined) {
 			const mG = wasm._malloc(MG_SIZE * MMAX);
-			wasm._epir_ecelgamal_mg_generate(mG, MMAX, null, null);
+			await mg_generate(mG, null);
 			return new DecryptionContext(wasm, mG);
 		} else if(typeof param == 'function') {
 			const mG = wasm._malloc(MG_SIZE * MMAX);
-			const cb = wasm.addFunction((pc: number, data: any) => {
-				param(pc);
-			}, 'vii');
-			wasm._epir_ecelgamal_mg_generate(mG, MMAX, cb, null);
-			wasm.removeFunction(cb);
+			await mg_generate(mG, param);
 			return new DecryptionContext(wasm, mG);
 		} else if(typeof param == 'string') {
 			const mGBuf = new Uint8Array(await require('fs/promises').readFile(param));
@@ -79,13 +137,6 @@ const epir = async (): Promise<epir_t<DecryptionContext>> => {
 			return new DecryptionContext(wasm, mG);
 		}
 	};
-	
-	const store_uint64_t = (offset: number, n: number) => {
-		for(let i=0; i<8; i++) {
-			wasm.HEAPU8[offset + i] = n & 0xff;
-			n >>= 8;
-		}
-	}
 	
 	type SelectorCreateFunction = (
 		selector: number, key: number, index_counts: BigUint64Array, n_index_counts: number,

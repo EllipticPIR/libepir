@@ -105,7 +105,7 @@ void epir_ecelgamal_mg_generate_prepare(
 EMSCRIPTEN_KEEPALIVE
 void epir_ecelgamal_mg_generate_compute(
 	epir_ecelgamal_mg_generate_context *ctx,
-	epir_mG_t *mG, ge25519_p3 *mG_p3, const uint32_t offset, const uint32_t interval,
+	epir_mG_t *mG, const size_t mG_count, ge25519_p3 *mG_p3, const uint32_t offset, const uint32_t interval,
 	void (*cb)(void*), void *cb_data);
 
 EMSCRIPTEN_KEEPALIVE

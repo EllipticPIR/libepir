@@ -147,11 +147,11 @@ void epir_ecelgamal_mg_generate_prepare(
 
 void epir_ecelgamal_mg_generate_compute(
 	epir_ecelgamal_mg_generate_context *ctx,
-	epir_mG_t *mG, ge25519_p3 *mG_p3, const uint32_t offset, const uint32_t interval,
+	epir_mG_t *mG, const size_t mG_count, ge25519_p3 *mG_p3, const uint32_t offset, const uint32_t interval,
 	void (*cb)(void*), void *cb_data) {
 	for(size_t m=1; ; m++) {
 		const size_t idx = m * interval + offset;
-		if(idx >= ctx->mmax) break;
+		if(idx >= mG_count) break;
 		ge25519_add_p3_precomp(mG_p3, mG_p3, &ctx->tG_precomp);
 		ge25519_p3_tobytes(mG[idx].point, mG_p3);
 		mG[idx].scalar = idx;
@@ -192,7 +192,7 @@ void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(con
 		#else
 		const uint32_t omp_id = omp_get_thread_num();
 		#endif
-		epir_ecelgamal_mg_generate_compute(&ctx, mG, &mG_p3[omp_id], omp_id, omp_threads, mg_cb, &cb_data_);
+		epir_ecelgamal_mg_generate_compute(&ctx, mG, mmax, &mG_p3[omp_id], omp_id, omp_threads, mg_cb, &cb_data_);
 	}
 	epir_ecelgamal_mg_generate_sort(&ctx, mG);
 }
