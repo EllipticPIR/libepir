@@ -39,6 +39,8 @@ class DecryptionContext {
 		this.mG_ = new Array(nThreads);
 	}
 	async init(mG: Uint8Array): Promise<void> {
+		const mGShared = new SharedArrayBuffer(mG.length);
+		new Uint8Array(mGShared).set(mG);
 		this.mG_ = await Promise.all(this.workers.map((worker): Promise<number> => {
 			return new Promise((resolve, reject) => {
 				worker.addEventListener('message', (ev) => {
@@ -48,7 +50,7 @@ class DecryptionContext {
 							break;
 					}
 				});
-				worker.postMessage({ method: 'malloc', buf: mG });
+				worker.postMessage({ method: 'malloc', buf: mGShared });
 			});
 		}));
 		this.mmax = mG.length / MG_SIZE;

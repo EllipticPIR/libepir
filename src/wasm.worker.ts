@@ -111,10 +111,10 @@ const funcs: KeyValue = {
 		wasm._free(random_);
 	},
 	// For reply decryption.
-	malloc: async (params: { buf: Uint8Array }) => {
+	malloc: async (params: { buf: SharedArrayBuffer }) => {
 		const wasm = await wasm_;
-		const buf_ = wasm._malloc(params.buf.length);
-		wasm.HEAPU8.set(params.buf, buf_);
+		const buf_ = wasm._malloc(params.buf.byteLength);
+		wasm.HEAPU8.set(new Uint8Array(params.buf), buf_);
 		worker.postMessage({ method: 'malloc', buf_: buf_ });
 	},
 	free: async (params: { buf_: number }) => {

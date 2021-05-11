@@ -35,6 +35,14 @@ module.exports = {
 		new webpack.ProvidePlugin({
 			process: 'process/browser',
 		}),
-	]
+	],
+	devServer: {
+		headers: {
+			'Cross-Origin-Embedder-Policy': 'require-corp',
+			'Cross-Origin-Opener-Policy': 'same-origin',
+		},
+		open: true,
+		openPage: 'src/browser.html',
+	},
 };
 
