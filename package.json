@@ -16,7 +16,7 @@
     "em:build": "mkdir -p build_em && cd build_em && dotenv -e ../.env -- emcmake cmake -DCMAKE_INSTALL_PREFIX=../dist .. && make all install",
     "browser:build": "webpack",
     "serve": "webpack-cli serve --mode development",
-    "test": "ts-node ./src/bench_js.ts"
+    "test": "jest"
   },
   "bin": {
     "epir_genm": "build/src/epir_genm"
@@ -44,11 +44,13 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@types/jest": "^26.0.23",
     "@types/node": "^14.14.37",
     "dexie": "^3.0.3",
     "dotenv-cli": "^4.0.0",
     "node-gyp": "^8.0.0",
     "process": "^0.11.10",
+    "ts-jest": "^26.5.6",
     "ts-loader": "^9.1.2",
     "typescript": "^4.2.4",
     "webpack": "^5.36.2",
