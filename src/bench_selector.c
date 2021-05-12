@@ -9,7 +9,7 @@
 #define ELEMENTS_PER_INDEX (10000)
 #define INDEX (12345)
 
-int main(int argc, char *argv[]) {
+int main() {
 	
 	// Create key pair.
 	printf("Generatig a key pair...\n");

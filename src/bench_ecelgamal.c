@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 	PRINT_MEASUREMENT(true, "Ciphertext decrypted in %.0fms.\n",
 		for(size_t i=0; i<LOOP; i++) {
 			int32_t decrypted = epir_ecelgamal_decrypt(privkey, ciphers[i], mG, EPIR_DEFAULT_MG_MAX);
-			if(decrypted != msg[i]) {
+			if(decrypted != (int32_t)msg[i]) {
 				printf("Decryption error occured! (msg=%d, decrypted=%d)\n", msg[i], decrypted);
 			}
 		}

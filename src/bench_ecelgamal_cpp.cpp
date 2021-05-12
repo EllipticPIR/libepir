@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
 	PRINT_MEASUREMENT(true, "Ciphertext decrypted in %.0fms.\n",
 		for(size_t i=0; i<LOOP; i++) {
 			int32_t decrypted = decCtx.decryptCipher(privkey, ciphers[i]);
-			if(decrypted != msg[i]) {
+			if(decrypted != (int32_t)msg[i]) {
 				printf("Decryption error occured! (i=%zd, msg=%ld, decrypted=%d)\n", i, msg[i], decrypted);
 			}
 		}

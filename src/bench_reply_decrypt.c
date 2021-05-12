@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
 		printf("Failed to decrypt the reply.\n");
 		exit(1);
 	}
-	if(dataLen < ELEM_SIZE) {
+	if(dataLen < (int)ELEM_SIZE) {
 		printf("The decrypted message has an invalid size: %dB.\n", dataLen);
 		exit(1);
 	}
