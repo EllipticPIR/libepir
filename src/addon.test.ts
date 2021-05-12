@@ -1,5 +1,4 @@
 
-import epir_t from './epir_t';
 import epir_ from './addon';
 
 test('create private key', async () => {
