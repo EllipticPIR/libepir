@@ -8,18 +8,18 @@
     "prepack": "npm run clean && npm run build && npm run em:build",
     "preinstall": "",
     "install": "node-gyp rebuild",
-    "postinstall": "npm run cpp:build && epir_genm",
+    "postinstall": "npm run cpp:build",
     "build": "tsc",
-    "clean": "rm -rf build build_em dist",
-    "cpp:build": "mkdir -p build && cd build && cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && make",
+    "clean": "rm -rf build_cpp build_em dist",
+    "cpp:build": "mkdir -p build_cpp && cd build_cpp && cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && make",
     "gyp:rebuild": "node-gyp rebuild",
     "em:build": "mkdir -p build_em && cd build_em && dotenv -e ../.env -- emcmake cmake -DCMAKE_INSTALL_PREFIX=../dist .. && make all install",
     "browser:build": "webpack",
     "serve": "webpack-cli serve --mode development",
-    "test": "jest"
+    "test": "./build_cpp/src/epir_genm && jest"
   },
   "bin": {
-    "epir_genm": "build/src/epir_genm"
+    "epir_genm": "build_em/src/epir_genm"
   },
   "files": [
     "src/*",

@@ -1,5 +1,6 @@
 
 /build
+/build_cpp
 /build_em
 /node_modules
 /dist
