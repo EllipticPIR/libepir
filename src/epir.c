@@ -180,9 +180,9 @@ void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(con
 	const uint32_t omp_threads = get_omp_threads();
 	ge25519_p3 mG_p3[omp_threads];
 	mg_cb_data cb_data_ = { 0, cb, cb_data };
-	epir_ecelgamal_mg_generate_context ctx = {
-		mmax
-	};
+	ge25519_precomp tG_precomp;
+	memset(&tG_precomp, 0, sizeof(ge25519_precomp));
+	epir_ecelgamal_mg_generate_context ctx = { mmax, tG_precomp };
 	epir_ecelgamal_mg_generate_prepare(&ctx, mG, mG_p3, omp_threads, mg_cb, &cb_data_);
 	#pragma omp parallel
 	{
