@@ -145,7 +145,7 @@ export const epir = async (): Promise<epir_t<DecryptionContext>> => {
 		return pubkey;
 	};
 	
-	const mg_generate = async (mG_: number, cb: ((p: number) => void) | null): Promise<void> => {
+	const mg_generate = async (mG_: number, cb?: ((p: number) => void)): Promise<void> => {
 		return new Promise((resolve, reject) => {
 			const nThreads = 1;//navigator.hardwareConcurrency;
 			const worker = new EPIRWorker();
@@ -193,7 +193,7 @@ export const epir = async (): Promise<epir_t<DecryptionContext>> => {
 			return new Uint8Array(await require('fs/promises').readFile(param));
 		} else {
 			const mG_ = wasm._malloc(MG_SIZE * MMAX);
-			await mg_generate(mG_, param === undefined ? null : param);
+			await mg_generate(mG_, param);
 			const mG = wasm.HEAPU8.slice(mG_, mG_ + MG_SIZE * MMAX);
 			wasm._free(mG_);
 			return mG;
