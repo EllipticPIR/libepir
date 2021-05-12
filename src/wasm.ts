@@ -1,6 +1,6 @@
 
 import epir_t from './epir_t';
-import EPIRWorker from 'worker-loader!./wasm.worker';
+import EPIRWorker from './wasm.worker.ts';
 
 const time = () => new Date().getTime();
 

@@ -10,12 +10,12 @@ module.exports = {
 	module: {
 		rules: [
 			{
-				test: /\.ts$/,
-				use: 'ts-loader',
+				test: /\.worker\.ts$/,
+				loader: 'worker-loader',
 			},
 			{
-				test: /\.worker\.js$/,
-				use: { loader: 'worker-loader' },
+				test: /\.ts$/,
+				loader: 'ts-loader',
 			},
 		],
 	},
