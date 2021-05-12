@@ -114,6 +114,9 @@ void epir_ecelgamal_mg_generate_sort(epir_ecelgamal_mg_generate_context *ctx, ep
 EMSCRIPTEN_KEEPALIVE
 void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data);
 
+EMSCRIPTEN_KEEPALIVE
+void epir_ecelgamal_decrypt_to_mG(const unsigned char *privkey, unsigned char *cipher);
+
 /**
  * Decrypt a EC-ElGamal ciphertext.
  * @param privkey A private key to use with decryption.

@@ -111,34 +111,20 @@ const funcs: KeyValue = {
 		wasm._free(random_);
 	},
 	// For reply decryption.
-	malloc: async (params: { buf: SharedArrayBuffer }) => {
-		const wasm = await wasm_;
-		const buf_ = wasm._malloc(params.buf.byteLength);
-		wasm.HEAPU8.set(new Uint8Array(params.buf), buf_);
-		worker.postMessage({ method: 'malloc', buf_: buf_ });
-	},
-	free: async (params: { buf_: number }) => {
-		const wasm = await wasm_;
-		wasm._free(params.buf_);
-		worker.postMessage({ method: 'free' });
-	},
-	decrypt_many: async (params: { ciphers: Uint8Array, privkey: Uint8Array, packing: number, mG_: number, mmax: number }) => {
+	decrypt_mG_many: async (params: { ciphers: Uint8Array, privkey: Uint8Array }) => {
 		const wasm = await wasm_;
 		const privkey_ = wasm._malloc(32);
 		wasm.HEAPU8.set(params.privkey, privkey_);
 		const cipher_ = wasm._malloc(64);
-		const ret = new Uint8Array(params.packing * (params.ciphers.length / 64));
+		const mG = new Uint8Array(32 * (params.ciphers.length / 64));
 		for(let i=0; 64*i<params.ciphers.length; i++) {
 			wasm.HEAPU8.set(params.ciphers.subarray(i * 64, (i + 1) * 64), cipher_);
-			const decrypted = wasm._epir_ecelgamal_decrypt(privkey_, cipher_, params.mG_, params.mmax);
-			if(decrypted < 0) throw new Error('Failed to decrypt.');
-			for(let p=0; p<params.packing; p++) {
-				ret[i * params.packing + p] = (decrypted >> (8 * p)) & 0xff;
-			}
+			wasm._epir_ecelgamal_decrypt_to_mG(privkey_, cipher_);
+			mG.set(wasm.HEAPU8.subarray(cipher_, cipher_ + 32), i * 32);
 		}
 		worker.postMessage({
-			method: 'decrypt_many', decrypted: ret,
-		}, [ret.buffer]);
+			method: 'decrypt_mG_many', mG: mG,
+		}, [mG.buffer]);
 		wasm._free(privkey_);
 		wasm._free(cipher_);
 	},

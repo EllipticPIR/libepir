@@ -224,15 +224,24 @@ static inline int32_t interpolation_search(const unsigned char *find, const epir
 	return -1;
 }
 
-int32_t epir_ecelgamal_decrypt(const unsigned char *privkey, const unsigned char *cipher, const epir_mG_t *mG, const size_t mmax) {
-	ge25519_p3 M, tmp, c1, c2;
+void epir_ecelgamal_decrypt_to_mG(const unsigned char *privkey, unsigned char *cipher) {
+	ge25519_p3 c1, c2;
 	ge25519_frombytes(&c1, cipher);
 	ge25519_frombytes(&c2, cipher + EPIR_POINT_SIZE);
-	ge25519_scalarmult(&tmp, privkey, &c1);
-	ge25519_sub_p3_p3(&M, &c2, &tmp);
-	unsigned char Mc[EPIR_SCALAR_SIZE];
-	ge25519_p3_tobytes(Mc, &M);
-	const int32_t m = interpolation_search(Mc, mG, mmax);
+	ge25519_scalarmult(&c1, privkey, &c1);
+	ge25519_sub_p3_p3(&c2, &c2, &c1);
+	ge25519_p3_tobytes(cipher, &c2);
+}
+
+int32_t epir_ecelgamal_decrypt(const unsigned char *privkey, const unsigned char *cipher, const epir_mG_t *mG, const size_t mmax) {
+	ge25519_p3 c1, c2;
+	ge25519_frombytes(&c1, cipher);
+	ge25519_frombytes(&c2, cipher + EPIR_POINT_SIZE);
+	ge25519_scalarmult(&c1, privkey, &c1);
+	ge25519_sub_p3_p3(&c2, &c2, &c1);
+	unsigned char M[EPIR_SCALAR_SIZE];
+	ge25519_p3_tobytes(M, &c2);
+	const int32_t m = interpolation_search(M, mG, mmax);
 	return m;
 }
 

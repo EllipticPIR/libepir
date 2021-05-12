@@ -84,6 +84,5 @@ class MGDatabase extends Dexie {
 			throw new Error('Decrypted is not correct.');
 		}
 	}
-	decCtx.delete();
 })();
 

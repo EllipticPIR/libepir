@@ -19,6 +19,14 @@ const uint8ArrayConcat = (arr: Uint8Array[]) => {
 	return ret;
 }
 
+const uint8ArrayCompare = (a: Uint8Array, b: Uint8Array): number => {
+	for(let i=0; i<Math.min(a.length, b.length); i++) {
+		if(a[i] == b[i]) continue;
+		return a[i] - b[i];
+	}
+	return 0;
+}
+
 type Wasm = {
 	HEAPU8: {
 		subarray: (begin: number, end: number) => Uint8Array;
@@ -27,69 +35,80 @@ type Wasm = {
 };
 
 class DecryptionContext {
-	nThreads: number;
-	workers: EPIRWorker[] = [];
-	mG_: number[] = [];
-	mmax: number = -1;
-	constructor(nThreads: number = navigator.hardwareConcurrency) {
-		this.nThreads = nThreads;
-		for(let i=0; i<this.nThreads; i++) {
-			this.workers.push(new EPIRWorker());
+	mG: Uint8Array;
+	constructor(mG: Uint8Array) {
+		this.mG = mG;
+	}
+	static load_uint32_t(buf: Uint8Array, le: boolean = false): number {
+		if(le) {
+			return (buf[3] * (1 << 24)) + (buf[2] << 16) + (buf[1] << 8) + buf[0];
+		} else {
+			return (buf[0] * (1 << 24)) + (buf[1] << 16) + (buf[2] << 8) + buf[3];
 		}
-		this.mG_ = new Array(nThreads);
 	}
-	async init(mG: Uint8Array): Promise<void> {
-		const mGShared = new SharedArrayBuffer(mG.length);
-		new Uint8Array(mGShared).set(mG);
-		this.mG_ = await Promise.all(this.workers.map((worker): Promise<number> => {
+	load_uint32_t_from_mG(idx: number): number {
+		return DecryptionContext.load_uint32_t(this.mG.subarray(36 * idx, 36 * idx + 4));
+	}
+	interpolationSearch(mG: Uint8Array): number {
+		const mmax = this.mG.length / MG_SIZE;
+		let imin = 0;
+		let imax = mmax - 1;
+		let left = this.load_uint32_t_from_mG(0);
+		let right = this.load_uint32_t_from_mG(mmax - 1);
+		const my = DecryptionContext.load_uint32_t(mG);
+		for(; imin<=imax; ) {
+			const imid = imin + Math.floor((imax - imin) * (my - left) / (right - left));
+			const cmp = uint8ArrayCompare(this.mG.subarray(36 * imid, 36 * imid + 32), mG);
+			if(cmp < 0) {
+				imin = imid + 1;
+				left = this.load_uint32_t_from_mG(imid);
+			} else if(cmp > 0) {
+				imax = imid - 1;
+				right = this.load_uint32_t_from_mG(imid);
+			} else {
+				return DecryptionContext.load_uint32_t(this.mG.subarray(36 * imid + 32, 36 * imid + 36), true);
+			}
+		}
+		return -1;
+	}
+	async decrypt(ciphers: Uint8Array, privkey: Uint8Array, packing: number, nThreads: number = navigator.hardwareConcurrency): Promise<Uint8Array> {
+		const ciphersCount = ciphers.length / 64;
+		const workers: EPIRWorker[] = [];
+		for(let t=0; t<nThreads; t++) workers.push(new EPIRWorker());
+		const mGs = await Promise.all(workers.map((worker, i): Promise<Uint8Array> => {
 			return new Promise((resolve, reject) => {
 				worker.addEventListener('message', (ev) => {
 					switch(ev.data.method) {
-						case 'malloc':
-							resolve(ev.data.buf_);
-							break;
-					}
-				});
-				worker.postMessage({ method: 'malloc', buf: mGShared });
-			});
-		}));
-		this.mmax = mG.length / MG_SIZE;
-	}
-	async delete() {
-		await Promise.all(this.workers.map((worker, i): Promise<void> => {
-			return new Promise((resolve, reject) => {
-				worker.addEventListener('message', (ev) => {
-					switch(ev.data.method) {
-						case 'free':
-							resolve();
-							break;
-					}
-				});
-				worker.postMessage({ method: 'free', buf_: this.mG_[i] });
-			});
-		}));
-	}
-	async decrypt(ciphers: Uint8Array, privkey: Uint8Array, packing: number): Promise<Uint8Array> {
-		const decrypted = await Promise.all(this.workers.map((worker, i): Promise<Uint8Array> => {
-			return new Promise((resolve, reject) => {
-				worker.addEventListener('message', (ev) => {
-					switch(ev.data.method) {
-						case 'decrypt_many':
-							resolve(ev.data.decrypted);
+						case 'decrypt_mG_many':
+							resolve(ev.data.mG);
 							break;
 					}
 				});
 				
-				const ciphersPerThread = Math.ceil((ciphers.length / 64) / this.nThreads);
+				const ciphersPerThread = Math.ceil(ciphersCount / nThreads);
 				const begin = i * ciphersPerThread;
-				const end = Math.min((ciphers.length / 64) + 1, (i + 1) * ciphersPerThread);
+				const end = Math.min(ciphersCount + 1, (i + 1) * ciphersPerThread);
 				const ciphersMy = ciphers.subarray(begin * 64, end * 64);
 				worker.postMessage({
-					method: 'decrypt_many', ciphers: ciphersMy , privkey: privkey, packing: packing, mG_: this.mG_[i] , mmax: this.mmax
+					method: 'decrypt_mG_many', ciphers: ciphersMy, privkey: privkey,
 				});
 			});
 		}));
-		return uint8ArrayConcat(decrypted);
+		const ms: number[] = [];
+		for(const mG of mGs) {
+			for(let i=0; 32*i<mG.length; i++) {
+				ms.push(this.interpolationSearch(mG.subarray(i * 32, (i + 1) * 32)));
+			}
+		}
+		const decrypted = new Uint8Array(packing * ciphersCount);
+		for(let i=0; i<ms.length; i++) {
+			const m = ms[i];
+			if(m == -1) throw new Error('Failed to decrypt');
+			for(let p=0; p<packing; p++) {
+				decrypted[i * packing + p] = (m >> (8 * p)) & 0xff;
+			}
+		}
+		return decrypted;
 	}
 }
 
@@ -125,14 +144,6 @@ export const epir = async (): Promise<epir_t<DecryptionContext>> => {
 		wasm._free(privkey_);
 		return pubkey;
 	};
-	
-	const uint8ArrayCompare = (a: Uint8Array, b: Uint8Array): number => {
-		for(let i=0; i<Math.min(a.length, b.length); i++) {
-			if(a[i] == b[i]) continue;
-			return a[i] - b[i];
-		}
-		return 0;
-	}
 	
 	const mg_generate = async (mG_: number, cb: ((p: number) => void) | null): Promise<void> => {
 		return new Promise((resolve, reject) => {
@@ -191,9 +202,7 @@ export const epir = async (): Promise<epir_t<DecryptionContext>> => {
 	
 	const get_decryption_context = async (param?: string | Uint8Array | ((p: number) => void)): Promise<DecryptionContext> => {
 		const mG = (param instanceof Uint8Array ? param : await get_mG(param));
-		const decCtx = new DecryptionContext();
-		await decCtx.init(mG);
-		return decCtx;
+		return new DecryptionContext(mG);
 	};
 	
 	const selector_create_ = async (key: Uint8Array, index_counts: number[], idx: number, isFast: boolean): Promise<Uint8Array> => {
