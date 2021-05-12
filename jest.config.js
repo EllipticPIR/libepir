@@ -8,7 +8,8 @@ module.exports = {
 		'**/?(*.)+(spec|test).+(ts|tsx|js)',
 	],
 	transform: {
-		'^.+\\.(ts|tsx)$': 'ts-jest'
+		'^.+\\.worker.[t|j]sx?$': 'workerloader-jest-transformer',
+		'^.+\\.(ts|tsx)$': 'ts-jest',
 	},
 };
 
