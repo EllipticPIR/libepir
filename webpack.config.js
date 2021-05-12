@@ -37,10 +37,6 @@ module.exports = {
 		}),
 	],
 	devServer: {
-		headers: {
-			'Cross-Origin-Embedder-Policy': 'require-corp',
-			'Cross-Origin-Opener-Policy': 'same-origin',
-		},
 		open: true,
 		openPage: 'src/browser.html',
 	},
