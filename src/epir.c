@@ -181,8 +181,7 @@ void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(con
 	ge25519_p3 mG_p3[omp_threads];
 	mg_cb_data cb_data_ = { 0, cb, cb_data };
 	epir_ecelgamal_mg_generate_context ctx = {
-		mmax,
-		0
+		mmax
 	};
 	epir_ecelgamal_mg_generate_prepare(&ctx, mG, mG_p3, omp_threads, mg_cb, &cb_data_);
 	#pragma omp parallel
