@@ -61,7 +61,7 @@ Usage
 
 ### C
 
-See [epir.h](./src/epir.h) for function definitions.
+See [epir.h](./src_c/epir.h) for function definitions.
 
 For general usage, see bench_\*.c files.
 
@@ -69,15 +69,15 @@ The C implementation has no runtime heap memory allocation.
 
 ### C++
 
-See [epir.hpp](./src/epir.hpp) for class definitions.
+See [epir.hpp](./src_c/epir.hpp) for class definitions.
 
 For general usage, see bench_\*.cpp files.
 
 ### JavaScript / TypeScript
 
-See [index.ts](./src/index.ts) for Node.js binding definitions.
+See [epir_t.ts](./src_ts/epir_t.ts) for Node.js binding definitions.
 
-For general usage, see [test_nap.ts](./src/test_napi.ts).
+For general usage, see [test_common.ts](./src_ts/test_common.ts).
 
 
 
