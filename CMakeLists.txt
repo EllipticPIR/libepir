@@ -10,5 +10,5 @@ add_compile_options(-Wall -Wextra -Werror)
 
 enable_testing()
 
-add_subdirectory(src)
+add_subdirectory(src_c)
 

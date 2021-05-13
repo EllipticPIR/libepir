@@ -2,7 +2,7 @@
 	"targets": [
 		{
 			"target_name": "epir",
-			"sources": ["./src/epir_napi.cpp", "./src/epir.c"],
+			"sources": ["./src_ts/epir_napi.cpp", "./src_c/epir.c"],
 			"libraries": ["-lsodium", "-fopenmp"],
 			"include_dirs": ["<!@(node -p \"require('node-addon-api').include\")"],
 			"defines": ["NAPI_CPP_EXCEPTIONS"],

@@ -16,13 +16,14 @@
     "em:build": "mkdir -p build_em && cd build_em && dotenv -e ../.env -- emcmake cmake -DCMAKE_INSTALL_PREFIX=../dist .. && make all install",
     "browser:build": "webpack",
     "serve": "webpack-cli serve --mode development",
-    "test": "./build_c/src/epir_genm && jest"
+    "test": "./build_c/src_c/epir_genm && jest"
   },
   "bin": {
-    "epir_genm": "build_em/src/epir_genm"
+    "epir_genm": "build_em/src_c/epir_genm"
   },
   "files": [
-    "src/*",
+    "src_c/*",
+    "src_ts/*",
     "dist/*",
     "CMakeLists.txt",
     "binding.gyp"

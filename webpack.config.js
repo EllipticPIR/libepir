@@ -3,7 +3,7 @@ const webpack = require('webpack');
 
 module.exports = {
 	mode: 'production',
-	entry: './src/browser.ts',
+	entry: './src_ts/browser.ts',
 	output: {
 		filename: 'bundle.js',
 	},
@@ -38,7 +38,7 @@ module.exports = {
 	],
 	devServer: {
 		open: true,
-		openPage: 'src/browser.html',
+		openPage: 'src_ts/browser.html',
 	},
 };
 
