@@ -1,5 +1,5 @@
 
-type epir_t<DecryptionContext> = {
+export type epir_t<DecryptionContext> = {
 	create_privkey: () => Uint8Array;
 	pubkey_from_privkey: (pubkey: Uint8Array) => Uint8Array;
 	get_mG?: (param?: string | ((p: number) => void)) => Promise<Uint8Array>;

@@ -11,7 +11,7 @@ export interface DecryptionContext {
 	replyDecrypt: (reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number) => Uint8Array;
 }
 
-const epir = async (): Promise<epir_t<DecryptionContext>> => {
+export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	
 	const create_privkey = (): Uint8Array => {
 		return epir_napi.create_privkey();
@@ -66,5 +66,5 @@ const epir = async (): Promise<epir_t<DecryptionContext>> => {
 	
 };
 
-export default epir;
+export default createEpir;
 
