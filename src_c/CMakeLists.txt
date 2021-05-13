@@ -43,7 +43,7 @@ ExternalProject_Add(libsodium_src
 	GIT_REPOSITORY ${LIBSODIUM_GIT_REPOSITORY}
 	GIT_TAG ${LIBSODIUM_GIT_TAG}
 	BUILD_IN_SOURCE on
-	CONFIGURE_COMMAND ./configure --prefix=${CMAKE_CURRENT_BINARY_DIR}/libsodium
+	CONFIGURE_COMMAND ./configure --prefix=${CMAKE_CURRENT_BINARY_DIR}/libsodium --with-pic
 )
 
 # Load libsodium.
