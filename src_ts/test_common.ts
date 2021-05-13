@@ -3,6 +3,9 @@ import { epir_t } from './epir_t';
 
 export const runTests = (epir_: (() => Promise<epir_t<any>>)) => {
 	
+	// For WebAssembly tests, we have 3 tests which uses max CPU cores (x2 for main threads and worker threads).
+	process.setMaxListeners(3 * 2 * navigator.hardwareConcurrency);
+	
 	test('create private key', async () => {
 		const epir = await epir_();
 		const privkey = epir.create_privkey();

@@ -130,7 +130,7 @@ const funcs: KeyValue = {
 	},
 };
 
-worker.addEventListener('message', (ev) => {
+worker.onmessage = (ev) => {
 	funcs[ev.data.method].call(null, ev.data);
-});
+};
 

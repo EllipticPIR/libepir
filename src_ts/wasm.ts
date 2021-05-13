@@ -77,14 +77,13 @@ class DecryptionContext {
 		for(let t=0; t<nThreads; t++) workers.push(new EPIRWorker());
 		const mGs = await Promise.all(workers.map((worker, i): Promise<Uint8Array> => {
 			return new Promise((resolve, reject) => {
-				worker.addEventListener('message', (ev) => {
+				worker.onmessage = (ev) => {
 					switch(ev.data.method) {
 						case 'decrypt_mG_many':
 							resolve(ev.data.mG);
 							break;
 					}
-				});
-				
+				};
 				const ciphersPerThread = Math.ceil(ciphersCount / nThreads);
 				const begin = i * ciphersPerThread;
 				const end = Math.min(ciphersCount + 1, (i + 1) * ciphersPerThread);
@@ -150,26 +149,26 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 			const nThreads = 1;//navigator.hardwareConcurrency;
 			const worker = new EPIRWorker();
 			let mG: Uint8Array[] = [];
-			worker.onmessage = (e) => {
-				switch(e.data.method) {
+			worker.onmessage = (ev) => {
+				switch(ev.data.method) {
 					case 'mg_generate_cb':
-						if(cb) cb(e.data.pointsComputed);
+						if(cb) cb(ev.data.pointsComputed);
 						break;
 					case 'mg_generate_prepare':
 						//console.log('mg_generate_prepare DONE.');
 						const threadId = 0;
 						for(let i=0; i<nThreads; i++) {
-							mG.push(e.data.mG.slice(i * MG_SIZE, (i + 1) * MG_SIZE));
+							mG.push(ev.data.mG.slice(i * MG_SIZE, (i + 1) * MG_SIZE));
 						}
 						worker.postMessage({
 							method: 'mg_generate_compute', nThreads: nThreads, mmax: MMAX,
-							ctx: e.data.ctx, mG_p3: e.data.mG_p3.slice(MG_P3_SIZE * threadId, MG_P3_SIZE * (threadId + 1)), threadId: threadId,
+							ctx: ev.data.ctx, mG_p3: ev.data.mG_p3.slice(MG_P3_SIZE * threadId, MG_P3_SIZE * (threadId + 1)), threadId: threadId,
 						});
 						break;
 					case 'mg_generate_compute':
 						//console.log('mg_generate_compute DONE.');
-						for(let i=0; i*MG_SIZE<e.data.mG.length; i++) {
-							mG.push(e.data.mG.slice(i * MG_SIZE, (i + 1) * MG_SIZE));
+						for(let i=0; i*MG_SIZE<ev.data.mG.length; i++) {
+							mG.push(ev.data.mG.slice(i * MG_SIZE, (i + 1) * MG_SIZE));
 						}
 						//console.log('Sorting...');
 						const beginSort = time();
@@ -224,7 +223,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 			for(let i=0; i<nThreads; i++) {
 				workers.push(new EPIRWorker());
 				promises.push(new Promise((resolve, reject) => {
-					workers[i].addEventListener('message', (ev) => {
+					workers[i].onmessage = (ev) => {
 						switch(ev.data.method) {
 							case 'selector_create_choice':
 								const ciphersPerThread = Math.ceil((ev.data.selector.length / 64) / nThreads);
@@ -246,7 +245,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 								resolve(ev.data.selector);
 								break;
 						}
-					});
+					};
 				}));
 			}
 			workers[0].postMessage({ method: 'selector_create_choice', index_counts: index_counts, idx: idx });
