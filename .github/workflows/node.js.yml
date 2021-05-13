@@ -33,12 +33,6 @@ jobs:
         path: ~/.EllipticPIR
         key: mG.bin
 
-    - name: Register PPA repository
-      run: sudo apt-add-repository -y ppa:visvirial/ellipticpir && sudo apt update
-
-    - name: Install dependencies
-      run: sudo apt install -y libsodium-dev
-
     - run: npm ci
 
     - run: npm run build --if-present
