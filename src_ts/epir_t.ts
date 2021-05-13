@@ -10,5 +10,3 @@ export type epir_t<DecryptionContext> = {
 		=> Promise<Uint8Array>;
 };
 
-export default epir_t;
-

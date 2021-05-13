@@ -1,7 +1,7 @@
 
-import epir_t from './epir_t';
-import epir_addon from './addon';
-import epir_wasm from './wasm';
+import { epir_t } from './epir_t';
+import { createEpir as createEpir_addon } from './addon';
+import { createEpir as createEpir_wasm } from './wasm';
 
 const time = () => new Date().getTime();
 
@@ -46,7 +46,7 @@ const run = async (epir: epir_t<any>) => {
 };
 
 (async () => {
-	run(await epir_addon());
-	run(await epir_wasm());
+	run(await createEpir_addon());
+	run(await createEpir_wasm());
 })();
 

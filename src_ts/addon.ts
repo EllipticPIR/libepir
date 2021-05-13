@@ -2,7 +2,7 @@
  * Node.js (TypeScript) bindings for Native C EllipticPIR library interface.
  */
 
-import epir_t from './epir_t';
+import { epir_t } from './epir_t';
 
 const epir_napi = require('../build/Release/epir');
 
@@ -65,6 +65,4 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	};
 	
 };
-
-export default createEpir;
 

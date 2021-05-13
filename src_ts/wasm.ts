@@ -1,5 +1,5 @@
 
-import epir_t from './epir_t';
+import { epir_t } from './epir_t';
 import EPIRWorker from './wasm.worker.ts';
 
 const time = () => new Date().getTime();
@@ -112,7 +112,7 @@ class DecryptionContext {
 	}
 }
 
-export const epir = async (): Promise<epir_t<DecryptionContext>> => {
+export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	
 	const wasm_ = require('../dist/epir.js');
 	const wasm = await wasm_();
@@ -279,6 +279,4 @@ export const epir = async (): Promise<epir_t<DecryptionContext>> => {
 	};
 	
 };
-
-export default epir;
 
