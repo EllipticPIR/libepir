@@ -1,7 +1,7 @@
 
 import Dexie from 'dexie';
 
-import { epir as epir_, MMAX } from './wasm';
+import { createEpir, MMAX } from './wasm';
 
 const time = () => new Date().getTime();
 
@@ -38,7 +38,7 @@ class MGDatabase extends Dexie {
 }
 
 (async () => {
-	const epir = await epir_();
+	const epir = await createEpir();
 	// create_privkey().
 	const privkey = epir.create_privkey();
 	log(`privkey: 0x${uint8ArrayToString(privkey)}`);
