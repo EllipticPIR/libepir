@@ -48,9 +48,8 @@ install(TARGETS epir epir_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/src/epir.h ${PROJECT_SOURCE_DIR}/src/epir.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(TARGETS epir_genm DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-include(CTest)
-
-if(BUILD_TESTING)
+option(BUILD_BENCHES "Whether to build bench_* binaries." OFF)
+if(BUILD_BENCHES)
 	
 	# ./bench_ecelgamal
 	add_executable(bench_ecelgamal bench_ecelgamal.c epir.h)
@@ -76,20 +75,9 @@ if(BUILD_TESTING)
 	add_executable(bench_reply_decrypt_cpp bench_reply_decrypt_cpp.cpp epir.hpp bench_reply_decrypt_data.h)
 	target_link_libraries(bench_reply_decrypt_cpp epir ${LIBSODIUM_LIBRARIES})
 	
-	add_test(NAME "mG_generate"             COMMAND $<TARGET_FILE:epir_genm> "${CMAKE_BINARY_DIR}/mG.bin")
-	add_test(NAME "mG_delete"               COMMAND rm "${CMAKE_BINARY_DIR}/mG.bin")
-	add_test(NAME "bench_ecelgamal"         COMMAND $<TARGET_FILE:bench_ecelgamal> "${CMAKE_BINARY_DIR}/mG.bin")
-	add_test(NAME "bench_ecelgamal_cpp"     COMMAND $<TARGET_FILE:bench_ecelgamal_cpp> "${CMAKE_BINARY_DIR}/mG.bin")
-	add_test(NAME "bench_selector"          COMMAND $<TARGET_FILE:bench_selector>)
-	add_test(NAME "bench_selector_cpp"      COMMAND $<TARGET_FILE:bench_selector_cpp>)
-	add_test(NAME "bench_reply_decrypt"     COMMAND $<TARGET_FILE:bench_reply_decrypt> "${CMAKE_BINARY_DIR}/mG.bin")
-	add_test(NAME "bench_reply_decrypt_cpp" COMMAND $<TARGET_FILE:bench_reply_decrypt_cpp> "${CMAKE_BINARY_DIR}/mG.bin")
-	
-	set_tests_properties(
-		bench_ecelgamal bench_ecelgamal_cpp bench_reply_decrypt bench_reply_decrypt_cpp
-		PROPERTIES FIXTURES_REQUIRED mG)
-	set_tests_properties(mG_generate PROPERTIES FIXTURES_SETUP   mG)
-	set_tests_properties(mG_delete   PROPERTIES FIXTURES_CLEANUP mG)
-	
+endif()
+
+if(BUILD_TESTING)
+	add_subdirectory(test)
 endif()
 

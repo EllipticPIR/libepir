@@ -126,14 +126,14 @@ namespace EllipticPIR {
 			indexCounts(indexCounts), ciphers(ciphersCount()) {
 			epir_selector_create(
 				(unsigned char*)this->ciphers.data(), pubkey.bytes,
-				this->indexCounts.data(), this->indexCounts.size(), idx);
+				this->indexCounts.data(), this->indexCounts.size(), idx, NULL);
 		}
 		
 		Selector(const std::vector<uint64_t> &indexCounts, const PrivKey &privkey, const uint64_t idx):
 			indexCounts(indexCounts), ciphers(ciphersCount()) {
 			epir_selector_create_fast(
 				(unsigned char*)this->ciphers.data(), privkey.bytes,
-				this->indexCounts.data(), this->indexCounts.size(), idx);
+				this->indexCounts.data(), this->indexCounts.size(), idx, NULL);
 		}
 		
 		Selector(const std::vector<unsigned char> data): ciphers(data.size() / EPIR_CIPHER_SIZE) {

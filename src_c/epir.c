@@ -183,7 +183,11 @@ void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(con
 	ge25519_precomp tG_precomp;
 	memset(&tG_precomp, 0, sizeof(ge25519_precomp));
 	epir_ecelgamal_mg_generate_context ctx = { mmax, tG_precomp };
-	epir_ecelgamal_mg_generate_prepare(&ctx, mG, mG_p3, omp_threads, mg_cb, &cb_data_);
+	if(cb == NULL) {
+		epir_ecelgamal_mg_generate_prepare(&ctx, mG, mG_p3, omp_threads, NULL, NULL);
+	} else {
+		epir_ecelgamal_mg_generate_prepare(&ctx, mG, mG_p3, omp_threads, mg_cb, &cb_data_);
+	}
 	#pragma omp parallel
 	{
 		#ifdef __EMSCRIPTEN__
@@ -191,7 +195,11 @@ void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(con
 		#else
 		const uint32_t omp_id = omp_get_thread_num();
 		#endif
-		epir_ecelgamal_mg_generate_compute(&ctx, mG, mmax, &mG_p3[omp_id], omp_id, omp_threads, mg_cb, &cb_data_);
+		if(cb == NULL) {
+			epir_ecelgamal_mg_generate_compute(&ctx, mG, mmax, &mG_p3[omp_id], omp_id, omp_threads, NULL, NULL);
+		} else {
+			epir_ecelgamal_mg_generate_compute(&ctx, mG, mmax, &mG_p3[omp_id], omp_id, omp_threads, mg_cb, &cb_data_);
+		}
 	}
 	epir_ecelgamal_mg_generate_sort(&ctx, mG);
 }
@@ -263,12 +271,13 @@ void epir_selector_create_choice(unsigned char *ciphers, const uint64_t *index_c
 void epir_selector_create_(
 	unsigned char *ciphers, const unsigned char *key,
 	const uint64_t *index_counts, const uint8_t n_indexes,
-	const uint64_t idx, void (*encrypt)(unsigned char*, const unsigned char*, const uint64_t, const unsigned char*)) {
+	const uint64_t idx, void (*encrypt)(unsigned char*, const unsigned char*, const uint64_t, const unsigned char*),
+	unsigned char *r) {
 	const uint64_t n_ciphers = epir_selector_ciphers_count(index_counts, n_indexes);
 	epir_selector_create_choice(ciphers, index_counts, n_indexes, idx);
 	#pragma omp parallel for
 	for(size_t i=0; i<n_ciphers; i++) {
-		encrypt(ciphers + i * EPIR_CIPHER_SIZE, key, ciphers[i * EPIR_CIPHER_SIZE] ? 1 : 0, NULL);
+		encrypt(ciphers + i * EPIR_CIPHER_SIZE, key, ciphers[i * EPIR_CIPHER_SIZE] ? 1 : 0, r ? &r[i * EPIR_SCALAR_SIZE] : NULL);
 	}
 }
 

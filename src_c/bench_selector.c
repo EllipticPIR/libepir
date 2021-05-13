@@ -25,12 +25,12 @@ int main() {
 	
 	// Run selector_create().
 	PRINT_MEASUREMENT(true, "Selectors created (normal) in %.0fms.\n",
-		epir_selector_create(ciphers, pubkey, index_counts, N_INDEXES, INDEX);
+		epir_selector_create(ciphers, pubkey, index_counts, N_INDEXES, INDEX, NULL);
 	);
 	
 	// Run selector_create_fast().
 	PRINT_MEASUREMENT(true, "Selectors created (fast) in %.0fms.\n",
-		epir_selector_create_fast(ciphers, privkey, index_counts, N_INDEXES, INDEX);
+		epir_selector_create_fast(ciphers, privkey, index_counts, N_INDEXES, INDEX, NULL);
 	);
 	
 	free(ciphers);
