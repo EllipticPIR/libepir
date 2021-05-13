@@ -43,5 +43,14 @@ jobs:
 
     - run: npm run build --if-present
 
+    - name: Setup emsdk
+      uses: mymindstorm/setup-emsdk@v9
+      with:
+        version: 2.0.20
+        actions-cache-folder: 'emsdk-cache'
+
+    - name: Build WebAssembly
+      run: npm run em:build
+
     - run: npm test
 
