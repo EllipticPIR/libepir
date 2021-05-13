@@ -1,6 +1,8 @@
 libepir - EllipticPIR client library
 ====================================
 
+[![Coverage Status](https://coveralls.io/repos/github/EllipticPIR/libepir/badge.svg?branch=master)](https://coveralls.io/github/EllipticPIR/libepir?branch=master)
+
 This library contains cryptographic functions which are required
 to encrypt a query (a selector) to the EllipticPIR server
 and to decrypt a reply from the EllipticPIR server.
