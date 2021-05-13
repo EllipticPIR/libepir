@@ -1,6 +1,8 @@
 libepir - EllipticPIR client library
 ====================================
 
+![CMake](https://github.com/EllipticPIR/libepir/actions/workflows/cmake.yml/badge.svg)
+![Node.js CI](https://github.com/EllipticPIR/libepir/actions/workflows/node.js.yml/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/EllipticPIR/libepir/badge.svg?branch=master)](https://coveralls.io/github/EllipticPIR/libepir?branch=master)
 
 This library contains cryptographic functions which are required
