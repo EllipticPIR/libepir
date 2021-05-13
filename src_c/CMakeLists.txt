@@ -47,21 +47,23 @@ ExternalProject_Add(libsodium_src
 )
 
 # Load libsodium.
-find_package(PkgConfig)
-set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH} ${CMAKE_CURRENT_BINARY_DIR}/libsodium")
-pkg_check_modules(LIBSODIUM REQUIRED libsodium)
-include_directories(${LIBSODIUM_INCLUDE_DIRS})
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/libsodium/include)
+link_directories(${CMAKE_CURRENT_BINARY_DIR}/libsodium/lib)
 
 # ./libepir.so
 add_library(epir SHARED epir.c epir.h)
+add_dependencies(epir libsodium_src)
+target_link_libraries(epir "-lsodium")
 
 # ./libepir.a
 add_library(epir_static STATIC epir.c epir.h)
 set_target_properties(epir_static PROPERTIES OUTPUT_NAME epir)
+add_dependencies(epir_static libsodium_src)
+target_link_libraries(epir_static "-lsodium")
 
 # ./epir_genm
 add_executable(epir_genm epir_genm.cpp epir.h common.h)
-target_link_libraries(epir_genm epir ${LIBSODIUM_LIBRARIES})
+target_link_libraries(epir_genm epir)
 
 # Add install targets.
 include(GNUInstallDirs)
@@ -71,31 +73,24 @@ install(TARGETS epir_genm DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 option(BUILD_BENCHES "Whether to build bench_* binaries." OFF)
 if(BUILD_BENCHES)
-	
 	# ./bench_ecelgamal
 	add_executable(bench_ecelgamal bench_ecelgamal.c epir.h)
-	target_link_libraries(bench_ecelgamal epir ${LIBSODIUM_LIBRARIES})
-	
+	target_link_libraries(bench_ecelgamal epir)
 	# ./bench_ecelgamal_cpp
 	add_executable(bench_ecelgamal_cpp bench_ecelgamal_cpp.cpp epir.hpp)
-	target_link_libraries(bench_ecelgamal_cpp epir ${LIBSODIUM_LIBRARIES})
-	
+	target_link_libraries(bench_ecelgamal_cpp epir)
 	# ./bench_selector
 	add_executable(bench_selector bench_selector.c epir.h)
-	target_link_libraries(bench_selector epir ${LIBSODIUM_LIBRARIES})
-	
+	target_link_libraries(bench_selector epir)
 	# ./bench_selector_cpp
 	add_executable(bench_selector_cpp bench_selector_cpp.cpp epir.hpp)
-	target_link_libraries(bench_selector_cpp epir ${LIBSODIUM_LIBRARIES})
-	
+	target_link_libraries(bench_selector_cpp epir)
 	# ./bench_reply_decrypt
 	add_executable(bench_reply_decrypt bench_reply_decrypt.c epir.h bench_reply_decrypt_data.h)
-	target_link_libraries(bench_reply_decrypt epir ${LIBSODIUM_LIBRARIES})
-	
+	target_link_libraries(bench_reply_decrypt epir)
 	# ./bench_reply_decrypt_cpp
 	add_executable(bench_reply_decrypt_cpp bench_reply_decrypt_cpp.cpp epir.hpp bench_reply_decrypt_data.h)
-	target_link_libraries(bench_reply_decrypt_cpp epir ${LIBSODIUM_LIBRARIES})
-	
+	target_link_libraries(bench_reply_decrypt_cpp epir)
 endif()
 
 if(BUILD_TESTING)
