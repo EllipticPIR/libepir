@@ -74,7 +74,7 @@ class MGDatabase extends Dexie {
 	const selectorFast = await epir.selector_create_fast(privkey, index_counts, 1024);
 	log(`Selector created (fast) in ${(time() - beginSelectorsFastCreate).toLocaleString()}ms.`);
 	// reply_decrypt().
-	const data = require('../src/bench_js_reply_data.json');
+	const data = require('../src_ts/bench_js_reply_data.json');
 	const beginDecrypt = time();
 	const decrypted = await epir.reply_decrypt(
 		decCtx, new Uint8Array(data.reply), new Uint8Array(data.privkey), data.dimension, data.packing);

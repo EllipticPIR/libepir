@@ -17,7 +17,10 @@ extern "C" {
 #include <string.h>
 
 #define CONFIGURED 1
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 #include <sodium/private/ed25519_ref10.h>
+#pragma GCC diagnostic pop
 #undef CONFIGURED
 
 #ifdef __EMSCRIPTEN__
