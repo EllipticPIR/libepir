@@ -26,18 +26,6 @@ $ sudo apt install libepir-dev
 
 ### Build your own
 
-To build and install *libepir*, you need to install [the customized version of *libsodium*](https://github.com/EllipticPIR/libsodium).
-
-```
-$ git clone https://github.com/EllipticPIR/libsodium.git
-$ cd libsodium
-$ ./configure
-$ make -j4  # (change the number "4" to your physical CPU cores to parallelize the build).
-$ sudo make install
-```
-
-Then, continue building *libepir*.
-
 ```
 $ git clone https://github.com/EllipticPIR/libepir.git
 $ cd libepir
