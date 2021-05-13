@@ -205,6 +205,17 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		return new DecryptionContext(mG);
 	};
 	
+	const getRandomBytes = (len: number) => {
+		if(window && window.crypto && window.crypto.getRandomValues) {
+			const ret = new Uint8Array(len);
+			window.crypto.getRandomValues(ret);
+			return ret;
+		} else {
+			const crypto = require('crypto');
+			return crypto.randomBytes(len);
+		}
+	};
+	
 	const selector_create_ = async (key: Uint8Array, index_counts: number[], idx: number, isFast: boolean): Promise<Uint8Array> => {
 		return new Promise(async (resolve, reject) => {
 			const nThreads = navigator.hardwareConcurrency;
@@ -222,8 +233,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 									const end = Math.min((ev.data.selector.length / 64) + 1, (t + 1) * ciphersPerThread);
 									const random = new Uint8Array((end - begin) * 32);
 									for(let j=0; j*32<random.length; j++) {
-										const tmp = new Uint8Array(32);
-										window.crypto.getRandomValues(tmp);
+										const tmp = getRandomBytes(32);
 										random.set(tmp, j * 32);
 									}
 									const selector_t = ev.data.selector.subarray(begin * 64, end * 64);

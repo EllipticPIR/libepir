@@ -58,7 +58,7 @@
     "webpack-cli": "^4.7.0",
     "webpack-dev-server": "^3.11.2",
     "worker-loader": "^3.0.8",
-    "workerloader-jest-transformer": "^0.0.3"
+    "workerloader-jest-transformer": "visvirial/workerloader-jest-transformer#patch-1"
   },
   "dependencies": {
     "jest": "^26.6.3",
