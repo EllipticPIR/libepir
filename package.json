@@ -6,9 +6,9 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "prepack": "npm run clean && npm run build && npm run em:build",
-    "preinstall": "",
+    "preinstall": "npm run c:build",
     "install": "node-gyp rebuild",
-    "postinstall": "npm run c:build",
+    "postinstall": "",
     "build": "tsc",
     "clean": "rm -rf build_c build_em dist",
     "c:build": "mkdir -p build_c && cd build_c && cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && make",
