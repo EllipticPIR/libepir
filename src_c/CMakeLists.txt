@@ -1,16 +1,27 @@
 
+include(ExternalProject)
+
+set(LIBSODIUM_GIT_REPOSITORY "https://github.com/EllipticPIR/libsodium.git")
+set(LIBSODIUM_GIT_TAG ci-master)
+
 if(EMSCRIPTEN)
-	# Load sodium.
-	find_package(PkgConfig)
-	set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/$ENV{LIBSODIUM_PATH}/libsodium-js-sumo")
-	pkg_check_modules(LIBSODIUM REQUIRED libsodium)
-	include_directories(${LIBSODIUM_INCLUDE_DIRS})
-	link_directories(${LIBSODIUM_LIBRARY_DIRS})
+	# Build libsodium.
+	ExternalProject_Add(libsodium_src
+		GIT_REPOSITORY ${LIBSODIUM_GIT_REPOSITORY}
+		GIT_TAG ${LIBSODIUM_GIT_TAG}
+		BUILD_IN_SOURCE on
+		CONFIGURE_COMMAND ""
+		BUILD_COMMAND CONFIG_EXTRA=--cache-file=libsodium-js-sumo.cache ./dist-build/emscripten.sh --sumo
+	)
+	# Load libsodium.
+	include_directories(${CMAKE_CURRENT_BINARY_DIR}/libsodium_src-prefix/src/libsodium_src/libsodium-js-sumo/include)
+	link_directories(${CMAKE_CURRENT_BINARY_DIR}/libsodium_src-prefix/src/libsodium_src/libsodium-js-sumo/lib)
 	# Enable optimizations.
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -flto=full -O3")
 	# ./epir.js
 	add_executable(epir epir.c epir.h)
-	target_link_libraries(epir ${LIBSODIUM_LIBRARIES})
+	add_dependencies(epir libsodium_src)
+	target_link_libraries(epir "-lsodium")
 	target_link_options(epir PUBLIC
 		"SHELL:-s MODULARIZE"
 		"SHELL:-s ALLOW_MEMORY_GROWTH=1"
@@ -27,7 +38,17 @@ find_package(OpenMP REQUIRED)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 
+# Build libsodium.
+ExternalProject_Add(libsodium_src
+	GIT_REPOSITORY ${LIBSODIUM_GIT_REPOSITORY}
+	GIT_TAG ${LIBSODIUM_GIT_TAG}
+	BUILD_IN_SOURCE on
+	CONFIGURE_COMMAND ./configure --prefix=${CMAKE_CURRENT_BINARY_DIR}/libsodium
+)
+
+# Load libsodium.
 find_package(PkgConfig)
+set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH} ${CMAKE_CURRENT_BINARY_DIR}/libsodium")
 pkg_check_modules(LIBSODIUM REQUIRED libsodium)
 include_directories(${LIBSODIUM_INCLUDE_DIRS})
 

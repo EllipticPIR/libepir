@@ -13,7 +13,7 @@
     "clean": "rm -rf build_c build_em dist",
     "c:build": "mkdir -p build_c && cd build_c && cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && make",
     "gyp:rebuild": "node-gyp rebuild",
-    "em:build": "mkdir -p build_em && cd build_em && dotenv -e ../.env -- emcmake cmake -DCMAKE_INSTALL_PREFIX=../dist .. && make all install",
+    "em:build": "mkdir -p build_em && cd build_em && emcmake cmake -DCMAKE_INSTALL_PREFIX=../dist .. && emmake make all install",
     "browser:build": "webpack",
     "serve": "webpack-cli serve --mode development",
     "test": "./build_c/src_c/epir_genm && jest"
@@ -48,7 +48,6 @@
     "@types/jest": "^26.0.23",
     "@types/node": "^14.14.37",
     "dexie": "^3.0.3",
-    "dotenv-cli": "^4.0.0",
     "node-gyp": "^8.0.0",
     "process": "^0.11.10",
     "ts-jest": "^26.5.6",
