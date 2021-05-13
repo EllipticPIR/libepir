@@ -24,6 +24,7 @@ if(BUILD_TESTING)
 	add_custom_command(
 		OUTPUT coverage.stripped.info
 		COMMAND lcov -r coverage.info *test* */sodium/* */googletest/* */c++/* -o coverage.stripped.info
+		DEPENDS coverage.info
 	)
 	add_custom_target(
 		coverage
