@@ -164,7 +164,7 @@ void epir_selector_create_(
 	unsigned char *ciphers, const unsigned char *key,
 	const uint64_t *index_counts, const uint8_t n_indexes,
 	const uint64_t idx, void (*encrypt)(unsigned char*, const unsigned char*, const uint64_t, const unsigned char*),
-	unsigned char *r);
+	const unsigned char *r);
 
 /**
  * Create a selector.
@@ -182,7 +182,7 @@ static inline
 void epir_selector_create(
 	unsigned char *ciphers, const unsigned char *pubkey,
 	const uint64_t *index_counts, const uint8_t n_indexes,
-	const uint64_t idx, unsigned char *r) {
+	const uint64_t idx, const unsigned char *r) {
 	epir_selector_create_(ciphers, pubkey, index_counts, n_indexes, idx, epir_ecelgamal_encrypt, r);
 }
 
@@ -202,7 +202,7 @@ static inline
 void epir_selector_create_fast(
 	unsigned char *ciphers, const unsigned char *privkey,
 	const uint64_t *index_counts, const uint8_t n_indexes,
-	const uint64_t idx, unsigned char *r) {
+	const uint64_t idx, const unsigned char *r) {
 	epir_selector_create_(ciphers, privkey, index_counts, n_indexes, idx, epir_ecelgamal_encrypt_fast, r);
 }
 

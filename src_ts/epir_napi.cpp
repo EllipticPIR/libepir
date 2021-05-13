@@ -3,7 +3,7 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
-#include "epir.h"
+#include "../src_c/epir.h"
 #pragma GCC diagnostic pop
 
 #define EPIR_MG_MAX (1 << 24)
@@ -155,7 +155,7 @@ Napi::Value DecryptionContext::ReplyDecrypt(const Napi::CallbackInfo& info) {
 Napi::Value SelectorCreate_(
 	const Napi::CallbackInfo &info,
 	void (*selector_create)(unsigned char *ciphers, const unsigned char *privkey,
-		const uint64_t *index_counts, const uint8_t n_indexes, const uint64_t idx)) {
+		const uint64_t *index_counts, const uint8_t n_indexes, const uint64_t idx, const unsigned char *r)) {
 	Napi::Env env = info.Env();
 	if(info.Length() < 3) {
 		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
@@ -209,7 +209,7 @@ Napi::Value SelectorCreate_(
 	}
 	// Generate a selector.
 	std::vector<uint8_t> ciphers(ciphers_count * EPIR_CIPHER_SIZE);
-	selector_create(ciphers.data(), key, index_counts.data(), n_indexes, idx);
+	selector_create(ciphers.data(), key, index_counts.data(), n_indexes, idx, NULL);
 	return createUint8Array(env, ciphers);
 }
 
