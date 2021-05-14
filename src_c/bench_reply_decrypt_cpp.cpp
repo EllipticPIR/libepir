@@ -5,15 +5,36 @@
 #include <stdio.h>
 
 #include "epir.hpp"
+#include "epir_reply_mock.h"
 #include "common.h"
 
-#include "bench_reply_decrypt_data.h"
-
-#define ELEM_SIZE (sizeof(bench_reply_decrypt_data_answer))
+#define DIMENSION (3)
+#define PACKING   (3)
+#define ELEM_SIZE (32)
 
 int main(int argc, char *argv[]) {
 	
 	const char *mG_path = (argc < 2 ? NULL : argv[1]);
+	
+	// Create key pair.
+	printf("Generatig a key pair...\n");
+	const EllipticPIR::PrivKey privkey;
+	const EllipticPIR::PubKey pubkey(privkey);
+	
+	// Generate an element.
+	printf("Generatig an element...\n");
+	std::vector<uint8_t> elem(ELEM_SIZE);
+	for(size_t i=0; i<ELEM_SIZE; i++) {
+		elem[i] = rand() & 0xff;
+	}
+	
+	// Generate a sample reply data.
+	printf("Generatig a reply...\n");
+	const size_t reply_size = epir_reply_size(DIMENSION, PACKING, ELEM_SIZE);
+	std::vector<unsigned char> reply(reply_size);
+	PRINT_MEASUREMENT(true, "Sample reply created in %.0fms.\n",
+		epir_reply_mock(reply.data(), pubkey.bytes, DIMENSION, PACKING, elem.data(), ELEM_SIZE, NULL);
+	);
 	
 	// Load mG.bin.
 	printf("Loading mG.bin...\n");
@@ -23,11 +44,7 @@ int main(int argc, char *argv[]) {
 	
 	// Decrypt.
 	PRINT_MEASUREMENT(true, "Reply decrypted in %.0fms.\n",
-		const std::vector<unsigned char> reply(
-			bench_reply_decrypt_data_reply, bench_reply_decrypt_data_reply + sizeof(bench_reply_decrypt_data_reply));
-		const EllipticPIR::PrivKey privkey(bench_reply_decrypt_data_privkey);
-		const std::vector<unsigned char> decrypted = decCtx.decryptReply(
-			privkey, reply, bench_reply_decrypt_data_dimension, bench_reply_decrypt_data_packing);
+		const std::vector<unsigned char> decrypted = decCtx.decryptReply(privkey, reply, DIMENSION, PACKING);
 	);
 	
 	// Data inconsistency check.
@@ -35,7 +52,7 @@ int main(int argc, char *argv[]) {
 		printf("The decrypted message has an invalid size: %zdB.\n", decrypted.size());
 		exit(1);
 	}
-	if(memcmp(decrypted.data(), bench_reply_decrypt_data_answer, ELEM_SIZE) != 0) {
+	if(memcmp(decrypted.data(), elem.data(), ELEM_SIZE) != 0) {
 		printf("The decrypted message is not correct.\n");
 		exit(1);
 	}
