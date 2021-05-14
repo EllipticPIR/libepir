@@ -212,6 +212,7 @@ int32_t epir_mG_interpolation_search(const unsigned char *find, const epir_mG_t 
 		//const size_t imid = imin + ((imax - imin) >> 1);
 		if(left >= right) return -1;
 		const size_t imid = imin + (uint64_t)(imax - imin) * (my - left) / (right - left);
+		if((imid < imin) || (imid > imax)) return -1;
 		const int cmp = memcmp(mG[imid].point, find, EPIR_POINT_SIZE);
 		if(cmp < 0) {
 			imin = imid + 1;
@@ -282,6 +283,7 @@ int epir_reply_decrypt(
 		for(size_t i=0; i<mid_count; i++) {
 			const int32_t decrypted = epir_ecelgamal_decrypt(privkey, &reply[i * EPIR_CIPHER_SIZE], mG, mmax);
 			if(decrypted < 0) {
+				//printf("Decryption error found at phase=%d, i=%zd\n", phase, i);
 				success = false;
 				continue;
 			}
