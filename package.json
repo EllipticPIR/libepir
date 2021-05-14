@@ -16,7 +16,7 @@
     "em:build": "mkdir -p build_em && cd build_em && emcmake cmake -DCMAKE_INSTALL_PREFIX=../dist .. && emmake make all install",
     "browser:build": "webpack",
     "serve": "webpack-cli serve --mode development",
-    "test": "./build_c/src_c/epir_genm && jest"
+    "test": "./build_c/src_c/epir_genm && jest --verbose"
   },
   "bin": {
     "epir_genm": "build_em/src_c/epir_genm"
