@@ -147,9 +147,14 @@ TEST(ECElGamalTest, mG_load_default) {
 	ASSERT_PRED2(SameHash<epir_mG_t>, mG_test2, mG_hash);
 }
 
-TEST(ECElGamalTest, decrypt) {
+TEST(ECElGamalTest, decrypt_success) {
 	const int32_t decrypted = epir_ecelgamal_decrypt(privkey, cipher, mG_test.data(), EPIR_DEFAULT_MG_MAX);
 	ASSERT_EQ(decrypted, (int32_t)msg);
+}
+
+TEST(ECElGamalTest, decrypt_fail) {
+	const int32_t decrypted = epir_ecelgamal_decrypt(pubkey, cipher, mG_test.data(), EPIR_DEFAULT_MG_MAX);
+	ASSERT_EQ(decrypted, -1);
 }
 
 TEST(ECElGamalTest, random_encrypt_normal) {
@@ -241,12 +246,19 @@ TEST(SelectorTest, selector_create_fast) {
 #define ELEM_SIZE (sizeof(bench_reply_decrypt_data_answer))
 
 #ifdef TEST_USING_MG
-TEST(ReplyTest, decrypt) {
+TEST(ReplyTest, decrypt_success) {
 	const int data_len = epir_reply_decrypt(
 		bench_reply_decrypt_data_reply, sizeof(bench_reply_decrypt_data_reply), bench_reply_decrypt_data_privkey,
 		bench_reply_decrypt_data_dimension, bench_reply_decrypt_data_packing, mG_test.data(), EPIR_DEFAULT_MG_MAX);
 	ASSERT_GE(data_len, (int)ELEM_SIZE);
 	ASSERT_PRED3(SameBuffer, bench_reply_decrypt_data_reply, bench_reply_decrypt_data_answer, ELEM_SIZE);
+}
+
+TEST(ReplyTest, decrypt_fail) {
+	const int data_len = epir_reply_decrypt(
+		bench_reply_decrypt_data_reply, sizeof(bench_reply_decrypt_data_reply), privkey,
+		bench_reply_decrypt_data_dimension, bench_reply_decrypt_data_packing, mG_test.data(), EPIR_DEFAULT_MG_MAX);
+	ASSERT_EQ(data_len, -1);
 }
 #endif
 
