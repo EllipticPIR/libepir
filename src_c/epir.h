@@ -112,7 +112,7 @@ void epir_ecelgamal_mg_generate_compute(
 	void (*cb)(void*), void *cb_data);
 
 EMSCRIPTEN_KEEPALIVE
-void epir_ecelgamal_mg_generate_sort(epir_ecelgamal_mg_generate_context *ctx, epir_mG_t *mG);
+void epir_ecelgamal_mg_generate_no_sort(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data);
 
 EMSCRIPTEN_KEEPALIVE
 void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data);

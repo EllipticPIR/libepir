@@ -89,12 +89,6 @@ size_t epir_ecelgamal_load_mg(epir_mG_t *mG, const size_t mmax, const char *path
 	return elemsRead;
 }
 
-int mG_compare(const void *a, const void *b) {
-	epir_mG_t *x = (epir_mG_t*)a;
-	epir_mG_t *y = (epir_mG_t*)b;
-	return memcmp(x->point, y->point, EPIR_POINT_SIZE);
-}
-
 static inline uint32_t get_omp_threads() {
 #ifdef __EMSCRIPTEN__
 	return 1;
@@ -159,10 +153,6 @@ void epir_ecelgamal_mg_generate_compute(
 	}
 }
 
-void epir_ecelgamal_mg_generate_sort(epir_ecelgamal_mg_generate_context *ctx, epir_mG_t *mG) {
-	qsort(mG, ctx->mmax, sizeof(epir_mG_t), mG_compare);
-}
-
 typedef struct {
 	size_t points_computed;
 	void (*cb)(const size_t, void*);
@@ -176,7 +166,7 @@ void mg_cb(void *cb_data) {
 	cb_data_->cb(cb_data_->points_computed, cb_data_->cb_data);
 }
 
-void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data) {
+void epir_ecelgamal_mg_generate_no_sort(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data) {
 	const uint32_t omp_threads = get_omp_threads();
 	ge25519_p3 mG_p3[omp_threads];
 	mg_cb_data cb_data_ = { 0, cb, cb_data };
@@ -201,7 +191,17 @@ void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(con
 			epir_ecelgamal_mg_generate_compute(&ctx, mG, mmax, &mG_p3[omp_id], omp_id, omp_threads, mg_cb, &cb_data_);
 		}
 	}
-	epir_ecelgamal_mg_generate_sort(&ctx, mG);
+}
+
+int mG_compare(const void *a, const void *b) {
+	epir_mG_t *x = (epir_mG_t*)a;
+	epir_mG_t *y = (epir_mG_t*)b;
+	return memcmp(x->point, y->point, EPIR_POINT_SIZE);
+}
+
+void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data) {
+	epir_ecelgamal_mg_generate_no_sort(mG, mmax, cb, cb_data);
+	qsort(mG, mmax, sizeof(epir_mG_t), mG_compare);
 }
 
 static inline uint32_t load_uint32_t(const unsigned char *n) {

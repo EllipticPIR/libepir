@@ -48,21 +48,24 @@ int main(int argc, char *argv[]) {
 	}
 	
 	std::vector<epir_mG_t> mG(mMax);
-	typedef struct {
-		size_t mMax;
-		double beginCompute;
-		double beginSort;
-	} cb_data_t;
-	cb_data_t cb_data = { mMax, microtime(), -1 };
-	auto cb = [](const size_t pointsComputed, void *cb_data_) {
-		cb_data_t *cb_data = (cb_data_t*)cb_data_;
-		if(pointsComputed == cb_data->mMax - 1) {
-			printf("\x1b[32mComputation done in %.0fms.\x1b[39m\n", (microtime() - cb_data->beginCompute) / 1000.);
-			cb_data->beginSort = microtime();
+	
+	// Compute.
+	const double beginCompute = microtime();
+	auto cb = [](const size_t pointsComputed, void *cb_data) {
+		uint32_t mMax = *(uint32_t*)cb_data;
+		if(pointsComputed == mMax || pointsComputed % (1'000'000) == 0) {
+			printf("\x1b[32m%8zd of %d points computed (%6.02f%%).\x1b[39m\n", pointsComputed, mMax, (100.0 * pointsComputed / mMax));
 		}
 	};
-	epir_ecelgamal_mg_generate(mG.data(), mMax, cb, &cb_data);
-	printf("\x1b[32mPoints sorted in %.0fms.\x1b[39m\n", (microtime() - cb_data.beginSort) / 1000.);
+	epir_ecelgamal_mg_generate_no_sort(mG.data(), mMax, cb, (void*)&mMax);
+	printf("\x1b[32mComputation done in %.0fms.\x1b[39m\n", (microtime() - beginCompute) / 1000.);
+	
+	// Sort.
+	const double beginSort = microtime();
+	std::sort(mG.begin(), mG.end(), [](const epir_mG_t &a, const epir_mG_t &b) {
+		return memcmp(a.point, b.point, EPIR_POINT_SIZE) < 0;
+	});
+	printf("\x1b[32mPoints sorted in %.0fms.\x1b[39m\n", (microtime() - beginSort) / 1000.);
 	
 	// Output to a binary file.
 	PRINT_MEASUREMENT(true, "Output written in %.0fms.\n",

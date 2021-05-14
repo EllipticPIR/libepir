@@ -64,6 +64,7 @@ target_link_libraries(epir_static "-lsodium")
 # ./epir_genm
 add_executable(epir_genm epir_genm.cpp epir.h common.h)
 target_link_libraries(epir_genm epir)
+set_target_properties(epir_genm PROPERTIES COMPILE_DEFINITIONS "_GLIBCXX_PARALLEL")
 
 # Add install targets.
 include(GNUInstallDirs)
