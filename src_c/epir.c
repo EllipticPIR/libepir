@@ -141,13 +141,12 @@ void epir_ecelgamal_mg_generate_prepare(
 
 void epir_ecelgamal_mg_generate_compute(
 	epir_ecelgamal_mg_generate_context *ctx,
-	epir_mG_t *mG, const size_t mG_count, ge25519_p3 *mG_p3, const uint32_t scalar_offset, const uint32_t interval,
+	epir_mG_t *mG, const size_t mG_count, ge25519_p3 *mG_p3, const uint32_t scalar_offset, const uint32_t scalar_interval,
 	void (*cb)(void*), void *cb_data) {
 	for(size_t m=0; m<mG_count; m++) {
-		const size_t idx = m * interval;
 		ge25519_add_p3_precomp(mG_p3, mG_p3, &ctx->tG_precomp);
-		ge25519_p3_tobytes(mG[idx].point, mG_p3);
-		mG[idx].scalar = idx + scalar_offset;
+		ge25519_p3_tobytes(mG[m].point, mG_p3);
+		mG[m].scalar = m * scalar_interval + scalar_offset;
 		if(cb) cb(cb_data);
 	}
 }
@@ -185,15 +184,16 @@ void epir_ecelgamal_mg_generate_no_sort(epir_mG_t *mG, const size_t mmax, void (
 		const uint32_t omp_id = omp_get_thread_num();
 		#endif
 		#define divide_up(a, b) (((a) / (b)) + (((a) % (b)) == 0 ? 0 : 1))
+		const size_t mG_per_thread = divide_up(mmax - omp_threads, omp_threads);
 		const size_t mG_count = (omp_id == omp_threads - 1) ?
-			mmax - omp_threads - (omp_threads - 1) * divide_up(mmax - omp_threads, omp_threads) :
-			divide_up(mmax - omp_threads, omp_threads);
+			mmax - omp_threads - (omp_threads - 1) * mG_per_thread : mG_per_thread;
+		const size_t mG_offset = omp_threads + (omp_id * mG_per_thread);
 		if(cb == NULL) {
 			epir_ecelgamal_mg_generate_compute(
-				&ctx, &mG[omp_threads + omp_id], mG_count, &mG_p3[omp_id], omp_threads + omp_id, omp_threads, NULL, NULL);
+				&ctx, &mG[mG_offset], mG_count, &mG_p3[omp_id], omp_threads + omp_id, omp_threads, NULL, NULL);
 		} else {
 			epir_ecelgamal_mg_generate_compute(
-				&ctx, &mG[omp_threads + omp_id], mG_count, &mG_p3[omp_id], omp_threads + omp_id, omp_threads, mg_cb, &cb_data_);
+				&ctx, &mG[mG_offset], mG_count, &mG_p3[omp_id], omp_threads + omp_id, omp_threads, mg_cb, &cb_data_);
 		}
 	}
 }
