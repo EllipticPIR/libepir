@@ -217,6 +217,7 @@ static inline int32_t interpolation_search(const unsigned char *find, const epir
 	const uint32_t my = load_uint32_t(find);
 	for(; imin<=imax; ) {
 		//const size_t imid = imin + ((imax - imin) >> 1);
+		if(left >= right) return -1;
 		const size_t imid = imin + (uint64_t)(imax - imin) * (my - left) / (right - left);
 		const int cmp = memcmp(mG[imid].point, find, EPIR_POINT_SIZE);
 		if(cmp < 0) {
