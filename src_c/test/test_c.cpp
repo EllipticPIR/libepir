@@ -114,6 +114,20 @@ TEST(ECElGamalTest, decrypt) {
 	const int32_t decrypted = epir_ecelgamal_decrypt(privkey, cipher, mG_test.data(), EPIR_DEFAULT_MG_MAX);
 	ASSERT_EQ(decrypted, (int32_t)msg);
 }
+
+TEST(ECElGamalTest, random_encrypt_normal) {
+	unsigned char cipher_test[EPIR_CIPHER_SIZE];
+	epir_ecelgamal_encrypt(cipher_test, pubkey, msg, NULL);
+	const int32_t decrypted = epir_ecelgamal_decrypt(privkey, cipher, mG_test.data(), EPIR_DEFAULT_MG_MAX);
+	ASSERT_EQ(decrypted, (int32_t)msg);
+}
+
+TEST(ECElGamalTest, random_encrypt_fast) {
+	unsigned char cipher_test[EPIR_CIPHER_SIZE];
+	epir_ecelgamal_encrypt_fast(cipher_test, privkey, msg, NULL);
+	const int32_t decrypted = epir_ecelgamal_decrypt(privkey, cipher, mG_test.data(), EPIR_DEFAULT_MG_MAX);
+	ASSERT_EQ(decrypted, (int32_t)msg);
+}
 #endif
 
 static const uint64_t index_counts[] = { 1000, 1000, 1000 };
