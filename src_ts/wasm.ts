@@ -27,6 +27,17 @@ const uint8ArrayCompare = (a: Uint8Array, b: Uint8Array, len: number = Math.min(
 	return 0;
 }
 
+const getRandomBytes = (len: number) => {
+	if(window && window.crypto && window.crypto.getRandomValues) {
+		const ret = new Uint8Array(len);
+		window.crypto.getRandomValues(ret);
+		return ret;
+	} else {
+		const crypto = require('crypto');
+		return crypto.randomBytes(len);
+	}
+};
+
 type Wasm = {
 	HEAPU8: {
 		subarray: (begin: number, end: number) => Uint8Array;
@@ -116,8 +127,6 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	const wasm_ = require('../dist/epir.js');
 	const wasm = await wasm_();
 	
-	wasm._epir_randombytes_init();
-	
 	const store_uint64_t = (offset: number, n: number) => {
 		for(let i=0; i<8; i++) {
 			wasm.HEAPU8[offset + i] = n & 0xff;
@@ -126,11 +135,26 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	}
 	
 	const create_privkey = (): Uint8Array => {
-		const privkey_ = wasm._malloc(32);
-		wasm._epir_create_privkey(privkey_);
-		const privkey = new Uint8Array(wasm.HEAPU8.subarray(privkey_, privkey_ + 32));
-		wasm._free(privkey_);
-		return privkey;
+		const isCanonical = (buf: Uint8Array): boolean => {
+			let c = (buf[31] & 0x7f) ^ 0x7f;
+			for(let i=30; i>0; i--) {
+				c |= buf[i] ^ 0xff;
+			}
+			const d = (0xed - 1 - buf[0]) >> 8;
+			return !((c == 0) && d)
+		};
+		const isZero = (buf: Uint8Array): boolean => {
+			for(const c of buf) {
+				if(c != 0) return false;
+			}
+			return true;
+		};
+		for(;;) {
+			const privkey = getRandomBytes(32);
+			privkey[31] &= 0x1f;
+			if(!isCanonical(privkey) || isZero(privkey)) continue;
+			return privkey;
+		}
 	};
 	
 	const pubkey_from_privkey = (privkey: Uint8Array): Uint8Array => {
@@ -214,17 +238,6 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	const get_decryption_context = async (param?: string | Uint8Array | ((p: number) => void)): Promise<DecryptionContext> => {
 		const mG = (param instanceof Uint8Array ? param : await get_mG(param));
 		return new DecryptionContext(mG);
-	};
-	
-	const getRandomBytes = (len: number) => {
-		if(window && window.crypto && window.crypto.getRandomValues) {
-			const ret = new Uint8Array(len);
-			window.crypto.getRandomValues(ret);
-			return ret;
-		} else {
-			const crypto = require('crypto');
-			return crypto.randomBytes(len);
-		}
 	};
 	
 	const selector_create_ = async (key: Uint8Array, index_counts: number[], idx: number, isFast: boolean): Promise<Uint8Array> => {
