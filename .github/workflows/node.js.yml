@@ -43,11 +43,11 @@ jobs:
         version: 2.0.18
         actions-cache-folder: 'emsdk-cache'
 
-    - name: Cache WebAssembly build configure cache
+    - name: Cache build directory
       uses: actions/cache@v2
       with:
-        path: ${{github.workspace}}/build_em/src_c/libsodium_src-prefix/src/libsodium_src/libsodium-js-sumo.cache
-        key: libsodium-js-sumo.cache
+        path: ${{github.workspace}}/build_em
+        key: build_em
 
     - name: Build WebAssembly
       run: npm run em:build
