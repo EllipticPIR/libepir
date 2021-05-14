@@ -16,10 +16,11 @@
     "em:build": "mkdir -p build_em && cd build_em && emcmake cmake -DCMAKE_INSTALL_PREFIX=../dist .. && emmake make all install",
     "browser:build": "webpack",
     "serve": "webpack-cli serve --mode development",
-    "test": "./build_c/src_c/epir_genm && jest --verbose"
+    "epir_genm": "LD_LIBRARY_PATH=./build_c/epir/lib ./build_c/epir/bin/epir_genm",
+    "test": "npm run epir_genm && jest --verbose"
   },
   "bin": {
-    "epir_genm": "build_em/src_c/epir_genm"
+    "epir_genm": "build_c/epir/bin/epir_genm"
   },
   "files": [
     "src_c/*",
