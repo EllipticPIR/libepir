@@ -242,14 +242,10 @@ void epir_ecelgamal_decrypt_to_mG(const unsigned char *privkey, unsigned char *c
 }
 
 int32_t epir_ecelgamal_decrypt(const unsigned char *privkey, const unsigned char *cipher, const epir_mG_t *mG, const size_t mmax) {
-	ge25519_p3 c1, c2;
-	ge25519_frombytes(&c1, cipher);
-	ge25519_frombytes(&c2, cipher + EPIR_POINT_SIZE);
-	ge25519_scalarmult(&c1, privkey, &c1);
-	ge25519_sub_p3_p3(&c2, &c2, &c1);
-	unsigned char M[EPIR_SCALAR_SIZE];
-	ge25519_p3_tobytes(M, &c2);
-	const int32_t m = interpolation_search(M, mG, mmax);
+	unsigned char buf[EPIR_CIPHER_SIZE];
+	memcpy(buf, cipher, EPIR_CIPHER_SIZE);
+	epir_ecelgamal_decrypt_to_mG(privkey, buf);
+	const int32_t m = interpolation_search(buf, mG, mmax);
 	return m;
 }
 
