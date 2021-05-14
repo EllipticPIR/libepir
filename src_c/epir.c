@@ -209,7 +209,7 @@ static inline uint32_t load_uint32_t(const unsigned char *n) {
 	return ((uint32_t)n[0] << 24) | ((uint32_t)n[1] << 16) | ((uint32_t)n[2] << 8) | ((uint32_t)n[3] << 0);
 }
 
-static inline int32_t interpolation_search(const unsigned char *find, const epir_mG_t *mG, const size_t mmax) {
+int32_t epir_ecelgamal_mg_interpolation_search(const unsigned char *find, const epir_mG_t *mG, const size_t mmax) {
 	size_t imin = 0;
 	size_t imax = mmax - 1;
 	uint32_t left = load_uint32_t(mG[0].point);
@@ -246,7 +246,7 @@ int32_t epir_ecelgamal_decrypt(const unsigned char *privkey, const unsigned char
 	unsigned char buf[EPIR_CIPHER_SIZE];
 	memcpy(buf, cipher, EPIR_CIPHER_SIZE);
 	epir_ecelgamal_decrypt_to_mG(privkey, buf);
-	const int32_t m = interpolation_search(buf, mG, mmax);
+	const int32_t m = epir_ecelgamal_mg_interpolation_search(buf, mG, mmax);
 	return m;
 }
 

@@ -115,6 +115,9 @@ EMSCRIPTEN_KEEPALIVE
 void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data);
 
 EMSCRIPTEN_KEEPALIVE
+int32_t epir_ecelgamal_mg_interpolation_search(const unsigned char *find, const epir_mG_t *mG, const size_t mmax);
+
+EMSCRIPTEN_KEEPALIVE
 void epir_ecelgamal_decrypt_to_mG(const unsigned char *privkey, unsigned char *cipher);
 
 /**

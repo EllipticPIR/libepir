@@ -105,9 +105,17 @@ TEST(ECElGamalTest, encrypt_fast) {
 #ifdef TEST_USING_MG
 static std::vector<epir_mG_t> mG_test(EPIR_DEFAULT_MG_MAX);
 
-TEST(ECElGamalTest, mG) {
+TEST(ECElGamalTest, mG_generate) {
 	epir_ecelgamal_mg_generate(mG_test.data(), EPIR_DEFAULT_MG_MAX, NULL, NULL);
 	ASSERT_PRED2(SameHash<epir_mG_t>, mG_test, mG_hash);
+}
+
+TEST(ECElGamalTest, mG_interpolation_search) {
+	for(size_t i=0; i<EPIR_DEFAULT_MG_MAX; i++) {
+		epir_mG_t mG = mG_test[i];
+		const int32_t scalar_test = epir_ecelgamal_mg_interpolation_search(mG.point, mG_test.data(), EPIR_DEFAULT_MG_MAX);
+		EXPECT_EQ(scalar_test, (int32_t)mG.scalar);
+	}
 }
 
 TEST(ECElGamalTest, decrypt) {
