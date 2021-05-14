@@ -6,17 +6,21 @@ set(LIBSODIUM_GIT_TAG ci-master)
 
 if(EMSCRIPTEN)
 	# Build libsodium.
-	set(LIBSODIUM_CONFIGURE_CACHE libsodium-js-sumo.cache)
+	set(LIBSODIUM_CONFIGURE_CACHE libsodium_js.cache)
 	ExternalProject_Add(libsodium_src
 		GIT_REPOSITORY ${LIBSODIUM_GIT_REPOSITORY}
 		GIT_TAG ${LIBSODIUM_GIT_TAG}
 		BUILD_IN_SOURCE on
-		CONFIGURE_COMMAND ""
-		BUILD_COMMAND CONFIG_EXTRA=--cache-file=${LIBSODIUM_CONFIGURE_CACHE} ./dist-build/emscripten.sh --sumo
+		CONFIGURE_COMMAND
+			emconfigure ./configure
+				--cache-file=${LIBSODIUM_CONFIGURE_CACHE} --disable-shared --prefix=${CMAKE_CURRENT_BINARY_DIR}/libsodium_js
+				--without-pthreads --disable-ssp --disable-asm --disable-pie "CFLAGS=-flto=full -O3"
+		BUILD_COMMAND emmake make
+		INSTALL_COMMAND emmake make install
 	)
 	# Load libsodium.
-	include_directories(${CMAKE_CURRENT_BINARY_DIR}/libsodium_src-prefix/src/libsodium_src/libsodium-js-sumo/include)
-	link_directories(${CMAKE_CURRENT_BINARY_DIR}/libsodium_src-prefix/src/libsodium_src/libsodium-js-sumo/lib)
+	include_directories(${CMAKE_CURRENT_BINARY_DIR}/libsodium_js/include)
+	link_directories(${CMAKE_CURRENT_BINARY_DIR}/libsodium_js/lib)
 	# Enable optimizations.
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -flto=full -O3")
 	# ./epir.js
