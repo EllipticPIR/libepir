@@ -126,6 +126,12 @@ TEST(ECElGamalTest, mG_interpolation_search) {
 }
 
 TEST(ECElGamalTest, mG_load_default) {
+	// Create ~/.EllipticPIR directory.
+	const std::string data_dir = std::string(getenv("HOME")) + "/" + EPIR_DEFAULT_DATA_DIR;
+	if(mkdir(data_dir.c_str(), 0775)) {
+		ASSERT_EQ(errno, EEXIST);
+	}
+	// Write mG.bin.
 	char path_default[epir_mG_default_path_length() + 1];
 	epir_mG_default_path(path_default, epir_mG_default_path_length() + 1);
 	std::ofstream ofs(std::string(path_default), std::ios::binary | std::ios::out);
@@ -134,6 +140,7 @@ TEST(ECElGamalTest, mG_load_default) {
 		ofs.write((char*)&p, sizeof(epir_mG_t));
 	}
 	ofs.close();
+	// Load.
 	static std::vector<epir_mG_t> mG_test2(EPIR_DEFAULT_MG_MAX);
 	const size_t elems_read = epir_mG_load(mG_test2.data(), EPIR_DEFAULT_MG_MAX, NULL);
 	EXPECT_EQ(elems_read, (size_t)EPIR_DEFAULT_MG_MAX);
