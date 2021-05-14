@@ -16,16 +16,16 @@ if(EMSCRIPTEN)
 	# Enable optimizations.
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -flto=full -O3")
 	# ./epir.js
-	add_executable(epir epir.c epir.h)
-	target_link_libraries(epir "-lsodium")
-	target_link_options(epir PUBLIC
+	add_executable(epir.js epir.c epir.h)
+	target_link_libraries(epir.js "-lsodium")
+	target_link_options(epir.js PUBLIC
 		"SHELL:-s MODULARIZE"
 		"SHELL:-s ALLOW_MEMORY_GROWTH=1"
 		"SHELL:-s ALLOW_TABLE_GROWTH=1"
 		"SHELL:-s SINGLE_FILE=1"
 		"SHELL:-s EXPORTED_FUNCTIONS=['_malloc, _free']"
 		"SHELL:-s EXTRA_EXPORTED_RUNTIME_METHODS=['addFunction, removeFunction']")
-	install(TARGETS epir DESTINATION .)
+	install(TARGETS epir.js DESTINATION .)
 	return()
 endif()
 
