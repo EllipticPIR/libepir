@@ -89,7 +89,7 @@ if(BUILD_TESTING)
 	# Create coverage information.
 	add_custom_command(
 		OUTPUT coverage.info
-		COMMAND lcov -d . -c -o coverage.info
+		COMMAND lcov -d CMakeFiles -c -o coverage.info
 	)
 	add_custom_command(
 		OUTPUT coverage.stripped.info
