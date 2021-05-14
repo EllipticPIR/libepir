@@ -146,7 +146,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	
 	const mg_generate = async (mG_: number, cb?: ((p: number) => void)): Promise<void> => {
 		// XXX: not working for navigator.hardwareConcurrency.
-		const nThreads = 1;//navigator.hardwareConcurrency / 2;
+		const nThreads = navigator.hardwareConcurrency / 2;
 		const workers: EPIRWorker[] = [];
 		for(let i=0; i<nThreads; i++) {
 			workers.push(new EPIRWorker());
