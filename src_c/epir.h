@@ -80,42 +80,42 @@ typedef struct __attribute__((__packed__)) {
 	uint32_t scalar;
 } epir_mG_t;
 
-static inline size_t epir_ecelgamal_default_mg_path_length() {
+static inline size_t epir_mG_default_path_length() {
 	return strlen(getenv("HOME")) + 1 + sizeof(EPIR_DEFAULT_DATA_DIR) + 1 + sizeof(EPIR_DEFAULT_MG_FILE);
 }
 
-static inline void epir_ecelgamal_default_mg_path(char *path, const size_t len) {
+static inline void epir_mG_default_path(char *path, const size_t len) {
 	snprintf(path, len, "%s/%s/%s", getenv("HOME"), EPIR_DEFAULT_DATA_DIR, EPIR_DEFAULT_MG_FILE);
 }
 
 EMSCRIPTEN_KEEPALIVE
-size_t epir_ecelgamal_load_mg(epir_mG_t *mG, const size_t mmax, const char *path);
+size_t epir_mG_load(epir_mG_t *mG, const size_t mmax, const char *path);
 
 typedef struct {
 	size_t          mmax;       // +  4 =   4.
 	ge25519_precomp tG_precomp; // +120 = 124.
-} epir_ecelgamal_mg_generate_context;
+} epir_mG_generate_context;
 
 EMSCRIPTEN_KEEPALIVE
-void epir_ecelgamal_mg_generate_prepare(
-	epir_ecelgamal_mg_generate_context *ctx,
+void epir_mG_generate_prepare(
+	epir_mG_generate_context *ctx,
 	epir_mG_t *mG, ge25519_p3 *mG_p3, const uint32_t n_threads,
 	void (*cb)(void*), void *cb_data);
 
 EMSCRIPTEN_KEEPALIVE
-void epir_ecelgamal_mg_generate_compute(
-	epir_ecelgamal_mg_generate_context *ctx,
+void epir_mG_generate_compute(
+	epir_mG_generate_context *ctx,
 	epir_mG_t *mG, const size_t mG_count, ge25519_p3 *mG_p3, const uint32_t offset, const uint32_t interval,
 	void (*cb)(void*), void *cb_data);
 
 EMSCRIPTEN_KEEPALIVE
-void epir_ecelgamal_mg_generate_no_sort(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data);
+void epir_mG_generate_no_sort(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data);
 
 EMSCRIPTEN_KEEPALIVE
-void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data);
+void epir_mG_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data);
 
 EMSCRIPTEN_KEEPALIVE
-int32_t epir_ecelgamal_mg_interpolation_search(const unsigned char *find, const epir_mG_t *mG, const size_t mmax);
+int32_t epir_mG_interpolation_search(const unsigned char *find, const epir_mG_t *mG, const size_t mmax);
 
 EMSCRIPTEN_KEEPALIVE
 void epir_ecelgamal_decrypt_to_mG(const unsigned char *privkey, unsigned char *cipher);

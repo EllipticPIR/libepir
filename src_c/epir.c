@@ -65,11 +65,11 @@ void epir_ecelgamal_encrypt_fast(unsigned char *cipher, const unsigned char *pri
 	ge25519_p3_tobytes(cipher + EPIR_POINT_SIZE, &c2);
 }
 
-size_t epir_ecelgamal_load_mg(epir_mG_t *mG, const size_t mmax, const char *path) {
+size_t epir_mG_load(epir_mG_t *mG, const size_t mmax, const char *path) {
 	const size_t mmax_ = (mmax == 0 ? EPIR_DEFAULT_MG_MAX : mmax);
-	char path_default[epir_ecelgamal_default_mg_path_length() + 1];
+	char path_default[epir_mG_default_path_length() + 1];
 	if(!path) {
-		epir_ecelgamal_default_mg_path(path_default, epir_ecelgamal_default_mg_path_length() + 1);
+		epir_mG_default_path(path_default, epir_mG_default_path_length() + 1);
 	}
 	const char *path_ = (path ? path : path_default);
 	FILE *fp = fopen(path_, "r");
@@ -101,8 +101,8 @@ static inline uint32_t get_omp_threads() {
 #endif
 }
 
-void epir_ecelgamal_mg_generate_prepare(
-	epir_ecelgamal_mg_generate_context *ctx,
+void epir_mG_generate_prepare(
+	epir_mG_generate_context *ctx,
 	epir_mG_t *mG, ge25519_p3 *mG_p3, const uint32_t n_threads,
 	void (*cb)(void*), void *cb_data) {
 	// base_p3 = G.
@@ -135,8 +135,8 @@ void epir_ecelgamal_mg_generate_prepare(
 	}
 }
 
-void epir_ecelgamal_mg_generate_compute(
-	epir_ecelgamal_mg_generate_context *ctx,
+void epir_mG_generate_compute(
+	epir_mG_generate_context *ctx,
 	epir_mG_t *mG, const size_t mG_count, ge25519_p3 *mG_p3, const uint32_t scalar_offset, const uint32_t scalar_interval,
 	void (*cb)(void*), void *cb_data) {
 	for(size_t m=0; m<mG_count; m++) {
@@ -151,10 +151,10 @@ typedef struct {
 	size_t points_computed;
 	void (*cb)(const size_t, void*);
 	void *cb_data;
-} mg_cb_data;
+} mG_cb_data;
 
-void mg_cb(void *cb_data) {
-	mg_cb_data *cb_data_ = (mg_cb_data*)cb_data;
+void mG_cb(void *cb_data) {
+	mG_cb_data *cb_data_ = (mG_cb_data*)cb_data;
 	#pragma omp critical
 	{
 		cb_data_->points_computed++;
@@ -162,17 +162,17 @@ void mg_cb(void *cb_data) {
 	}
 }
 
-void epir_ecelgamal_mg_generate_no_sort(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data) {
+void epir_mG_generate_no_sort(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data) {
 	const uint32_t omp_threads = get_omp_threads();
 	ge25519_p3 mG_p3[omp_threads];
-	mg_cb_data cb_data_ = { 0, cb, cb_data };
+	mG_cb_data cb_data_ = { 0, cb, cb_data };
 	ge25519_precomp tG_precomp;
 	memset(&tG_precomp, 0, sizeof(ge25519_precomp));
-	epir_ecelgamal_mg_generate_context ctx = { mmax, tG_precomp };
+	epir_mG_generate_context ctx = { mmax, tG_precomp };
 	if(cb == NULL) {
-		epir_ecelgamal_mg_generate_prepare(&ctx, mG, mG_p3, omp_threads, NULL, NULL);
+		epir_mG_generate_prepare(&ctx, mG, mG_p3, omp_threads, NULL, NULL);
 	} else {
-		epir_ecelgamal_mg_generate_prepare(&ctx, mG, mG_p3, omp_threads, mg_cb, &cb_data_);
+		epir_mG_generate_prepare(&ctx, mG, mG_p3, omp_threads, mG_cb, &cb_data_);
 	}
 	#pragma omp parallel
 	{
@@ -187,11 +187,11 @@ void epir_ecelgamal_mg_generate_no_sort(epir_mG_t *mG, const size_t mmax, void (
 			mmax - omp_threads - (omp_threads - 1) * mG_per_thread : mG_per_thread;
 		const size_t mG_offset = omp_threads + (omp_id * mG_per_thread);
 		if(cb == NULL) {
-			epir_ecelgamal_mg_generate_compute(
+			epir_mG_generate_compute(
 				&ctx, &mG[mG_offset], mG_count, &mG_p3[omp_id], omp_threads + omp_id, omp_threads, NULL, NULL);
 		} else {
-			epir_ecelgamal_mg_generate_compute(
-				&ctx, &mG[mG_offset], mG_count, &mG_p3[omp_id], omp_threads + omp_id, omp_threads, mg_cb, &cb_data_);
+			epir_mG_generate_compute(
+				&ctx, &mG[mG_offset], mG_count, &mG_p3[omp_id], omp_threads + omp_id, omp_threads, mG_cb, &cb_data_);
 		}
 	}
 }
@@ -202,8 +202,8 @@ int mG_compare(const void *a, const void *b) {
 	return memcmp(x->point, y->point, EPIR_POINT_SIZE);
 }
 
-void epir_ecelgamal_mg_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data) {
-	epir_ecelgamal_mg_generate_no_sort(mG, mmax, cb, cb_data);
+void epir_mG_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data) {
+	epir_mG_generate_no_sort(mG, mmax, cb, cb_data);
 	qsort(mG, mmax, sizeof(epir_mG_t), mG_compare);
 }
 
@@ -211,7 +211,7 @@ static inline uint32_t load_uint32_t(const unsigned char *n) {
 	return ((uint32_t)n[0] << 24) | ((uint32_t)n[1] << 16) | ((uint32_t)n[2] << 8) | ((uint32_t)n[3] << 0);
 }
 
-int32_t epir_ecelgamal_mg_interpolation_search(const unsigned char *find, const epir_mG_t *mG, const size_t mmax) {
+int32_t epir_mG_interpolation_search(const unsigned char *find, const epir_mG_t *mG, const size_t mmax) {
 	size_t imin = 0;
 	size_t imax = mmax - 1;
 	uint32_t left = load_uint32_t(mG[0].point);
@@ -248,7 +248,7 @@ int32_t epir_ecelgamal_decrypt(const unsigned char *privkey, const unsigned char
 	unsigned char buf[EPIR_CIPHER_SIZE];
 	memcpy(buf, cipher, EPIR_CIPHER_SIZE);
 	epir_ecelgamal_decrypt_to_mG(privkey, buf);
-	const int32_t m = epir_ecelgamal_mg_interpolation_search(buf, mG, mmax);
+	const int32_t m = epir_mG_interpolation_search(buf, mG, mmax);
 	return m;
 }
 

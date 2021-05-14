@@ -107,7 +107,7 @@ static std::vector<epir_mG_t> mG_test(EPIR_DEFAULT_MG_MAX);
 
 TEST(ECElGamalTest, mG_generate) {
 	size_t points_computed = 0;
-	epir_ecelgamal_mg_generate(mG_test.data(), EPIR_DEFAULT_MG_MAX, [](const size_t points_computed_test, void *data) {
+	epir_mG_generate(mG_test.data(), EPIR_DEFAULT_MG_MAX, [](const size_t points_computed_test, void *data) {
 		size_t *points_computed = (size_t*)data;
 		(*points_computed)++;
 		EXPECT_EQ(points_computed_test, *points_computed);
@@ -118,7 +118,7 @@ TEST(ECElGamalTest, mG_generate) {
 TEST(ECElGamalTest, mG_interpolation_search) {
 	for(size_t i=0; i<EPIR_DEFAULT_MG_MAX; i++) {
 		epir_mG_t mG = mG_test[i];
-		const int32_t scalar_test = epir_ecelgamal_mg_interpolation_search(mG.point, mG_test.data(), EPIR_DEFAULT_MG_MAX);
+		const int32_t scalar_test = epir_mG_interpolation_search(mG.point, mG_test.data(), EPIR_DEFAULT_MG_MAX);
 		EXPECT_EQ(scalar_test, (int32_t)mG.scalar);
 	}
 }

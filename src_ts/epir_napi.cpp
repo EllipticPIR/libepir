@@ -102,7 +102,7 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 	}
 	// Load mG.bin.
 	const std::string path = std::string(info[0].As<Napi::String>());
-	const int elemsRead = epir_ecelgamal_load_mg(this->mG, EPIR_MG_MAX, path.c_str());
+	const int elemsRead = epir_mG_load(this->mG, EPIR_MG_MAX, path.c_str());
 	if(elemsRead != EPIR_MG_MAX) {
 		std::string msg = "Failed to load mG: (read: " + std::to_string(elemsRead) + ", expect: " + std::to_string(EPIR_MG_MAX) + ").";
 		Napi::Error::New(env, msg).ThrowAsJavaScriptException();

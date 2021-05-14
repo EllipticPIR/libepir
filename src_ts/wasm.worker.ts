@@ -35,7 +35,7 @@ const funcs: KeyValue = {
 		const cb = wasm.addFunction((data: any) => {
 			worker.postMessage({ method: 'mg_generate_cb' });
 		}, 'vi');
-		wasm._epir_ecelgamal_mg_generate_prepare(ctx_, mG_, mG_p3_, params.nThreads, cb, null);
+		wasm._epir_mG_generate_prepare(ctx_, mG_, mG_p3_, params.nThreads, cb, null);
 		wasm.removeFunction(cb);
 		const ctx = new Uint8Array(wasm.HEAPU8.subarray(ctx_, ctx_ + CTX_SIZE));
 		const mG = new Uint8Array(wasm.HEAPU8.subarray(mG_, mG_ + params.nThreads * MG_SIZE));
@@ -58,7 +58,7 @@ const funcs: KeyValue = {
 		const cb = wasm.addFunction((data: any) => {
 			worker.postMessage({ method: 'mg_generate_cb' });
 		}, 'vi');
-		wasm._epir_ecelgamal_mg_generate_compute(
+		wasm._epir_mG_generate_compute(
 			ctx_, mG_, mG_count, mG_p3_, params.nThreads + params.threadId, params.nThreads, cb, null);
 		wasm.removeFunction(cb);
 		const mG = new Uint8Array(wasm.HEAPU8.subarray(mG_, mG_ + mG_count * MG_SIZE));

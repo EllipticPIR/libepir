@@ -19,8 +19,8 @@
 
 int main(int argc, char *argv[]) {
 	
-	char path_default[epir_ecelgamal_default_mg_path_length() + 1];
-	epir_ecelgamal_default_mg_path(path_default, epir_ecelgamal_default_mg_path_length() + 1);
+	char path_default[epir_mG_default_path_length() + 1];
+	epir_mG_default_path(path_default, epir_mG_default_path_length() + 1);
 	
 	if(argc > 1 && (std::string(argv[1]) == "-h" || std::string(argv[1]) == "--help")) {
 		printf("usage: %s [PATH=%s [M_MAX_MOD=24]]\n", argv[0], path_default);
@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
 			printf("\x1b[32m%8zd of %d points computed (%6.02f%%).\x1b[39m\n", pointsComputed, mMax, (100.0 * pointsComputed / mMax));
 		}
 	};
-	epir_ecelgamal_mg_generate_no_sort(mG.data(), mMax, cb, (void*)&mMax);
+	epir_mG_generate_no_sort(mG.data(), mMax, cb, (void*)&mMax);
 	printf("\x1b[32mComputation done in %.0fms.\x1b[39m\n", (microtime() - beginCompute) / 1000.);
 	
 	// Sort.
