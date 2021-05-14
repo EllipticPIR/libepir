@@ -156,8 +156,10 @@ typedef struct {
 void mg_cb(void *cb_data) {
 	mg_cb_data *cb_data_ = (mg_cb_data*)cb_data;
 	#pragma omp critical
-	cb_data_->points_computed++;
-	cb_data_->cb(cb_data_->points_computed, cb_data_->cb_data);
+	{
+		cb_data_->points_computed++;
+		cb_data_->cb(cb_data_->points_computed, cb_data_->cb_data);
+	}
 }
 
 void epir_ecelgamal_mg_generate_no_sort(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data) {
