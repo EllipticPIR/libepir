@@ -19,8 +19,8 @@ const uint8ArrayConcat = (arr: Uint8Array[]) => {
 	return ret;
 }
 
-const uint8ArrayCompare = (a: Uint8Array, b: Uint8Array): number => {
-	for(let i=0; i<Math.min(a.length, b.length); i++) {
+const uint8ArrayCompare = (a: Uint8Array, b: Uint8Array, len: number = Math.min(a.length, b.length)): number => {
+	for(let i=0; i<len; i++) {
 		if(a[i] == b[i]) continue;
 		return a[i] - b[i];
 	}
@@ -145,46 +145,58 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	};
 	
 	const mg_generate = async (mG_: number, cb?: ((p: number) => void)): Promise<void> => {
-		return new Promise((resolve, reject) => {
-			const nThreads = 1;//navigator.hardwareConcurrency;
-			const worker = new EPIRWorker();
-			let mG: Uint8Array[] = [];
-			worker.onmessage = (ev) => {
-				switch(ev.data.method) {
-					case 'mg_generate_cb':
-						if(cb) cb(ev.data.pointsComputed);
-						break;
-					case 'mg_generate_prepare':
-						//console.log('mg_generate_prepare DONE.');
-						const threadId = 0;
-						for(let i=0; i<nThreads; i++) {
-							mG.push(ev.data.mG.slice(i * MG_SIZE, (i + 1) * MG_SIZE));
-						}
-						worker.postMessage({
-							method: 'mg_generate_compute', nThreads: nThreads, mmax: MMAX,
-							ctx: ev.data.ctx, mG_p3: ev.data.mG_p3.slice(MG_P3_SIZE * threadId, MG_P3_SIZE * (threadId + 1)), threadId: threadId,
-						});
-						break;
-					case 'mg_generate_compute':
-						//console.log('mg_generate_compute DONE.');
-						for(let i=0; i*MG_SIZE<ev.data.mG.length; i++) {
-							mG.push(ev.data.mG.slice(i * MG_SIZE, (i + 1) * MG_SIZE));
-						}
-						//console.log('Sorting...');
-						const beginSort = time();
-						mG.sort((a, b) => {
-							return uint8ArrayCompare(a, b);
-						});
-						//console.log(`Sorting done in ${(time() - beginSort).toLocaleString()}ms.`);
-						for(let i=0; i<MMAX; i++) {
-							wasm.HEAPU8.set(mG[i], mG_ + i * MG_SIZE);
-						}
-						resolve();
-						break;
-				}
-			};
-			worker.postMessage({ method: 'mg_generate_prepare', nThreads: nThreads, mmax: MMAX });
+		// XXX: not working for navigator.hardwareConcurrency.
+		const nThreads = 1;//navigator.hardwareConcurrency / 2;
+		const workers: EPIRWorker[] = [];
+		for(let i=0; i<nThreads; i++) {
+			workers.push(new EPIRWorker());
+		}
+		const mG: Uint8Array[] = [];
+		let pointsComputed = 0;
+		const beginCompute = time();
+		const promises = workers.map(async (worker, workerId) => {
+			return new Promise<void>((resolve, reject) => {
+				worker.onmessage = (ev) => {
+					switch(ev.data.method) {
+						case 'mg_generate_cb':
+							if(cb) cb(++pointsComputed);
+							break;
+						case 'mg_generate_prepare':
+							console.log('mg_generate_prepare DONE.');
+							for(let i=0; i<nThreads; i++) {
+								mG.push(ev.data.mG.subarray(i * MG_SIZE, (i + 1) * MG_SIZE));
+							}
+							for(let i=0; i<nThreads; i++) {
+								workers[i].postMessage({
+									method: 'mg_generate_compute', nThreads: nThreads, mmax: MMAX,
+									ctx: ev.data.ctx, mG_p3: ev.data.mG_p3.slice(MG_P3_SIZE * i, MG_P3_SIZE * (i + 1)),
+									threadId: i,
+								});
+							}
+							break;
+						case 'mg_generate_compute':
+							console.log(`mg_generate_compute (workerId = ${workerId}) DONE.`);
+							for(let i=0; i*MG_SIZE<ev.data.mG.length; i++) {
+								mG.push(ev.data.mG.subarray(i * MG_SIZE, (i + 1) * MG_SIZE));
+							}
+							resolve();
+							break;
+					}
+				};
+			});
 		});
+		workers[0].postMessage({ method: 'mg_generate_prepare', nThreads: nThreads, mmax: MMAX });
+		await Promise.all(promises);
+		console.log(`Computation done in ${(time() - beginCompute).toLocaleString()}ms.`);
+		console.log('Sorting...');
+		const beginSort = time();
+		mG.sort((a, b) => {
+			return uint8ArrayCompare(a, b, 32);
+		});
+		console.log(`Sorting done in ${(time() - beginSort).toLocaleString()}ms.`);
+		for(let i=0; i<MMAX; i++) {
+			wasm.HEAPU8.set(mG[i], mG_ + i * MG_SIZE);
+		}
 	}
 	
 	const get_mG = async (param?: string | ((p: number) => void)): Promise<Uint8Array> => {

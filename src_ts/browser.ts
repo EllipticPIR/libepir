@@ -55,7 +55,7 @@ class MGDatabase extends Dexie {
 		} else {
 			if(!epir.get_mG) throw new Error('Failed to call get_mG().');
 			const mG = await epir.get_mG((points_computed: number) => {
-				if(points_computed % (10 * 1000) == 0) {
+				if(points_computed % (100 * 1000) == 0) {
 					log(`Points computed: ${points_computed.toLocaleString()} of ${MMAX.toLocaleString()} (${(100 * points_computed / MMAX).toFixed(2)}%)`);
 				}
 			});

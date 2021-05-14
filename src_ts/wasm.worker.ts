@@ -32,14 +32,12 @@ const funcs: KeyValue = {
 		store_uint32_t(wasm, ctx_, params.mmax);
 		const mG_ = wasm._malloc(params.nThreads * MG_SIZE);
 		const mG_p3_ = wasm._malloc(params.nThreads * MG_P3_SIZE);
-		let pointsComputed = 0;
 		const cb = wasm.addFunction((data: any) => {
-			pointsComputed++;
-			worker.postMessage({ method: 'mg_generate_cb', pointsComputed: pointsComputed });
+			worker.postMessage({ method: 'mg_generate_cb' });
 		}, 'vi');
 		wasm._epir_ecelgamal_mg_generate_prepare(ctx_, mG_, mG_p3_, params.nThreads, cb, null);
 		wasm.removeFunction(cb);
-		const ctx = new Uint8Array(wasm.HEAPU8.subarray(ctx_, ctx_ + 124));
+		const ctx = new Uint8Array(wasm.HEAPU8.subarray(ctx_, ctx_ + CTX_SIZE));
 		const mG = new Uint8Array(wasm.HEAPU8.subarray(mG_, mG_ + params.nThreads * MG_SIZE));
 		const mG_p3 = new Uint8Array(wasm.HEAPU8.subarray(mG_p3_, mG_p3_ + params.nThreads * MG_P3_SIZE));
 		worker.postMessage({
@@ -57,12 +55,11 @@ const funcs: KeyValue = {
 		const mG_ = wasm._malloc(mG_count * MG_SIZE);
 		const mG_p3_ = wasm._malloc(MG_P3_SIZE);
 		wasm.HEAPU8.set(params.mG_p3, mG_p3_);
-		let pointsComputed = params.nThreads;
 		const cb = wasm.addFunction((data: any) => {
-			pointsComputed++;
-			worker.postMessage({ method: 'mg_generate_cb', pointsComputed: pointsComputed });
+			worker.postMessage({ method: 'mg_generate_cb' });
 		}, 'vi');
-		wasm._epir_ecelgamal_mg_generate_compute(ctx_, mG_, mG_count, mG_p3_, 0, 1, cb, null);
+		wasm._epir_ecelgamal_mg_generate_compute(
+			ctx_, mG_, mG_count, mG_p3_, params.nThreads + params.threadId, params.nThreads, cb, null);
 		wasm.removeFunction(cb);
 		const mG = new Uint8Array(wasm.HEAPU8.subarray(mG_, mG_ + mG_count * MG_SIZE));
 		worker.postMessage({
