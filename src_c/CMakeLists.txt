@@ -1,10 +1,22 @@
 
+cmake_minimum_required(VERSION 3.16)
+
+project(EllipticPIR C CXX)
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+add_compile_options(-Wall -Wextra -Werror)
+
+# Load libsodium.
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../../libsodium/include)
+link_directories(${CMAKE_CURRENT_BINARY_DIR}/../../../libsodium/lib)
+
 if(EMSCRIPTEN)
 	# Enable optimizations.
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -flto=full -O3")
 	# ./epir.js
 	add_executable(epir epir.c epir.h)
-	add_dependencies(epir libsodium_src)
 	target_link_libraries(epir "-lsodium")
 	target_link_options(epir PUBLIC
 		"SHELL:-s MODULARIZE"
@@ -24,13 +36,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 
 # ./libepir.so
 add_library(epir SHARED epir.c epir.h)
-add_dependencies(epir libsodium_src)
 target_link_libraries(epir "-lsodium")
 
 # ./libepir.a
 add_library(epir_static STATIC epir.c epir.h)
 set_target_properties(epir_static PROPERTIES OUTPUT_NAME epir)
-add_dependencies(epir_static libsodium_src)
 target_link_libraries(epir_static "-lsodium")
 
 # ./epir_genm
@@ -41,7 +51,7 @@ set_target_properties(epir_genm PROPERTIES COMPILE_DEFINITIONS "_GLIBCXX_PARALLE
 # Add install targets.
 include(GNUInstallDirs)
 install(TARGETS epir epir_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(FILES ${PROJECT_SOURCE_DIR}/src/epir.h ${PROJECT_SOURCE_DIR}/src/epir.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/epir.h ${CMAKE_CURRENT_SOURCE_DIR}/epir.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(TARGETS epir_genm DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 option(BUILD_BENCHES "Whether to build bench_* binaries." OFF)
@@ -67,6 +77,31 @@ if(BUILD_BENCHES)
 endif()
 
 if(BUILD_TESTING)
+	include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../../googletest/include)
+	link_directories(${CMAKE_CURRENT_BINARY_DIR}/../../../googletest/lib)
+	
+	set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} --coverage")
+	set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} --coverage")
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+	
+	enable_testing()
+	
+	# Create coverage information.
+	add_custom_command(
+		OUTPUT coverage.info
+		COMMAND lcov -d . -c -o coverage.info
+	)
+	add_custom_command(
+		OUTPUT coverage.stripped.info
+		COMMAND lcov -r coverage.info *test* */sodium/* */googletest/* */c++/* -o coverage.stripped.info
+		DEPENDS coverage.info
+	)
+	add_custom_target(
+		coverage
+		COMMAND genhtml -o coverage --num-spaces 2 -s --legend coverage.stripped.info
+		DEPENDS coverage.stripped.info
+	)
+	
 	add_subdirectory(test)
 endif()
 

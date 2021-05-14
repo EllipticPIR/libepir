@@ -1,12 +1,8 @@
 
 cmake_minimum_required(VERSION 3.16)
 
-project(EllipticPIR C CXX)
+project(EllipticPIR-SuperBuild C CXX)
 
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-add_compile_options(-Wall -Wextra -Werror)
 include(ExternalProject)
 
 # Build libsodium.
@@ -14,7 +10,7 @@ set(LIBSODIUM_GIT_REPOSITORY "https://github.com/EllipticPIR/libsodium.git")
 set(LIBSODIUM_GIT_TAG ci-master)
 if(EMSCRIPTEN)
 	set(LIBSODIUM_CONFIGURE_CACHE libsodium_js.cache)
-	ExternalProject_Add(libsodium_src
+	ExternalProject_Add(libsodium
 		GIT_REPOSITORY ${LIBSODIUM_GIT_REPOSITORY}
 		GIT_TAG ${LIBSODIUM_GIT_TAG}
 		BUILD_IN_SOURCE on
@@ -26,7 +22,7 @@ if(EMSCRIPTEN)
 		INSTALL_COMMAND emmake make install
 	)
 else()
-	ExternalProject_Add(libsodium_src
+	ExternalProject_Add(libsodium
 		GIT_REPOSITORY ${LIBSODIUM_GIT_REPOSITORY}
 		GIT_TAG ${LIBSODIUM_GIT_TAG}
 		BUILD_IN_SOURCE on
@@ -34,43 +30,46 @@ else()
 	)
 endif()
 
-# Load libsodium.
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/libsodium/include)
-link_directories(${CMAKE_CURRENT_BINARY_DIR}/libsodium/lib)
+option(BUILD_TESTING "Build tests." OFF)
+option(BUILD_BENCHES "Build benchmarks." OFF)
 
 if(BUILD_TESTING)
-	
 	ExternalProject_Add(googletest
 		GIT_REPOSITORY "https://github.com/google/googletest.git"
 		GIT_TAG "v1.10.x"
 		CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/googletest
 	)
-	include_directories(${CMAKE_CURRENT_BINARY_DIR}/googletest/include)
-	link_directories(${CMAKE_CURRENT_BINARY_DIR}/googletest/lib)
-	
-	set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} --coverage")
-	set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} --coverage")
-	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
-	
-	enable_testing()
-	
-	# Create coverage information.
-	add_custom_command(
-		OUTPUT coverage.info
-		COMMAND lcov -d . -c -o coverage.info
-	)
-	add_custom_command(
-		OUTPUT coverage.stripped.info
-		COMMAND lcov -r coverage.info *test* */sodium/* */googletest/* */c++/* -o coverage.stripped.info
-		DEPENDS coverage.info
-	)
-	add_custom_target(
-		coverage
-		COMMAND genhtml -o coverage --num-spaces 2 -s --legend coverage.stripped.info
-		DEPENDS coverage.stripped.info
-	)
-	
 endif()
 
-add_subdirectory(src_c)
+ExternalProject_Add(epir
+	SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src_c
+	CMAKE_ARGS
+		-DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/epir
+		-DBUILD_TESTING=${BUILD_TESTING}
+		-DBUILD_BENCHES=${BUILD_BENCHES}
+)
+ExternalProject_Add_StepDependencies(epir install libsodium)
+if(BUILD_TESTING)
+	ExternalProject_Add_StepDependencies(epir install googletest)
+endif()
+
+# Add `make test` target.
+add_custom_target(test COMMAND cd epir-prefix/src/epir-build && make test)
+
+# Install.
+
+if(EMSCRIPTEN)
+	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/epir/epir.js DESTINATION .)
+else()
+	include(GNUInstallDirs)
+	install(
+		FILES ${CMAKE_CURRENT_BINARY_DIR}/epir/bin/epir_genm
+		DESTINATION ${CMAKE_INSTALL_BINDIR})
+	install(
+		FILES ${CMAKE_CURRENT_BINARY_DIR}/epir/include/epir.h ${CMAKE_CURRENT_BINARY_DIR}/epir/include/epir.hpp
+		DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+	install(
+		FILES ${CMAKE_CURRENT_BINARY_DIR}/epir/lib/libepir.so ${CMAKE_CURRENT_BINARY_DIR}/epir/lib/libepir.a
+		DESTINATION ${CMAKE_INSTALL_LIBDIR})
+endif()
 
