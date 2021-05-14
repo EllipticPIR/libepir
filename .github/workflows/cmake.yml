@@ -49,7 +49,7 @@ jobs:
       run: ctest -C $BUILD_TYPE
 
     - name: Make Code Coverage Data
-      working-directory: ${{github.workspace}}/build
+      working-directory: ${{github.workspace}}/build/epir-prefix/src/epir-build
       shell: bash
       run: make coverage
 
@@ -57,5 +57,5 @@ jobs:
       uses: coverallsapp/github-action@master
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        path-to-lcov: ${{github.workspace}}/build/coverage.stripped.info
+        path-to-lcov: ${{github.workspace}}/build/epir-prefix/src/epir-build/coverage.stripped.info
 
