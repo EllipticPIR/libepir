@@ -2,6 +2,8 @@
  * Run a benchmark of EC-ElGamal ciphertext encryption / decryption.
  */
 
+#include <fstream>
+
 #include <gtest/gtest.h>
 #include <sodium/crypto_hash_sha256.h>
 
@@ -121,6 +123,21 @@ TEST(ECElGamalTest, mG_interpolation_search) {
 		const int32_t scalar_test = epir_mG_interpolation_search(mG.point, mG_test.data(), EPIR_DEFAULT_MG_MAX);
 		EXPECT_EQ(scalar_test, (int32_t)mG.scalar);
 	}
+}
+
+TEST(ECElGamalTest, mG_load_default) {
+	char path_default[epir_mG_default_path_length() + 1];
+	epir_mG_default_path(path_default, epir_mG_default_path_length() + 1);
+	std::ofstream ofs(std::string(path_default), std::ios::binary | std::ios::out);
+	ASSERT_FALSE(ofs.fail());
+	for(const epir_mG_t p: mG_test) {
+		ofs.write((char*)&p, sizeof(epir_mG_t));
+	}
+	ofs.close();
+	static std::vector<epir_mG_t> mG_test2(EPIR_DEFAULT_MG_MAX);
+	const size_t elems_read = epir_mG_load(mG_test2.data(), EPIR_DEFAULT_MG_MAX, NULL);
+	EXPECT_EQ(elems_read, (size_t)EPIR_DEFAULT_MG_MAX);
+	ASSERT_PRED2(SameHash<epir_mG_t>, mG_test2, mG_hash);
 }
 
 TEST(ECElGamalTest, decrypt) {

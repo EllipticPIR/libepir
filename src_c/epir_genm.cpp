@@ -74,9 +74,8 @@ int main(int argc, char *argv[]) {
 			printf("Failed to open UTXO binary file for write.\n");
 			return 1;
 		}
-		for(auto p: mG) {
-			ofs.write((char*)p.point, EPIR_POINT_SIZE);
-			ofs.write((char*)&p.scalar, sizeof(uint32_t));
+		for(const epir_mG_t p: mG) {
+			ofs.write((char*)&p, sizeof(epir_mG_t));
 		}
 		ofs.close();
 	);
