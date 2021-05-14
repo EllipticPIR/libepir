@@ -1,26 +1,5 @@
 
-include(ExternalProject)
-
-set(LIBSODIUM_GIT_REPOSITORY "https://github.com/EllipticPIR/libsodium.git")
-set(LIBSODIUM_GIT_TAG ci-master)
-
 if(EMSCRIPTEN)
-	# Build libsodium.
-	set(LIBSODIUM_CONFIGURE_CACHE libsodium_js.cache)
-	ExternalProject_Add(libsodium_src
-		GIT_REPOSITORY ${LIBSODIUM_GIT_REPOSITORY}
-		GIT_TAG ${LIBSODIUM_GIT_TAG}
-		BUILD_IN_SOURCE on
-		CONFIGURE_COMMAND
-			emconfigure ./configure
-				--cache-file=${LIBSODIUM_CONFIGURE_CACHE} --disable-shared --prefix=${CMAKE_CURRENT_BINARY_DIR}/libsodium_js
-				--without-pthreads --disable-ssp --disable-asm --disable-pie "CFLAGS=-flto=full -O3"
-		BUILD_COMMAND emmake make
-		INSTALL_COMMAND emmake make install
-	)
-	# Load libsodium.
-	include_directories(${CMAKE_CURRENT_BINARY_DIR}/libsodium_js/include)
-	link_directories(${CMAKE_CURRENT_BINARY_DIR}/libsodium_js/lib)
 	# Enable optimizations.
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -flto=full -O3")
 	# ./epir.js
@@ -42,18 +21,6 @@ endif()
 find_package(OpenMP REQUIRED)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-
-# Build libsodium.
-ExternalProject_Add(libsodium_src
-	GIT_REPOSITORY ${LIBSODIUM_GIT_REPOSITORY}
-	GIT_TAG ${LIBSODIUM_GIT_TAG}
-	BUILD_IN_SOURCE on
-	CONFIGURE_COMMAND ./configure --prefix=${CMAKE_CURRENT_BINARY_DIR}/libsodium --with-pic "CFLAGS=-O3"
-)
-
-# Load libsodium.
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/libsodium/include)
-link_directories(${CMAKE_CURRENT_BINARY_DIR}/libsodium/lib)
 
 # ./libepir.so
 add_library(epir SHARED epir.c epir.h)
