@@ -169,11 +169,7 @@ void epir_mG_generate_no_sort(epir_mG_t *mG, const size_t mmax, void (*cb)(const
 	ge25519_precomp tG_precomp;
 	memset(&tG_precomp, 0, sizeof(ge25519_precomp));
 	epir_mG_generate_context ctx = { mmax, tG_precomp };
-	if(cb == NULL) {
-		epir_mG_generate_prepare(&ctx, mG, mG_p3, omp_threads, NULL, NULL);
-	} else {
-		epir_mG_generate_prepare(&ctx, mG, mG_p3, omp_threads, mG_cb, &cb_data_);
-	}
+	epir_mG_generate_prepare(&ctx, mG, mG_p3, omp_threads, cb ? mG_cb : NULL, cb ? &cb_data_ : NULL);
 	#pragma omp parallel
 	{
 		#ifdef __EMSCRIPTEN__
@@ -186,13 +182,8 @@ void epir_mG_generate_no_sort(epir_mG_t *mG, const size_t mmax, void (*cb)(const
 		const size_t mG_count = (omp_id == omp_threads - 1) ?
 			mmax - omp_threads - (omp_threads - 1) * mG_per_thread : mG_per_thread;
 		const size_t mG_offset = omp_threads + (omp_id * mG_per_thread);
-		if(cb == NULL) {
-			epir_mG_generate_compute(
-				&ctx, &mG[mG_offset], mG_count, &mG_p3[omp_id], omp_threads + omp_id, omp_threads, NULL, NULL);
-		} else {
-			epir_mG_generate_compute(
-				&ctx, &mG[mG_offset], mG_count, &mG_p3[omp_id], omp_threads + omp_id, omp_threads, mG_cb, &cb_data_);
-		}
+		epir_mG_generate_compute(
+			&ctx, &mG[mG_offset], mG_count, &mG_p3[omp_id], omp_threads + omp_id, omp_threads, cb ? mG_cb : NULL, cb ? &cb_data_ : NULL);
 	}
 }
 
