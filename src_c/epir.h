@@ -40,9 +40,6 @@ extern "C" {
 #define EPIR_DEFAULT_DATA_DIR (".EllipticPIR")
 #define EPIR_DEFAULT_MG_FILE ("mG.bin")
 
-EMSCRIPTEN_KEEPALIVE
-void epir_randombytes_init();
-
 /**
  * Generate a new private key.
  * @param privkey The private key to output. The `EPIR_SCALAR_SIZE` bytes of memory should be allocated.
