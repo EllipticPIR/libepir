@@ -6,12 +6,13 @@ set(LIBSODIUM_GIT_TAG ci-master)
 
 if(EMSCRIPTEN)
 	# Build libsodium.
+	set(LIBSODIUM_CONFIGURE_CACHE libsodium-js-sumo.cache)
 	ExternalProject_Add(libsodium_src
 		GIT_REPOSITORY ${LIBSODIUM_GIT_REPOSITORY}
 		GIT_TAG ${LIBSODIUM_GIT_TAG}
 		BUILD_IN_SOURCE on
 		CONFIGURE_COMMAND ""
-		BUILD_COMMAND CONFIG_EXTRA=--cache-file=libsodium-js-sumo.cache ./dist-build/emscripten.sh --sumo
+		BUILD_COMMAND CONFIG_EXTRA=--cache-file=${LIBSODIUM_CONFIGURE_CACHE} ./dist-build/emscripten.sh --sumo
 	)
 	# Load libsodium.
 	include_directories(${CMAKE_CURRENT_BINARY_DIR}/libsodium_src-prefix/src/libsodium_src/libsodium-js-sumo/include)
