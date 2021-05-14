@@ -5,6 +5,10 @@ project(EllipticPIR-SuperBuild C CXX)
 
 include(ExternalProject)
 
+option(BUILD_TESTING "Build tests." OFF)
+option(BUILD_BENCHES "Build benchmarks." OFF)
+option(EMSCRIPTEN "Build for Emscripten." OFF)
+
 # Build libsodium.
 set(LIBSODIUM_GIT_REPOSITORY "https://github.com/EllipticPIR/libsodium.git")
 set(LIBSODIUM_GIT_TAG ci-master)
@@ -30,9 +34,6 @@ else()
 	)
 endif()
 
-option(BUILD_TESTING "Build tests." OFF)
-option(BUILD_BENCHES "Build benchmarks." OFF)
-
 if(BUILD_TESTING)
 	ExternalProject_Add(googletest
 		GIT_REPOSITORY "https://github.com/google/googletest.git"
@@ -47,6 +48,7 @@ ExternalProject_Add(epir
 		-DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/epir
 		-DBUILD_TESTING=${BUILD_TESTING}
 		-DBUILD_BENCHES=${BUILD_BENCHES}
+		-DEMSCRIPTEN=${EMSCRIPTEN}
 )
 ExternalProject_Add_StepDependencies(epir install libsodium)
 if(BUILD_TESTING)
@@ -57,7 +59,6 @@ endif()
 add_custom_target(test COMMAND cd epir-prefix/src/epir-build && make test)
 
 # Install.
-
 if(EMSCRIPTEN)
 	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/epir/epir.js DESTINATION .)
 else()
