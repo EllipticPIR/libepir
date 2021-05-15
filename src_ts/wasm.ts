@@ -127,13 +127,6 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	const wasm_ = require('../dist/libepir.js');
 	const wasm = await wasm_();
 	
-	const store_uint64_t = (offset: number, n: number) => {
-		for(let i=0; i<8; i++) {
-			wasm.HEAPU8[offset + i] = n & 0xff;
-			n >>= 8;
-		}
-	}
-	
 	const create_privkey = (): Uint8Array => {
 		const isCanonical = (buf: Uint8Array): boolean => {
 			let c = (buf[31] & 0x7f) ^ 0x7f;

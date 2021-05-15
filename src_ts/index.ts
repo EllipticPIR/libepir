@@ -1,10 +1,10 @@
 
 import { epir_t } from './epir_t';
 
-export let epir: epir_t<any>;
+export let createEpir: () => Promise<epir_t<any>>;
 try {
-	epir = require('./addon');
+	createEpir = require('./addon').createEpir;
 } catch(e) {
-	epir = require('./wasm');
+	createEpir = require('./wasm').createEpir;
 }
 
