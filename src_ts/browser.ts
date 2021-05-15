@@ -53,14 +53,13 @@ class MGDatabase extends Dexie {
 		if(mGDB) {
 			return await epir.get_decryption_context(mGDB.value);
 		} else {
-			if(!epir.get_mG) throw new Error('Failed to call get_mG().');
-			const mG = await epir.get_mG((points_computed: number) => {
+			const decCtx = await epir.get_decryption_context((points_computed: number) => {
 				if(points_computed % (100 * 1000) == 0) {
 					log(`Points computed: ${points_computed.toLocaleString()} of ${MMAX.toLocaleString()} (${(100 * points_computed / MMAX).toFixed(2)}%)`);
 				}
 			});
-			await db.mG.put({ key: 0, value: mG });
-			return await epir.get_decryption_context(mG);
+			await db.mG.put({ key: 0, value: decCtx.mG });
+			return decCtx;
 		}
 	})();
 	log(`mG.bin loaded in ${(time() - beginMG).toLocaleString()}ms.`);

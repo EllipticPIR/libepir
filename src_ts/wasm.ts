@@ -168,7 +168,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		return pubkey;
 	};
 	
-	const mg_generate = async (mG_: number, cb?: ((p: number) => void)): Promise<void> => {
+	const mg_generate = async (mG_: number, cb: undefined | ((p: number) => void), mmax: number): Promise<void> => {
 		// XXX: not working for navigator.hardwareConcurrency.
 		const nThreads = navigator.hardwareConcurrency / 2;
 		const workers: EPIRWorker[] = [];
@@ -192,7 +192,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 							}
 							for(let i=0; i<nThreads; i++) {
 								workers[i].postMessage({
-									method: 'mg_generate_compute', nThreads: nThreads, mmax: MMAX,
+									method: 'mg_generate_compute', nThreads: nThreads, mmax: mmax,
 									ctx: ev.data.ctx, mG_p3: ev.data.mG_p3.slice(MG_P3_SIZE * i, MG_P3_SIZE * (i + 1)),
 									threadId: i,
 								});
@@ -209,7 +209,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 				};
 			});
 		});
-		workers[0].postMessage({ method: 'mg_generate_prepare', nThreads: nThreads, mmax: MMAX });
+		workers[0].postMessage({ method: 'mg_generate_prepare', nThreads: nThreads, mmax: mmax });
 		await Promise.all(promises);
 		console.log(`Computation done in ${(time() - beginCompute).toLocaleString()}ms.`);
 		console.log('Sorting...');
@@ -218,25 +218,26 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 			return uint8ArrayCompare(a, b, 32);
 		});
 		console.log(`Sorting done in ${(time() - beginSort).toLocaleString()}ms.`);
-		for(let i=0; i<MMAX; i++) {
+		for(let i=0; i<mmax; i++) {
 			wasm.HEAPU8.set(mG[i], mG_ + i * MG_SIZE);
 		}
 	}
 	
-	const get_mG = async (param?: string | ((p: number) => void)): Promise<Uint8Array> => {
+	const get_mG = async (param: undefined | string | ((p: number) => void), mmax: number): Promise<Uint8Array> => {
 		if(typeof param == 'string') {
 			return new Uint8Array(await require('fs/promises').readFile(param));
 		} else {
-			const mG_ = wasm._malloc(MG_SIZE * MMAX);
-			await mg_generate(mG_, param);
-			const mG = wasm.HEAPU8.slice(mG_, mG_ + MG_SIZE * MMAX);
+			const mG_ = wasm._malloc(MG_SIZE * mmax);
+			await mg_generate(mG_, param, mmax);
+			const mG = wasm.HEAPU8.slice(mG_, mG_ + MG_SIZE * mmax);
 			wasm._free(mG_);
 			return mG;
 		}
 	};
 	
-	const get_decryption_context = async (param?: string | Uint8Array | ((p: number) => void)): Promise<DecryptionContext> => {
-		const mG = (param instanceof Uint8Array ? param : await get_mG(param));
+	const get_decryption_context = async (
+		param?: string | Uint8Array | ((p: number) => void), mmax: number = MMAX): Promise<DecryptionContext> => {
+		const mG = (param instanceof Uint8Array ? param : await get_mG(param, mmax));
 		return new DecryptionContext(mG);
 	};
 	
@@ -305,7 +306,6 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	return {
 		create_privkey,
 		pubkey_from_privkey,
-		get_mG,
 		get_decryption_context,
 		selector_create,
 		selector_create_fast,

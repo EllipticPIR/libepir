@@ -21,8 +21,9 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		return epir_napi.pubkey_from_privkey(pubkey);
 	};
 	
-	const get_decryption_context = async (param?: string | Uint8Array | ((p: number) => void)): Promise<DecryptionContext> => {
-		return new epir_napi.DecryptionContext(param);
+	const get_decryption_context = async (
+		param?: string | Uint8Array | ((p: number) => void), mmax?: number): Promise<DecryptionContext> => {
+		return mmax ? new epir_napi.DecryptionContext(param, mmax) : new epir_napi.DecryptionContext(param);
 	};
 	
 	const selector_create = async (
