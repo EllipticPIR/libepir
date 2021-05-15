@@ -22,8 +22,8 @@ if(EMSCRIPTEN)
 			emconfigure ./configure
 				--cache-file=${LIBSODIUM_CONFIGURE_CACHE} --disable-shared --prefix=${CMAKE_CURRENT_BINARY_DIR}/libsodium
 				--without-pthreads --disable-ssp --disable-asm --disable-pie "CFLAGS=-flto=full -O3"
-		BUILD_COMMAND emmake make
-		INSTALL_COMMAND emmake make install
+		BUILD_COMMAND emmake $(MAKE)
+		INSTALL_COMMAND emmake $(MAKE) install
 	)
 else()
 	ExternalProject_Add(libsodium
@@ -56,7 +56,7 @@ if(BUILD_TESTING)
 endif()
 
 # Add `make test` target.
-add_custom_target(test COMMAND cd epir-prefix/src/epir-build && make test)
+add_custom_target(test COMMAND cd epir-prefix/src/epir-build && $(MAKE) test)
 
 # Install.
 if(EMSCRIPTEN)
