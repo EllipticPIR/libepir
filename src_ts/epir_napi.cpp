@@ -6,8 +6,6 @@
 #include "../src_c/epir.h"
 #pragma GCC diagnostic pop
 
-#define EPIR_MG_MAX (1 << 24)
-
 static void checkIsTypedArray(const Napi::Value val, const napi_typedarray_type type, const size_t expectedLength) {
 	if(!val.IsTypedArray()) {
 		throw "The type of the parameter is not a TypedArray.";
@@ -68,7 +66,7 @@ private:
 	
 	static Napi::FunctionReference constructor;
 	
-	epir_mG_t mG[EPIR_MG_MAX];
+	std::vector<epir_mG_t> mG;
 	
 	Napi::Value ReplyDecrypt(const Napi::CallbackInfo& info);
 	
@@ -101,36 +99,46 @@ void mG_cb(const size_t points_computed, void *cb_data) {
 	data->cb.Call(args);
 }
 
-// new DecrytionContext(param: string | Uint8Array | undefined | ((p: number) => void));
+// new DecrytionContext(param: string | Uint8Array | undefined | ((p: number) => void), mmax = EPIR_DEFAULT_MG_MAX);
 DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::ObjectWrap<DecryptionContext>(info) {
 	Napi::Env env = info.Env();
-	if(info.Length() == 0) {
+	if(info.Length() == 0 || info[0].IsUndefined()) {
 		// Generate mG.bin.
-		epir_mG_generate(this->mG, EPIR_MG_MAX, NULL, NULL);
-	} else if(info[0].IsFunction()) {
+		this->mG.resize(EPIR_DEFAULT_MG_MAX);
+		epir_mG_generate(this->mG.data(), EPIR_DEFAULT_MG_MAX, NULL, NULL);
+		return;
+	}
+	const Napi::Value param = info[0];
+	if(info.Length() > 1 && !info[1].IsNumber()) {
+		Napi::TypeError::New(env, "The parameter 'mmax' has an invalid type.").ThrowAsJavaScriptException();
+		return;
+	}
+	const size_t mmax = (info.Length() > 1 ? info[1].As<Napi::Number>().Uint32Value() : EPIR_DEFAULT_MG_MAX);
+	this->mG.resize(mmax);
+	if(param.IsFunction()) {
 		// Generate mG.bin using the specified callback.
-		const Napi::Function cb = info[0].As<Napi::Function>();
+		const Napi::Function cb = param.As<Napi::Function>();
 		mG_cb_data data = { env, cb };
-		epir_mG_generate(this->mG, EPIR_MG_MAX, mG_cb, &data);
-	} else if(info[0].IsString()) {
+		epir_mG_generate(this->mG.data(), this->mG.size(), mG_cb, &data);
+	} else if(param.IsString()) {
 		// Load mG.bin from the path.
-		const std::string path = std::string(info[0].As<Napi::String>());
-		const int elemsRead = epir_mG_load(this->mG, EPIR_MG_MAX, path.c_str());
-		if(elemsRead != EPIR_MG_MAX) {
-			std::string msg = "Failed to load mG: (read: " + std::to_string(elemsRead) + ", expect: " + std::to_string(EPIR_MG_MAX) + ").";
+		const std::string path = std::string(param.As<Napi::String>());
+		const int elemsRead = epir_mG_load(this->mG.data(), this->mG.size(), path.c_str());
+		if(elemsRead != (int)this->mG.size()) {
+			std::string msg = "Failed to load mG: (read: " + std::to_string(elemsRead) + ", expect: " + std::to_string(this->mG.size()) + ").";
 			Napi::Error::New(env, msg).ThrowAsJavaScriptException();
 			return;
 		}
-	} else if(info[0].IsTypedArray()) {
+	} else if(param.IsTypedArray()) {
 		// Load from Uint8Array.
 		try {
-			checkIsUint8Array(info[0], sizeof(epir_mG_t) * EPIR_MG_MAX);
+			checkIsUint8Array(param, sizeof(epir_mG_t) * this->mG.size());
 		} catch(const char *err) {
 			Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
 			return;
 		}
-		const uint8_t *mG = info[0].As<Napi::TypedArrayOf<uint8_t>>().Data();
-		memcpy(this->mG, mG, sizeof(epir_mG_t) * EPIR_MG_MAX);
+		const uint8_t *mG = param.As<Napi::TypedArrayOf<uint8_t>>().Data();
+		memcpy(this->mG.data(), mG, sizeof(epir_mG_t) * this->mG.size());
 	} else {
 		Napi::TypeError::New(env, "The parameter has an invalid type.").ThrowAsJavaScriptException();
 		return;
@@ -171,7 +179,7 @@ Napi::Value DecryptionContext::ReplyDecrypt(const Napi::CallbackInfo& info) {
 	// Decrypt.
 	std::vector<uint8_t> reply_v(reply_size);
 	memcpy(reply_v.data(), reply, reply_size);
-	const int decrypted_size = epir_reply_decrypt(reply_v.data(), reply_size, privkey, dimension, packing, this->mG, EPIR_MG_MAX);
+	const int decrypted_size = epir_reply_decrypt(reply_v.data(), reply_size, privkey, dimension, packing, this->mG.data(), this->mG.size());
 	if(decrypted_size < 0) {
 		Napi::Error::New(env, "Decryption failed.").ThrowAsJavaScriptException();
 		return env.Null();
