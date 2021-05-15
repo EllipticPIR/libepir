@@ -124,7 +124,7 @@ class DecryptionContext {
 
 export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	
-	const wasm_ = require('../dist/epir.js');
+	const wasm_ = require('../dist/libepir.js');
 	const wasm = await wasm_();
 	
 	const store_uint64_t = (offset: number, n: number) => {

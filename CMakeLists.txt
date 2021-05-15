@@ -60,7 +60,7 @@ add_custom_target(test COMMAND cd epir-prefix/src/epir-build && make test)
 
 # Install.
 if(EMSCRIPTEN)
-	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/epir/epir.js DESTINATION .)
+	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/epir/libepir.js DESTINATION .)
 else()
 	include(GNUInstallDirs)
 	install(

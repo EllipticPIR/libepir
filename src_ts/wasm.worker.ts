@@ -1,5 +1,5 @@
 
-const wasm_ = require('../dist/epir.js')();
+const wasm_ = require('../dist/libepir.js')();
 
 const CTX_SIZE = 124;
 const MG_SIZE = 36;
