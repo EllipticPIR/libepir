@@ -22,15 +22,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	};
 	
 	const get_decryption_context = async (param?: string | Uint8Array | ((p: number) => void)): Promise<DecryptionContext> => {
-		if(param === undefined || typeof param == 'function') {
-			// XXX:
-			throw new Error('Generating mG.bin is not supported.');
-		} else if(typeof param == 'string') {
-			return new epir_napi.DecryptionContext(param);
-		} else {
-			// XXX:
-			throw new Error('Loading from Uint8Array is not supported.');
-		}
+		return new epir_napi.DecryptionContext(param);
 	};
 	
 	const selector_create = async (

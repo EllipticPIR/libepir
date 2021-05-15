@@ -89,23 +89,50 @@ Napi::Object DecryptionContext::Init(Napi::Env env, Napi::Object exports) {
 	return exports;
 }
 
-// new DecrytionContext(path: string);
+typedef struct {
+	Napi::Env env;
+	Napi::Function cb;
+} mG_cb_data;
+
+void mG_cb(const size_t points_computed, void *cb_data) {
+	mG_cb_data *data = (mG_cb_data*)cb_data;
+	Napi::Number pc = Napi::Number::New(data->env, points_computed);
+	std::vector<napi_value> args{pc};
+	data->cb.Call(args);
+}
+
+// new DecrytionContext(param: string | Uint8Array | undefined | ((p: number) => void));
 DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::ObjectWrap<DecryptionContext>(info) {
 	Napi::Env env = info.Env();
-	if(info.Length() < 1) {
-		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
-		return;
-	}
-	if(!info[0].IsString()) {
-		Napi::TypeError::New(env, "The parameter `path` is not a string.").ThrowAsJavaScriptException();
-		return;
-	}
-	// Load mG.bin.
-	const std::string path = std::string(info[0].As<Napi::String>());
-	const int elemsRead = epir_mG_load(this->mG, EPIR_MG_MAX, path.c_str());
-	if(elemsRead != EPIR_MG_MAX) {
-		std::string msg = "Failed to load mG: (read: " + std::to_string(elemsRead) + ", expect: " + std::to_string(EPIR_MG_MAX) + ").";
-		Napi::Error::New(env, msg).ThrowAsJavaScriptException();
+	if(info.Length() == 0) {
+		// Generate mG.bin.
+		epir_mG_generate(this->mG, EPIR_MG_MAX, NULL, NULL);
+	} else if(info[0].IsFunction()) {
+		// Generate mG.bin using the specified callback.
+		const Napi::Function cb = info[0].As<Napi::Function>();
+		mG_cb_data data = { env, cb };
+		epir_mG_generate(this->mG, EPIR_MG_MAX, mG_cb, &data);
+	} else if(info[0].IsString()) {
+		// Load mG.bin from the path.
+		const std::string path = std::string(info[0].As<Napi::String>());
+		const int elemsRead = epir_mG_load(this->mG, EPIR_MG_MAX, path.c_str());
+		if(elemsRead != EPIR_MG_MAX) {
+			std::string msg = "Failed to load mG: (read: " + std::to_string(elemsRead) + ", expect: " + std::to_string(EPIR_MG_MAX) + ").";
+			Napi::Error::New(env, msg).ThrowAsJavaScriptException();
+			return;
+		}
+	} else if(info[0].IsTypedArray()) {
+		// Load from Uint8Array.
+		try {
+			checkIsUint8Array(info[0], sizeof(epir_mG_t) * EPIR_MG_MAX);
+		} catch(const char *err) {
+			Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
+			return;
+		}
+		const uint8_t *mG = info[0].As<Napi::TypedArrayOf<uint8_t>>().Data();
+		memcpy(this->mG, mG, sizeof(epir_mG_t) * EPIR_MG_MAX);
+	} else {
+		Napi::TypeError::New(env, "The parameter has an invalid type.").ThrowAsJavaScriptException();
 		return;
 	}
 }
