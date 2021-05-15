@@ -61,3 +61,8 @@ jobs:
         flag-name: node-${{ matrix.node-version }}
         parallel: true
 
+    - name: Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        name: node-${{ matrix.node-version }}
+
