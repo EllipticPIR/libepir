@@ -53,13 +53,6 @@ jobs:
       shell: bash
       run: make coverage
 
-    - name: Coveralls
-      uses: coverallsapp/github-action@master
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        path-to-lcov: ${{github.workspace}}/build/epir-prefix/src/epir-build/coverage.stripped.info
-        flag-name: C
-
     - name: Codecov
       uses: codecov/codecov-action@v1
       with:

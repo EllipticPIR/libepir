@@ -3,7 +3,7 @@ libepir - EllipticPIR client library
 
 ![CMake](https://github.com/EllipticPIR/libepir/actions/workflows/cmake.yml/badge.svg)
 ![Node.js CI](https://github.com/EllipticPIR/libepir/actions/workflows/node.js.yml/badge.svg)
-[![Coverage Status](https://coveralls.io/repos/github/EllipticPIR/libepir/badge.svg?branch=master)](https://coveralls.io/github/EllipticPIR/libepir?branch=master)
+[![codecov](https://codecov.io/gh/EllipticPIR/libepir/branch/master/graph/badge.svg?token=SUZFQ09J2O)](https://codecov.io/gh/EllipticPIR/libepir)
 
 This library contains cryptographic functions which are required
 to encrypt a query (a selector) to the EllipticPIR server
