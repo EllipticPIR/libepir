@@ -8,6 +8,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_compile_options(-Wall -Wextra -Werror)
 
+option(BUILD_TESTING "Build tests." OFF)
+option(BUILD_BENCHES "Build benchmarks." OFF)
+option(EMSCRIPTEN "Build for Emscripten." OFF)
+
 # Load libsodium.
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../../libsodium/include)
 link_directories(${CMAKE_CURRENT_BINARY_DIR}/../../../libsodium/lib)
@@ -54,7 +58,6 @@ install(TARGETS epir epir_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/epir.h ${CMAKE_CURRENT_SOURCE_DIR}/epir.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(TARGETS epir_genm DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-option(BUILD_BENCHES "Whether to build bench_* binaries." OFF)
 if(BUILD_BENCHES)
 	# ./bench_ecelgamal
 	add_executable(bench_ecelgamal bench_ecelgamal.c epir.h)
