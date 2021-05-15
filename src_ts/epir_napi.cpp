@@ -102,7 +102,7 @@ void mG_cb(const size_t points_computed, void *cb_data) {
 // new DecrytionContext(param: string | Uint8Array | undefined | ((p: number) => void), mmax = EPIR_DEFAULT_MG_MAX);
 DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::ObjectWrap<DecryptionContext>(info) {
 	Napi::Env env = info.Env();
-	if(info.Length() == 0 || info[0].IsUndefined()) {
+	if(info.Length() == 0) {
 		// Generate mG.bin.
 		this->mG.resize(EPIR_DEFAULT_MG_MAX);
 		epir_mG_generate(this->mG.data(), EPIR_DEFAULT_MG_MAX, NULL, NULL);
@@ -115,7 +115,10 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 	}
 	const size_t mmax = (info.Length() > 1 ? info[1].As<Napi::Number>().Uint32Value() : EPIR_DEFAULT_MG_MAX);
 	this->mG.resize(mmax);
-	if(param.IsFunction()) {
+	if(param.IsUndefined()) {
+		// Generate mG.bin WITHOUT using the specified callback.
+		epir_mG_generate(this->mG.data(), this->mG.size(), NULL, NULL);
+	} else if(param.IsFunction()) {
 		// Generate mG.bin using the specified callback.
 		const Napi::Function cb = param.As<Napi::Function>();
 		mG_cb_data data = { env, cb };

@@ -186,7 +186,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 							if(cb) cb(++pointsComputed);
 							break;
 						case 'mg_generate_prepare':
-							console.log('mg_generate_prepare DONE.');
+							//console.log('mg_generate_prepare DONE.');
 							for(let i=0; i<nThreads; i++) {
 								mG.push(ev.data.mG.subarray(i * MG_SIZE, (i + 1) * MG_SIZE));
 							}
@@ -199,7 +199,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 							}
 							break;
 						case 'mg_generate_compute':
-							console.log(`mg_generate_compute (workerId = ${workerId}) DONE.`);
+							//console.log(`mg_generate_compute (workerId = ${workerId}) DONE.`);
 							for(let i=0; i*MG_SIZE<ev.data.mG.length; i++) {
 								mG.push(ev.data.mG.subarray(i * MG_SIZE, (i + 1) * MG_SIZE));
 							}
@@ -211,13 +211,13 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		});
 		workers[0].postMessage({ method: 'mg_generate_prepare', nThreads: nThreads, mmax: mmax });
 		await Promise.all(promises);
-		console.log(`Computation done in ${(time() - beginCompute).toLocaleString()}ms.`);
-		console.log('Sorting...');
+		//console.log(`Computation done in ${(time() - beginCompute).toLocaleString()}ms.`);
+		//console.log('Sorting...');
 		const beginSort = time();
 		mG.sort((a, b) => {
 			return uint8ArrayCompare(a, b, 32);
 		});
-		console.log(`Sorting done in ${(time() - beginSort).toLocaleString()}ms.`);
+		//console.log(`Sorting done in ${(time() - beginSort).toLocaleString()}ms.`);
 		for(let i=0; i<mmax; i++) {
 			wasm.HEAPU8.set(mG[i], mG_ + i * MG_SIZE);
 		}
