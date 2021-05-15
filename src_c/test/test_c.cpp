@@ -1,6 +1,3 @@
-/**
- * Run a benchmark of EC-ElGamal ciphertext encryption / decryption.
- */
 
 #include <fstream>
 
@@ -8,6 +5,7 @@
 #include <sodium/crypto_hash_sha256.h>
 
 #include "../epir.h"
+#include "../epir_reply_mock.h"
 
 #define TEST_USING_MG
 
@@ -238,27 +236,36 @@ TEST(SelectorTest, selector_create_fast) {
 	ASSERT_PRED2(SameHash<unsigned char>, selector_test, selector_hash);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#include "../bench_reply_decrypt_data.h"
-#pragma GCC diagnostic pop
-
-#define ELEM_SIZE (sizeof(bench_reply_decrypt_data_answer))
+#define DIMENSION (3)
+#define PACKING   (3)
+#define ELEM_SIZE (32)
 
 #ifdef TEST_USING_MG
 TEST(ReplyTest, decrypt_success) {
-	const int data_len = epir_reply_decrypt(
-		bench_reply_decrypt_data_reply, sizeof(bench_reply_decrypt_data_reply), bench_reply_decrypt_data_privkey,
-		bench_reply_decrypt_data_dimension, bench_reply_decrypt_data_packing, mG_test.data(), EPIR_DEFAULT_MG_MAX);
+	uint8_t elem[ELEM_SIZE];
+	for(size_t i=0; i<ELEM_SIZE; i++) {
+		elem[i] = rand() & 0xff;
+	}
+	const size_t reply_size = epir_reply_size(DIMENSION, PACKING, ELEM_SIZE);
+	unsigned char *reply = (unsigned char*)malloc(reply_size);
+	epir_reply_mock(reply, pubkey, DIMENSION, PACKING, elem, ELEM_SIZE, NULL);
+	const int data_len = epir_reply_decrypt(reply, reply_size, privkey, DIMENSION, PACKING, mG_test.data(), EPIR_DEFAULT_MG_MAX);
 	ASSERT_GE(data_len, (int)ELEM_SIZE);
-	ASSERT_PRED3(SameBuffer, bench_reply_decrypt_data_reply, bench_reply_decrypt_data_answer, ELEM_SIZE);
+	ASSERT_PRED3(SameBuffer, reply, elem, ELEM_SIZE);
+	free(reply);
 }
 
 TEST(ReplyTest, decrypt_fail) {
-	const int data_len = epir_reply_decrypt(
-		bench_reply_decrypt_data_reply, sizeof(bench_reply_decrypt_data_reply), privkey,
-		bench_reply_decrypt_data_dimension, bench_reply_decrypt_data_packing, mG_test.data(), EPIR_DEFAULT_MG_MAX);
+	uint8_t elem[ELEM_SIZE];
+	for(size_t i=0; i<ELEM_SIZE; i++) {
+		elem[i] = rand() & 0xff;
+	}
+	const size_t reply_size = epir_reply_size(DIMENSION, PACKING, ELEM_SIZE);
+	unsigned char *reply = (unsigned char*)malloc(reply_size);
+	epir_reply_mock(reply, pubkey, DIMENSION, PACKING, elem, ELEM_SIZE, NULL);
+	const int data_len = epir_reply_decrypt(reply, reply_size, pubkey, DIMENSION, PACKING, mG_test.data(), EPIR_DEFAULT_MG_MAX);
 	ASSERT_EQ(data_len, -1);
+	free(reply);
 }
 #endif
 

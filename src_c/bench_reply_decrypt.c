@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
 	// Generate a sample reply data.
 	printf("Generatig a reply...\n");
 	const size_t reply_size = epir_reply_size(DIMENSION, PACKING, ELEM_SIZE);
-	unsigned char *reply = malloc(reply_size);
+	unsigned char *reply = (unsigned char*)malloc(reply_size);
 	PRINT_MEASUREMENT(true, "Sample reply created in %.0fms.\n",
 		epir_reply_mock(reply, pubkey, DIMENSION, PACKING, elem, ELEM_SIZE, NULL);
 	);
