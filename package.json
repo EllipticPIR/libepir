@@ -13,7 +13,7 @@
     "clean": "rm -rf build_c build_em dist",
     "c:build": "mkdir -p build_c && cd build_c && cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && make -j$(cat /proc/cpuinfo | grep processor | wc -l)",
     "gyp:rebuild": "node-gyp rebuild",
-    "em:build": "mkdir -p build_em && cd build_em && emcmake cmake -DCMAKE_INSTALL_PREFIX=../dist .. && emmake make all install",
+    "em:build": "mkdir -p build_em && cd build_em && emcmake cmake -DCMAKE_INSTALL_PREFIX=../dist .. && emmake make -j$(cat /proc/cpuinfo | grep processor | wc -l) all install",
     "browser:build": "webpack",
     "serve": "webpack-cli serve --mode development",
     "epir_genm": "LD_LIBRARY_PATH=./build_c/epir/lib ./build_c/epir/bin/epir_genm",
