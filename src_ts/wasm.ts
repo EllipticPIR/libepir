@@ -137,10 +137,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 			return !((c == 0) && d)
 		};
 		const isZero = (buf: Uint8Array): boolean => {
-			for(const c of buf) {
-				if(c != 0) return false;
-			}
-			return true;
+			return buf.reduce<boolean>((acc, v) => acc && (v == 0), true);
 		};
 		for(;;) {
 			const privkey = getRandomBytes(32);
