@@ -6,6 +6,7 @@ project(EllipticPIR-SuperBuild C CXX)
 include(ExternalProject)
 
 option(BUILD_TESTING "Build tests." OFF)
+option(TEST_USING_MG "Test using mG.bin. Setting off to reduce the test duration" ON)
 option(BUILD_BENCHES "Build benchmarks." OFF)
 option(EMSCRIPTEN "Build for Emscripten." OFF)
 
@@ -47,6 +48,7 @@ ExternalProject_Add(epir
 	CMAKE_ARGS
 		-DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/epir
 		-DBUILD_TESTING=${BUILD_TESTING}
+		-DTEST_USING_MG=${TEST_USING_MG}
 		-DBUILD_BENCHES=${BUILD_BENCHES}
 		-DEMSCRIPTEN=${EMSCRIPTEN}
 )

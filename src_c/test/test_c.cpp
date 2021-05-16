@@ -7,8 +7,6 @@
 #include "../epir.h"
 #include "../epir_reply_mock.h"
 
-#define TEST_USING_MG
-
 void print_c(const unsigned char *buf, const size_t len) {
 	for(size_t i=0; i<len; i++) {
 		printf("0x%02x%s", buf[i], (i == len-1 ? "\n" : (i % 8) == 7 ? ",\n" : ", "));
