@@ -11,6 +11,10 @@ module.exports = {
 		'^.+\\.worker.[t|j]sx?$': 'workerloader-jest-transformer',
 		'^.+\\.(ts|tsx)$': 'ts-jest',
 	},
-	collectCoverageFrom: ['**/*.ts'],
+	collectCoverageFrom: [
+		'src_ts/**/*.ts',
+		'!src_ts/index.ts',
+		'!src_ts/browser.ts',
+	],
 };
 
