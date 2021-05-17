@@ -13,6 +13,21 @@ void print_c(const unsigned char *buf, const size_t len) {
 	}
 }
 
+static uint32_t x, y, z, w;
+
+void xorshift_init() {
+	x = 123456789;
+	y = 362436069;
+	z = 521288629;
+	w = 88675123;
+}
+
+uint32_t xorshift() {
+	const uint32_t t = x ^ (x << 11);
+	x = y; y = z; z = w;
+	return w = (w ^ (w >> 19)) ^ (t ^ (t >> 8));
+}
+
 bool SameBuffer(const unsigned char *a, const unsigned char *b, const size_t len) {
 	return (memcmp(a, b, len) == 0);
 }
@@ -174,10 +189,10 @@ static const uint64_t ciphers_count = 3000ULL;
 static const uint64_t idx = 12345678;
 static const uint64_t rows[] = { idx / 1'000'000ULL, (idx % 1'000'000ULL) / 1'000ULL, (idx % 1'000ULL) };
 static const unsigned char selector_hash[] = {
-	0x7e, 0x3e, 0xc1, 0xa4, 0x30, 0x0b, 0x25, 0x3c,
-	0x98, 0x6f, 0x3d, 0xd1, 0x25, 0xd8, 0x4e, 0xad,
-	0x43, 0x5c, 0xfe, 0x84, 0x5c, 0x3c, 0x42, 0xb5,
-	0x6c, 0x7d, 0xb6, 0x14, 0x4d, 0x6e, 0x22, 0x4f
+	0xda, 0x20, 0x9d, 0x4f, 0x85, 0xad, 0x0d, 0xb2,
+	0x68, 0x45, 0x6f, 0x0d, 0x4e, 0x9e, 0x90, 0x7f,
+	0x8f, 0x87, 0x31, 0xa6, 0x69, 0x5d, 0xa5, 0x5f,
+	0x1f, 0x3d, 0x19, 0x2f, 0x59, 0xac, 0xe9, 0x0c
 };
 
 TEST(SelectorTest, ciphers_count) {
@@ -212,10 +227,10 @@ TEST(SelectorTest, create_choice) {
 
 std::vector<unsigned char> selector_r() {
 	std::vector<unsigned char> r(ciphers_count * EPIR_SCALAR_SIZE);
-	srand(0);
+	xorshift_init();
 	for(size_t i=0; i<ciphers_count; i++) {
 		for(size_t j=0; j<EPIR_SCALAR_SIZE; j++) {
-			r[i * EPIR_SCALAR_SIZE + j] = rand();
+			r[i * EPIR_SCALAR_SIZE + j] = xorshift();
 		}
 		r[i * EPIR_SCALAR_SIZE + EPIR_SCALAR_SIZE - 1] &= 0x1f;
 	}
@@ -240,10 +255,10 @@ TEST(SelectorTest, selector_create_fast) {
 
 #ifdef TEST_USING_MG
 std::array<uint8_t, ELEM_SIZE> generateElem() {
-	srand(0);
+	xorshift_init();
 	std::array<uint8_t, ELEM_SIZE> elem;
 	for(size_t i=0; i<ELEM_SIZE; i++) {
-		elem[i] = rand() & 0xff;
+		elem[i] = xorshift() & 0xff;
 	}
 	return elem;
 }
