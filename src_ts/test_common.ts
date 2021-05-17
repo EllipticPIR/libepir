@@ -197,7 +197,6 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 		test('decrypt a reply (success)', async () => {
 			// XXX: generate mock data.
 			const data = require('./bench_js_reply_data.json');
-			const decCtx = await epir.get_decryption_context(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
 			const decrypted = await epir.reply_decrypt(
 				decCtx, new Uint8Array(data.reply), new Uint8Array(data.privkey), data.dimension, data.packing);
 			expect(new Uint8Array(decrypted.subarray(0, data.correct.length))).toEqual(new Uint8Array(data.correct));
