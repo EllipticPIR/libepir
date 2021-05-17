@@ -180,7 +180,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		wasm.HEAPU8.set(privkey, privkey_);
 		const pubkey_ = wasm._malloc(32);
 		wasm._epir_pubkey_from_privkey(pubkey_, privkey_);
-		const pubkey = new Uint8Array(wasm.HEAPU8.subarray(pubkey_, pubkey_ + 32));
+		const pubkey = wasm.HEAPU8.slice(pubkey_, pubkey_ + 32);
 		wasm._free(pubkey_);
 		wasm._free(privkey_);
 		return pubkey;
@@ -197,7 +197,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		wasm.HEAPU8.set(rr, rr_);
 		encrypt(cipher_, key_, msg&0xffffffff, Math.floor(msg/0x100000000), rr_);
 		wasm._free(rr_);
-		const cipher = new Uint8Array(wasm.HEAPU8.subarray(cipher_, cipher_ + 64));
+		const cipher = wasm.HEAPU8.slice(cipher_, cipher_ + 64);
 		wasm._free(key_);
 		wasm._free(cipher_);
 		return cipher;
@@ -223,9 +223,9 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		}, 'vi');
 		wasm._epir_mG_generate_prepare(ctx_, mG_, mG_p3_, nThreads, cb_, null);
 		wasm.removeFunction(cb_);
-		const ctx = new Uint8Array(wasm.HEAPU8.subarray(ctx_, ctx_ + CTX_SIZE));
-		const mG = new Uint8Array(wasm.HEAPU8.subarray(mG_, mG_ + nThreads * MG_SIZE));
-		const mG_p3 = new Uint8Array(wasm.HEAPU8.subarray(mG_p3_, mG_p3_ + nThreads * MG_P3_SIZE));
+		const ctx = wasm.HEAPU8.slice(ctx_, ctx_ + CTX_SIZE);
+		const mG = wasm.HEAPU8.slice(mG_, mG_ + nThreads * MG_SIZE);
+		const mG_p3 = wasm.HEAPU8.slice(mG_p3_, mG_p3_ + nThreads * MG_P3_SIZE);
 		wasm._free(ctx_);
 		wasm._free(mG_);
 		wasm._free(mG_p3_);
@@ -336,7 +336,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		const selector_ = wasm._malloc(64 * ciphers);
 		wasm._epir_selector_create_choice(
 			selector_, ic_, index_counts.length, idx&0xffffffff, Math.floor(idx / 0xffffffff)&0xffffffff);
-		const selector = new Uint8Array(wasm.HEAPU8.subarray(selector_, selector_ + 64 * ciphers));
+		const selector = wasm.HEAPU8.slice(selector_, selector_ + 64 * ciphers);
 		wasm._free(selector_);
 		wasm._free(ic_);
 		return selector;

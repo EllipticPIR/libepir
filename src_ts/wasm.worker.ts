@@ -1,25 +1,7 @@
 
 const wasm_ = require('../dist/libepir.js')();
 
-const CTX_SIZE = 124;
-const MG_SIZE = 36;
-const MG_P3_SIZE = 4 * 40;
-
 const worker: Worker = self as any;
-
-const store_uint32_t = (wasm: any , offset: number, n: number) => {
-	for(let i=0; i<4; i++) {
-		wasm.HEAPU8[offset + i] = n & 0xff;
-		n >>= 8;
-	}
-}
-
-const store_uint64_t = (wasm: any, offset: number, n: number) => {
-	for(let i=0; i<8; i++) {
-		wasm.HEAPU8[offset + i] = n & 0xff;
-		n >>= 8;
-	}
-}
 
 interface KeyValue {
 	[key: string]: Function;
@@ -27,6 +9,9 @@ interface KeyValue {
 const funcs: KeyValue = {
 	// For mG.bin generation.
 	mg_generate_compute: async (params: { nThreads: number, mmax: number, ctx: Uint8Array, mG_p3: Uint8Array, threadId: number }) => {
+		const CTX_SIZE = 124;
+		const MG_SIZE = 36;
+		const MG_P3_SIZE = 4 * 40;
 		const wasm = await wasm_;
 		const mG_count = Math.ceil(params.mmax / params.nThreads) - 1;
 		const ctx_ = wasm._malloc(CTX_SIZE);
