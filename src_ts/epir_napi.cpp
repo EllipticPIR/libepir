@@ -87,17 +87,16 @@ Napi::Object DecryptionContext::Init(Napi::Env env, Napi::Object exports) {
 	return exports;
 }
 
-typedef struct {
-	Napi::Env env;
-	Napi::Function cb;
-} mG_cb_data;
-
-void mG_cb(const size_t points_computed, void *cb_data) {
-	mG_cb_data *data = (mG_cb_data*)cb_data;
-	Napi::Number pc = Napi::Number::New(data->env, points_computed);
-	std::vector<napi_value> args{pc};
-	data->cb.Call(args);
+using Context = Napi::Reference<Napi::Value>;
+void mGCallJs(Napi::Env env, Napi::Function cb, Context *ctx, size_t *data) {
+	if(env != nullptr && cb != nullptr) {
+		cb.Call(ctx->Value(), { Napi::Number::New(env, *data) });
+	}
+	if(data != nullptr) {
+		delete data;
+	}
 }
+using TSFN = Napi::TypedThreadSafeFunction<Context, size_t, mGCallJs>;
 
 // new DecrytionContext(param: string | Uint8Array | undefined | ((p: number) => void), mmax = EPIR_DEFAULT_MG_MAX);
 DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::ObjectWrap<DecryptionContext>(info) {
@@ -120,9 +119,23 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 		epir_mG_generate(this->mG.data(), this->mG.size(), NULL, NULL);
 	} else if(param.IsFunction()) {
 		// Generate mG.bin using the specified callback.
-		const Napi::Function cb = param.As<Napi::Function>();
-		mG_cb_data data = { env, cb };
-		epir_mG_generate(this->mG.data(), this->mG.size(), mG_cb, &data);
+		Context *ctx = new Context(Napi::Persistent(info.This()));
+		auto tsfn = TSFN::New(env, param.As<Napi::Function>(), "new DecryptionContext", 0, 1, ctx, [](Napi::Env, void*, Context *ctx) {
+			delete ctx;
+		});
+		typedef struct {
+			Napi::Env env;
+			TSFN tsfn;
+		} mG_cb_data;
+		mG_cb_data data = { env, tsfn };
+		epir_mG_generate(this->mG.data(), this->mG.size(), [](const size_t points_computed, void *cb_data) {
+			mG_cb_data *data = (mG_cb_data*)cb_data;
+			size_t *pc = new size_t(points_computed);
+			if(data->tsfn.BlockingCall(pc) != napi_ok) {
+				return;
+			}
+		}, &data);
+		tsfn.Release();
 	} else if(param.IsString()) {
 		// Load mG.bin from the path.
 		const std::string path = std::string(param.As<Napi::String>());

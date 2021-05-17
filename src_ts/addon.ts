@@ -4,7 +4,7 @@
 
 import { epir_t } from './epir_t';
 
-const epir_napi = require('../build/Release/epir');
+const epir_napi = require('bindings')('epir');
 
 export interface DecryptionContext {
 	constructor(path: string): DecryptionContext;
@@ -22,8 +22,19 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	};
 	
 	const get_decryption_context = async (
-		param?: string | Uint8Array | ((p: number) => void), mmax?: number): Promise<DecryptionContext> => {
-		return mmax ? new epir_napi.DecryptionContext(param, mmax) : new epir_napi.DecryptionContext(param);
+		param?: string | Uint8Array | ((p: number) => void), mmax: number = 1 << 24): Promise<DecryptionContext> => {
+		if(typeof param === 'function') {
+			// We ensure that all the JS callbacks are called.
+			return new Promise((resolve, reject) => {
+				const decCtx = new epir_napi.DecryptionContext((points_computed: number) => {
+					param(points_computed);
+					if(points_computed == mmax) {
+						resolve(decCtx);
+					}
+				}, mmax);
+			});
+		}
+		return new epir_napi.DecryptionContext(param, mmax);
 	};
 	
 	const selector_create = async (
