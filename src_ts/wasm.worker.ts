@@ -26,27 +26,6 @@ interface KeyValue {
 }
 const funcs: KeyValue = {
 	// For mG.bin generation.
-	mg_generate_prepare: async (params: { nThreads: number, mmax: number }) => {
-		const wasm = await wasm_;
-		const ctx_ = wasm._malloc(CTX_SIZE);
-		store_uint32_t(wasm, ctx_, params.mmax);
-		const mG_ = wasm._malloc(params.nThreads * MG_SIZE);
-		const mG_p3_ = wasm._malloc(params.nThreads * MG_P3_SIZE);
-		const cb = wasm.addFunction((data: any) => {
-			worker.postMessage({ method: 'mg_generate_cb' });
-		}, 'vi');
-		wasm._epir_mG_generate_prepare(ctx_, mG_, mG_p3_, params.nThreads, cb, null);
-		wasm.removeFunction(cb);
-		const ctx = new Uint8Array(wasm.HEAPU8.subarray(ctx_, ctx_ + CTX_SIZE));
-		const mG = new Uint8Array(wasm.HEAPU8.subarray(mG_, mG_ + params.nThreads * MG_SIZE));
-		const mG_p3 = new Uint8Array(wasm.HEAPU8.subarray(mG_p3_, mG_p3_ + params.nThreads * MG_P3_SIZE));
-		worker.postMessage({
-			method: 'mg_generate_prepare', ctx: ctx, mG: mG, mG_p3: mG_p3,
-		}, [ctx.buffer, mG.buffer, mG_p3.buffer]);
-		wasm._free(ctx_);
-		wasm._free(mG_);
-		wasm._free(mG_p3_);
-	},
 	mg_generate_compute: async (params: { nThreads: number, mmax: number, ctx: Uint8Array, mG_p3: Uint8Array, threadId: number }) => {
 		const wasm = await wasm_;
 		const mG_count = Math.ceil(params.mmax / params.nThreads) - 1;
