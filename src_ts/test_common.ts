@@ -134,7 +134,12 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 			expect(new Uint8Array(cipherTest)).toEqual(cipher);
 		});
 		
-		test('generate mG', async () => {
+		test('generate mG (without callback)', async () => {
+			const decCtx = await epir.get_decryption_context(undefined, MMAX);
+			// XXX: check generated data!
+		});
+		
+		test('generate mG (with callback)', async () => {
 			let pointsComputed = 0;
 			const decCtx = await epir.get_decryption_context((pointsComputedTest: number) => {
 				pointsComputed++;
