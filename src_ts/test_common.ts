@@ -181,14 +181,24 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 			return r;
 		};
 		
-		test('create selector (normal)', async () => {
+		test('create selector (deterministic, normal)', async () => {
 			const selector = await epir.selector_create(pubkey, index_counts, idx, generateSelectorR());
 			expect(sha256sum(selector)).toEqual(selectorHash);
 		});
 		
-		test('create selector (fast)', async () => {
+		test('create selector (deterministic, fast)', async () => {
 			const selector = await epir.selector_create_fast(privkey, index_counts, idx, generateSelectorR());
 			expect(sha256sum(selector)).toEqual(selectorHash);
+		});
+		
+		test('create selector (random, normal)', async () => {
+			const selector = await epir.selector_create(pubkey, index_counts, idx);
+			expect(selector).toHaveLength(ciphers_count * 64);
+		});
+		
+		test('create selector (random, fast)', async () => {
+			const selector = await epir.selector_create_fast(privkey, index_counts, idx);
+			expect(selector).toHaveLength(ciphers_count * 64);
 		});
 	});
 	
