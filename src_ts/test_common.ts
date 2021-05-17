@@ -82,7 +82,6 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 			expect(new Uint8Array(pubkeyTest)).toEqual(pubkey);
 		});
 		
-		/*
 		test('encrypt (normal)', async () => {
 			const epir = await createEpir();
 			const cipherTest = epir.encrypt(pubkey, msg, r);
@@ -94,7 +93,6 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 			const cipherTest = epir.encrypt_fast(privkey, msg, r);
 			expect(new Uint8Array(cipherTest)).toEqual(cipher);
 		});
-		*/
 		
 		test('generate mG', async () => {
 			const epir = await createEpir();
@@ -122,13 +120,19 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 		
 		test('decrypt (fail)', async () => {
 		});
+		*/
 		
 		test('random encrypt (normal)', async () => {
+			const epir = await createEpir();
+			const cipherTest = epir.encrypt(pubkey, msg);
+			// XXX: check generated data!
 		});
 		
 		test('random encrypt (fast)', async () => {
+			const epir = await createEpir();
+			const cipherTest = epir.encrypt_fast(privkey, msg);
+			// XXX: check generated data!
 		});
-		*/
 	});
 	
 	describe('Selector', () => {

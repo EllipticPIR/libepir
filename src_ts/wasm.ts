@@ -158,6 +158,31 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		return pubkey;
 	};
 	
+	const encrypt_ = (
+		key: Uint8Array, msg: number, r: Uint8Array | undefined,
+		encrypt: (cipher_: number, key_: number, msgL: number, msgH: number, r_: number) => void): Uint8Array => {
+		const key_ = wasm._malloc(32);
+		wasm.HEAPU8.set(key, key_);
+		const cipher_ = wasm._malloc(64);
+		const rr = r ? r : getRandomBytes(32);
+		const rr_ = wasm._malloc(32);
+		wasm.HEAPU8.set(rr, rr_);
+		encrypt(cipher_, key_, msg&0xffffffff, Math.floor(msg/0x100000000), rr_);
+		wasm._free(rr_);
+		const cipher = new Uint8Array(wasm.HEAPU8.subarray(cipher_, cipher_ + 64));
+		wasm._free(key_);
+		wasm._free(cipher_);
+		return cipher;
+	};
+	
+	const encrypt = (pubkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array => {
+		return encrypt_(pubkey, msg, r, wasm._epir_ecelgamal_encrypt);
+	};
+	
+	const encrypt_fast = (privkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array => {
+		return encrypt_(privkey, msg, r, wasm._epir_ecelgamal_encrypt_fast);
+	};
+	
 	const mg_generate = async (mG_: number, cb: undefined | ((p: number) => void), mmax: number): Promise<void> => {
 		// XXX: not working for navigator.hardwareConcurrency.
 		const nThreads = navigator.hardwareConcurrency / 2;
@@ -296,6 +321,8 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	return {
 		create_privkey,
 		pubkey_from_privkey,
+		encrypt,
+		encrypt_fast,
 		get_decryption_context,
 		selector_create,
 		selector_create_fast,

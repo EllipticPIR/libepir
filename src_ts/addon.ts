@@ -21,6 +21,14 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		return epir_napi.pubkey_from_privkey(pubkey);
 	};
 	
+	const encrypt = (pubkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array => {
+		return r ? epir_napi.encrypt(pubkey, msg, r) : epir_napi.encrypt(pubkey, msg);
+	};
+	
+	const encrypt_fast = (privkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array => {
+		return r ? epir_napi.encrypt_fast(privkey, msg, r) : epir_napi.encrypt_fast(privkey, msg);
+	};
+	
 	const get_decryption_context = async (
 		param?: string | Uint8Array | ((p: number) => void), mmax: number = 1 << 24): Promise<DecryptionContext> => {
 		if(typeof param === 'function') {
@@ -62,6 +70,8 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	return {
 		create_privkey,
 		pubkey_from_privkey,
+		encrypt,
+		encrypt_fast,
 		get_decryption_context,
 		selector_create,
 		selector_create_fast,
