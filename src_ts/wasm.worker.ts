@@ -70,39 +70,22 @@ const funcs: KeyValue = {
 		wasm._free(mG_p3_);
 	},
 	// For selector creation.
-	selector_create_choice: async (params: { index_counts: number[], idx: number }) => {
-		const wasm = await wasm_;
-		const ic_ = wasm._malloc(8 * params.index_counts.length);
-		for(let i=0; i<params.index_counts.length; i++) {
-			store_uint64_t(wasm, ic_ + 8 * i, params.index_counts[i]);
-		}
-		const ciphers = wasm._epir_selector_ciphers_count(ic_, params.index_counts.length);
-		const selector_ = wasm._malloc(64 * ciphers);
-		wasm._epir_selector_create_choice(
-			selector_, ic_, params.index_counts.length, params.idx&0xffffffff, Math.floor(params.idx / 0xffffffff)&0xffffffff);
-		const selector = new Uint8Array(wasm.HEAPU8.subarray(selector_, selector_ + 64 * ciphers));
-		worker.postMessage({
-			method: 'selector_create_choice', selector: selector,
-		}, [selector.buffer]);
-		wasm._free(selector_);
-		wasm._free(ic_);
-	},
-	selector_create: async (params: { selector: Uint8Array, key: Uint8Array, random: Uint8Array, isFast: boolean }) => {
+	selector_create: async (params: { choice: Uint8Array, key: Uint8Array, random: Uint8Array, isFast: boolean }) => {
 		const wasm = await wasm_;
 		const key_ = wasm._malloc(32);
 		wasm.HEAPU8.set(params.key, key_);
 		const cipher_ = wasm._malloc(64);
 		const random_ = wasm._malloc(32);
 		const encrypt = (params.isFast ? wasm._epir_ecelgamal_encrypt_fast : wasm._epir_ecelgamal_encrypt);
-		for(let i=0; i*64<params.selector.length; i++) {
-			wasm.HEAPU8.set(params.selector.subarray(i * 64, (i + 1) * 64), cipher_);
+		for(let i=0; i*64<params.choice.length; i++) {
+			wasm.HEAPU8.set(params.choice.subarray(i * 64, (i + 1) * 64), cipher_);
 			wasm.HEAPU8.set(params.random.subarray(i * 32, (i + 1) * 32), random_);
-			encrypt(cipher_, key_, params.selector[i * 64], 0, random_);
-			params.selector.set(wasm.HEAPU8.subarray(cipher_, cipher_ + 64), i * 64);
+			encrypt(cipher_, key_, params.choice[i * 64], 0, random_);
+			params.choice.set(wasm.HEAPU8.subarray(cipher_, cipher_ + 64), i * 64);
 		}
 		worker.postMessage({
-			method: 'selector_create', selector: params.selector,
-		}, [params.selector.buffer]);
+			method: 'selector_create', selector: params.choice,
+		}, [params.choice.buffer]);
 		wasm._free(key_);
 		wasm._free(cipher_);
 		wasm._free(random_);

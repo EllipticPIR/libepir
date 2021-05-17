@@ -304,6 +304,21 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		return ciphers_or_elements_count(index_counts, wasm._epir_selector_elements_count);
 	};
 	
+	const create_choice = (index_counts: number[], idx: number): Uint8Array => {
+		const ic_ = wasm._malloc(8 * index_counts.length);
+		for(let i=0; i<index_counts.length; i++) {
+			store_uint64_t(wasm, ic_ + 8 * i, index_counts[i]);
+		}
+		const ciphers = wasm._epir_selector_ciphers_count(ic_, index_counts.length);
+		const selector_ = wasm._malloc(64 * ciphers);
+		wasm._epir_selector_create_choice(
+			selector_, ic_, index_counts.length, idx&0xffffffff, Math.floor(idx / 0xffffffff)&0xffffffff);
+		const selector = new Uint8Array(wasm.HEAPU8.subarray(selector_, selector_ + 64 * ciphers));
+		wasm._free(selector_);
+		wasm._free(ic_);
+		return selector;
+	};
+	
 	const selector_create_ = async (
 		key: Uint8Array, index_counts: number[], idx: number, r: Uint8Array | undefined, isFast: boolean): Promise<Uint8Array> => {
 		return new Promise(async (resolve, reject) => {
@@ -311,31 +326,27 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 			const workers: EPIRWorker[] = [];
 			const promises: Promise<Uint8Array>[] = [];
 			const random = r ? r : getRandomBytes(ciphers_count(index_counts) * 32);
-			for(let i=0; i<nThreads; i++) {
+			const choice = create_choice(index_counts, idx);
+			for(let t=0; t<nThreads; t++) {
 				workers.push(new EPIRWorker());
 				promises.push(new Promise((resolve, reject) => {
-					workers[i].onmessage = (ev) => {
+					workers[t].onmessage = (ev) => {
 						switch(ev.data.method) {
-							case 'selector_create_choice':
-								const ciphersPerThread = Math.ceil((ev.data.selector.length / 64) / nThreads);
-								for(let t=0; t<nThreads; t++) {
-									const begin = t * ciphersPerThread;
-									const end = Math.min((ev.data.selector.length / 64) + 1, (t + 1) * ciphersPerThread);
-									const selector_t = ev.data.selector.subarray(begin * 64, end * 64);
-									workers[t].postMessage({
-										method: 'selector_create',
-										selector: selector_t, key: key, random: random.subarray(begin * 32, end * 32), isFast: isFast
-									});
-								}
-								break;
 							case 'selector_create':
 								resolve(ev.data.selector);
 								break;
 						}
 					};
 				}));
+				const ciphersPerThread = Math.ceil((choice.length / 64) / nThreads);
+				const begin = t * ciphersPerThread;
+				const end = Math.min((choice.length / 64) + 1, (t + 1) * ciphersPerThread);
+				const choice_t = choice.subarray(begin * 64, end * 64);
+				workers[t].postMessage({
+					method: 'selector_create',
+					choice: choice_t, key: key, random: random.subarray(begin * 32, end * 32), isFast: isFast
+				});
 			}
-			workers[0].postMessage({ method: 'selector_create_choice', index_counts: index_counts, idx: idx });
 			const selectors = await Promise.all(promises);
 			resolve(uint8ArrayConcat(selectors));
 		});
