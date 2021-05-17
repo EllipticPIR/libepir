@@ -69,33 +69,34 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 	const testsWithWorkersCount = 4;
 	process.setMaxListeners(testsWithWorkersCount * 2 * navigator.hardwareConcurrency);
 	
+	let epir: epir_t<any>;
+	
+	beforeAll(async () => {
+		epir = await createEpir();
+	});
+	
 	describe('ECElGamal', () => {
 		test('create private key', async () => {
-			const epir = await createEpir();
 			const privkey = epir.create_privkey();
 			expect(privkey).toHaveLength(32);
 		});
 		
 		test('create public key', async () => {
-			const epir = await createEpir();
 			const pubkeyTest = epir.pubkey_from_privkey(privkey);
 			expect(new Uint8Array(pubkeyTest)).toEqual(pubkey);
 		});
 		
 		test('encrypt (normal)', async () => {
-			const epir = await createEpir();
 			const cipherTest = epir.encrypt(pubkey, msg, r);
 			expect(new Uint8Array(cipherTest)).toEqual(cipher);
 		});
 		
 		test('encrypt (fast)', async () => {
-			const epir = await createEpir();
 			const cipherTest = epir.encrypt_fast(privkey, msg, r);
 			expect(new Uint8Array(cipherTest)).toEqual(cipher);
 		});
 		
 		test('generate mG', async () => {
-			const epir = await createEpir();
 			let pointsComputed = 0;
 			const decCtx = await epir.get_decryption_context((pointsComputedTest: number) => {
 				pointsComputed++;
@@ -110,7 +111,6 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 		*/
 		
 		test('load mG', async () => {
-			const epir = await createEpir();
 			const decCtx = await epir.get_decryption_context(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
 		});
 		
@@ -123,7 +123,6 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 		*/
 		
 		test('random encrypt (normal)', async () => {
-			const epir = await createEpir();
 			const cipherTest = epir.encrypt(pubkey, msg);
 			// XXX: check generated data!
 		});
@@ -148,7 +147,6 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 		*/
 		
 		test('create selector (normal)', async () => {
-			const epir = await createEpir();
 			const privkey = epir.create_privkey();
 			const pubkey = epir.pubkey_from_privkey(privkey);
 			const selector = await epir.selector_create(pubkey, index_counts, 1024);
@@ -157,7 +155,6 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 		});
 		
 		test('create selector (fast)', async () => {
-			const epir = await createEpir();
 			const privkey = epir.create_privkey();
 			const selector = await epir.selector_create_fast(privkey, index_counts, 1024);
 			expect(selector).toHaveLength(3000 * 64);
@@ -169,7 +166,6 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 		test('decrypt a reply (success)', async () => {
 			// XXX: generate mock data.
 			const data = require('./bench_js_reply_data.json');
-			const epir = await createEpir();
 			const decCtx = await epir.get_decryption_context(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
 			const decrypted = await epir.reply_decrypt(
 				decCtx, new Uint8Array(data.reply), new Uint8Array(data.privkey), data.dimension, data.packing);
