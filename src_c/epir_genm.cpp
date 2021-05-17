@@ -28,8 +28,8 @@ int main(int argc, char *argv[]) {
 	}
 	
 	const std::string path = std::string(argc > 1 ? argv[1] : path_default);
-	const uint8_t mMaxMod = (argc > 2 ? atoi(argv[2]) : 24);
-	const uint32_t mMax = (1 << mMaxMod);
+	const uint8_t mmaxMod = (argc > 2 ? atoi(argv[2]) : 24);
+	const uint32_t mmax = (1 << mmaxMod);
 	
 	if(std::filesystem::exists(path)) {
 		printf("The file mG.bin exists already. Do nothing.\n");
@@ -47,17 +47,17 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	
-	std::vector<epir_mG_t> mG(mMax);
+	std::vector<epir_mG_t> mG(mmax);
 	
 	// Compute.
 	const double beginCompute = microtime();
 	auto cb = [](const size_t pointsComputed, void *cb_data) {
-		uint32_t mMax = *(uint32_t*)cb_data;
-		if(pointsComputed == mMax || pointsComputed % (1'000'000) == 0) {
-			printf("\x1b[32m%8zd of %d points computed (%6.02f%%).\x1b[39m\n", pointsComputed, mMax, (100.0 * pointsComputed / mMax));
+		uint32_t mmax = *(uint32_t*)cb_data;
+		if(pointsComputed == mmax || pointsComputed % (1'000'000) == 0) {
+			printf("\x1b[32m%8zd of %d points computed (%6.02f%%).\x1b[39m\n", pointsComputed, mmax, (100.0 * pointsComputed / mmax));
 		}
 	};
-	epir_mG_generate_no_sort(mG.data(), mMax, cb, (void*)&mMax);
+	epir_mG_generate_no_sort(mG.data(), mmax, cb, (void*)&mmax);
 	printf("\x1b[32mComputation done in %.0fms.\x1b[39m\n", (microtime() - beginCompute) / 1000.);
 	
 	// Sort.

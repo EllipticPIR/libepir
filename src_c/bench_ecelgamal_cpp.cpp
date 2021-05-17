@@ -24,19 +24,19 @@ int main(int argc, char *argv[]) {
 	
 	// Create key pair.
 	printf("Generatig a key pair...\n");
-	const EllipticPIR::PrivKey privkey;
-	const EllipticPIR::PubKey pubkey(privkey);
+	const EllipticPIR::PrivateKey privkey;
+	const EllipticPIR::PublicKey pubkey(privkey);
 	
 	// Load mG.bin.
 	printf("Loading mG.bin...\n");
 	PRINT_MEASUREMENT(true, "mG.bin loaded in %.0fms.\n",
-		EllipticPIR::DecryptionContext decCtx(EPIR_DEFAULT_MG_MAX, (mG_path ? std::string(mG_path) : ""));
+		EllipticPIR::DecryptionContext decCtx(mG_path ? std::string(mG_path) : "");
 	);
 	
 	std::vector<EllipticPIR::Cipher> ciphers;
 	PRINT_MEASUREMENT(true, "Ciphertext encrypted in %.0fms.\n",
 		for(size_t i=0; i<LOOP; i++) {
-			ciphers.push_back(EllipticPIR::Cipher(privkey, msg[i]));
+			ciphers.push_back(privkey.encrypt(msg[i]));
 		}
 	);
 	

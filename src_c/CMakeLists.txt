@@ -48,7 +48,7 @@ set_target_properties(epir_static PROPERTIES OUTPUT_NAME epir)
 target_link_libraries(epir_static "-lsodium")
 
 # ./epir_genm
-add_executable(epir_genm epir_genm.cpp epir.h common.h)
+add_executable(epir_genm epir_genm.cpp epir.h common.h epir.hpp)
 target_link_libraries(epir_genm epir)
 set_target_properties(epir_genm PROPERTIES COMPILE_DEFINITIONS "_GLIBCXX_PARALLEL")
 
@@ -72,10 +72,10 @@ if(BUILD_BENCHES)
 	add_executable(bench_selector_cpp bench_selector_cpp.cpp epir.hpp)
 	target_link_libraries(bench_selector_cpp epir)
 	# ./bench_reply_decrypt
-	add_executable(bench_reply_decrypt bench_reply_decrypt.c epir.h bench_reply_decrypt_data.h)
+	add_executable(bench_reply_decrypt bench_reply_decrypt.c epir.h)
 	target_link_libraries(bench_reply_decrypt epir)
 	# ./bench_reply_decrypt_cpp
-	add_executable(bench_reply_decrypt_cpp bench_reply_decrypt_cpp.cpp epir.hpp bench_reply_decrypt_data.h)
+	add_executable(bench_reply_decrypt_cpp bench_reply_decrypt_cpp.cpp epir.hpp)
 	target_link_libraries(bench_reply_decrypt_cpp epir)
 endif()
 

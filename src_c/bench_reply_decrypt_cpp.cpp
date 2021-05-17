@@ -8,8 +8,8 @@
 #include "epir_reply_mock.h"
 #include "common.h"
 
-#define DIMENSION (3)
-#define PACKING   (3)
+#define DIMENSION ((uint8_t)3)
+#define PACKING   ((uint8_t)3)
 #define ELEM_SIZE (32)
 
 int main(int argc, char *argv[]) {
@@ -18,12 +18,12 @@ int main(int argc, char *argv[]) {
 	
 	// Create key pair.
 	printf("Generatig a key pair...\n");
-	const EllipticPIR::PrivKey privkey;
-	const EllipticPIR::PubKey pubkey(privkey);
+	const EllipticPIR::PrivateKey privkey;
+	const EllipticPIR::PublicKey pubkey(privkey);
 	
 	// Generate an element.
 	printf("Generatig an element...\n");
-	std::vector<uint8_t> elem(ELEM_SIZE);
+	std::array<uint8_t, ELEM_SIZE> elem;
 	for(size_t i=0; i<ELEM_SIZE; i++) {
 		elem[i] = rand() & 0xff;
 	}
@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
 	// Load mG.bin.
 	printf("Loading mG.bin...\n");
 	PRINT_MEASUREMENT(true, "mG.bin loaded in %.0fms.\n",
-		EllipticPIR::DecryptionContext decCtx(EPIR_DEFAULT_MG_MAX, mG_path ? std::string(mG_path) : "");
+		EllipticPIR::DecryptionContext decCtx(mG_path ? std::string(mG_path) : "");
 	);
 	
 	// Decrypt.

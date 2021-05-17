@@ -2,6 +2,10 @@
 #ifndef EPIR_REPLY_MOCK_H
 #define EPIR_REPLY_MOCK_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "epir.h"
 
 #define divide_up(a, b) (((a) / (b)) + (((a) % (b)) == 0 ? 0 : 1 ))
@@ -54,6 +58,10 @@ void epir_reply_mock(
 	}
 	free(midstate);
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
