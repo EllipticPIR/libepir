@@ -45,17 +45,29 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		return new epir_napi.DecryptionContext(param, mmax);
 	};
 	
+	const ciphers_count = (index_counts: number[]): number => {
+		return epir_napi.ciphers_count(index_counts);
+	};
+	
+	const elements_count = (index_counts: number[]): number => {
+		return epir_napi.elements_count(index_counts);
+	};
+	
 	const selector_create = async (
-		pubkey: Uint8Array, index_counts: number[], idx: number): Promise<Uint8Array> => {
+		pubkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array> => {
 		return new Promise((resolve, reject) => {
-			resolve(epir_napi.selector_create(pubkey, index_counts, idx));
+			resolve(r ?
+				epir_napi.selector_create(pubkey, index_counts, idx, r) :
+				epir_napi.selector_create(pubkey, index_counts, idx));
 		});
 	};
 	
 	const selector_create_fast = async (
-		privkey: Uint8Array, index_counts: number[], idx: number): Promise<Uint8Array> => {
+		privkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array> => {
 		return new Promise((resolve, reject) => {
-			resolve(epir_napi.selector_create_fast(privkey, index_counts, idx));
+			resolve(r ?
+				epir_napi.selector_create_fast(privkey, index_counts, idx, r) :
+				epir_napi.selector_create_fast(privkey, index_counts, idx));
 		});
 	};
 	
@@ -73,6 +85,8 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		encrypt,
 		encrypt_fast,
 		get_decryption_context,
+		ciphers_count,
+		elements_count,
 		selector_create,
 		selector_create_fast,
 		reply_decrypt,

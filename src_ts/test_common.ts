@@ -5,6 +5,29 @@ import { epir_t } from './epir_t';
 
 const MMAX = 1 << 16;
 
+let x: number;
+let y: number;
+let z: number;
+let w: number;
+
+const xorshift_init = () => {
+	x = 123456789;
+	y = 362436069;
+	z = 521288629;
+	w = 88675123;
+};
+
+const shiftL = (n: number, cnt: number) => {
+	return (n * (2 ** cnt)) & 0xffffffff;
+};
+
+const xorshift = () => {
+	const t = x ^ (shiftL(x, 11));
+	x = y; y = z; z = w;
+	w = (w ^ (w >>> 19)) ^ (t ^ (t >>> 8));
+	return w;
+};
+
 const sha256sum = (buf: Uint8Array): Uint8Array => {
 	const hash = crypto.createHash('sha256');
 	hash.update(buf);
@@ -54,13 +77,14 @@ const mGHash = new Uint8Array([
 
 const index_counts = [1000, 1000, 1000];
 const ciphers_count = 3000;
+const elements_count = 1000 * 1000 * 1000;
 const idx = 12345678;
 const rows = [ Math.floor(idx / (1000 * 1000)), Math.floor((idx % (1000 * 1000)) / 1000), (idx % 1000) ];
 const selectorHash = new Uint8Array([
-	0x7e, 0x3e, 0xc1, 0xa4, 0x30, 0x0b, 0x25, 0x3c,
-	0x98, 0x6f, 0x3d, 0xd1, 0x25, 0xd8, 0x4e, 0xad,
-	0x43, 0x5c, 0xfe, 0x84, 0x5c, 0x3c, 0x42, 0xb5,
-	0x6c, 0x7d, 0xb6, 0x14, 0x4d, 0x6e, 0x22, 0x4f
+	0xda, 0x20, 0x9d, 0x4f, 0x85, 0xad, 0x0d, 0xb2,
+	0x68, 0x45, 0x6f, 0x0d, 0x4e, 0x9e, 0x90, 0x7f,
+	0x8f, 0x87, 0x31, 0xa6, 0x69, 0x5d, 0xa5, 0x5f,
+	0x1f, 0x3d, 0x19, 0x2f, 0x59, 0xac, 0xe9, 0x0c
 ]);
 
 export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
@@ -70,9 +94,11 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 	process.setMaxListeners(testsWithWorkersCount * 2 * navigator.hardwareConcurrency);
 	
 	let epir: epir_t<any>;
+	let decCtx: any;
 	
 	beforeAll(async () => {
 		epir = await createEpir();
+		decCtx = await epir.get_decryption_context(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
 	});
 	
 	describe('ECElGamal', () => {
@@ -110,10 +136,6 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 		});
 		*/
 		
-		test('load mG', async () => {
-			const decCtx = await epir.get_decryption_context(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
-		});
-		
 		/*
 		test('decrypt (success)', async () => {
 		});
@@ -135,30 +157,39 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 	});
 	
 	describe('Selector', () => {
-		/*
 		test('ciphers count', async () => {
+			expect(epir.ciphers_count(index_counts)).toBe(ciphers_count);
 		});
 		
 		test('elements count', async () => {
+			expect(epir.elements_count(index_counts)).toBe(elements_count);
 		});
 		
+		/*
 		test('create choice', async () => {
 		});
 		*/
 		
+		const generateSelectorR = () => {
+			const r = new Uint8Array(ciphers_count * 32);
+			xorshift_init();
+			for(let i=0; i<ciphers_count; i++) {
+				for(let j=0; j<32; j++) {
+					r[i * 32 + j] = xorshift() & 0xff;
+				}
+				r[i * 32 + 32 - 1] &= 0x1f;
+			}
+			return r;
+		};
+		
 		test('create selector (normal)', async () => {
-			const privkey = epir.create_privkey();
-			const pubkey = epir.pubkey_from_privkey(privkey);
-			const selector = await epir.selector_create(pubkey, index_counts, 1024);
-			expect(selector).toHaveLength(3000 * 64);
-			// XXX: check generated data!
+			const selector = await epir.selector_create(pubkey, index_counts, idx, generateSelectorR());
+			expect(sha256sum(selector)).toEqual(selectorHash);
 		});
 		
 		test('create selector (fast)', async () => {
-			const privkey = epir.create_privkey();
-			const selector = await epir.selector_create_fast(privkey, index_counts, 1024);
-			expect(selector).toHaveLength(3000 * 64);
-			// XXX: check generated data!
+			const selector = await epir.selector_create_fast(privkey, index_counts, idx, generateSelectorR());
+			expect(sha256sum(selector)).toEqual(selectorHash);
 		});
 	});
 	

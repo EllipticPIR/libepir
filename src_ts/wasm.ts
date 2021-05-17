@@ -9,6 +9,13 @@ export const MMAX = 1 << MMAX_MOD;
 export const MG_SIZE = 36;
 export const MG_P3_SIZE = 4 * 40;
 
+const store_uint64_t = (wasm: any, offset: number, n: number) => {
+	for(let i=0; i<8; i++) {
+		wasm.HEAPU8[offset + i] = n & 0xff;
+		n >>= 8;
+	}
+}
+
 const uint8ArrayConcat = (arr: Uint8Array[]) => {
 	const len = arr.reduce((acc, v) => acc + v.length, 0);
 	const ret = new Uint8Array(len);
@@ -256,11 +263,36 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		return new DecryptionContext(mG);
 	};
 	
-	const selector_create_ = async (key: Uint8Array, index_counts: number[], idx: number, isFast: boolean): Promise<Uint8Array> => {
+	const malloc_index_counts = (index_counts: number[]): number => {
+		const ic_ = wasm._malloc(8 * index_counts.length);
+		for(let i=0; i<index_counts.length; i++) {
+			store_uint64_t(wasm, ic_ + 8 * i, index_counts[i]);
+		}
+		return ic_;
+	};
+	
+	const ciphers_or_elements_count = (index_counts: number[], count: (ic_: number, size: number) => number): number => {
+		const ic_ = malloc_index_counts(index_counts);
+		const c = count(ic_, index_counts.length);
+		wasm._free(ic_);
+		return c;
+	};
+	
+	const ciphers_count = (index_counts: number[]): number => {
+		return ciphers_or_elements_count(index_counts, wasm._epir_selector_ciphers_count);
+	};
+	
+	const elements_count = (index_counts: number[]): number => {
+		return ciphers_or_elements_count(index_counts, wasm._epir_selector_elements_count);
+	};
+	
+	const selector_create_ = async (
+		key: Uint8Array, index_counts: number[], idx: number, r: Uint8Array | undefined, isFast: boolean): Promise<Uint8Array> => {
 		return new Promise(async (resolve, reject) => {
 			const nThreads = navigator.hardwareConcurrency;
 			const workers: EPIRWorker[] = [];
 			const promises: Promise<Uint8Array>[] = [];
+			const random = r ? r : getRandomBytes(ciphers_count(index_counts) * 32);
 			for(let i=0; i<nThreads; i++) {
 				workers.push(new EPIRWorker());
 				promises.push(new Promise((resolve, reject) => {
@@ -271,15 +303,11 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 								for(let t=0; t<nThreads; t++) {
 									const begin = t * ciphersPerThread;
 									const end = Math.min((ev.data.selector.length / 64) + 1, (t + 1) * ciphersPerThread);
-									const random = new Uint8Array((end - begin) * 32);
-									for(let j=0; j*32<random.length; j++) {
-										const tmp = getRandomBytes(32);
-										random.set(tmp, j * 32);
-									}
 									const selector_t = ev.data.selector.subarray(begin * 64, end * 64);
 									workers[t].postMessage({
-										method: 'selector_create', selector: selector_t, key: key, random: random, isFast: isFast
-									}, [random.buffer]);
+										method: 'selector_create',
+										selector: selector_t, key: key, random: random.subarray(begin * 32, end * 32), isFast: isFast
+									});
 								}
 								break;
 							case 'selector_create':
@@ -295,12 +323,12 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		});
 	}
 	
-	const selector_create = (pubkey: Uint8Array, index_counts: number[], idx: number): Promise<Uint8Array> => {
-		return selector_create_(pubkey, index_counts, idx, false);
+	const selector_create = (pubkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array> => {
+		return selector_create_(pubkey, index_counts, idx, r, false);
 	};
 	
-	const selector_create_fast = (privkey: Uint8Array, index_counts: number[], idx: number): Promise<Uint8Array> => {
-		return selector_create_(privkey, index_counts, idx, true);
+	const selector_create_fast = (privkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array> => {
+		return selector_create_(privkey, index_counts, idx, r, true);
 	};
 	
 	const reply_decrypt = async (
@@ -324,6 +352,8 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		encrypt,
 		encrypt_fast,
 		get_decryption_context,
+		ciphers_count,
+		elements_count,
 		selector_create,
 		selector_create_fast,
 		reply_decrypt,

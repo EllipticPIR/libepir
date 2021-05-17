@@ -382,9 +382,20 @@ Napi::Value SelectorCreate_(
 			Napi::TypeError::New(env, "The `idx` has an invalid range.").ThrowAsJavaScriptException();
 			return env.Null();
 		}
+		uint8_t *r = NULL;
+		if(info.Length() >= 4) {
+			try {
+				const size_t expected_r_size = ciphers_count * EPIR_SCALAR_SIZE;
+				checkIsUint8Array(info[3], expected_r_size);
+				r = info[3].As<Napi::TypedArrayOf<uint8_t>>().Data();
+			} catch(const char *err) {
+				Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
+				return env.Null();
+			}
+		}
 		// Generate a selector.
 		std::vector<uint8_t> ciphers(ciphers_count * EPIR_CIPHER_SIZE);
-		selector_create(ciphers.data(), key, index_counts.data(), index_counts.size(), idx, NULL);
+		selector_create(ciphers.data(), key, index_counts.data(), index_counts.size(), idx, r);
 		return createUint8Array(env, ciphers);
 	} catch(Napi::Error &err) {
 		err.ThrowAsJavaScriptException();
@@ -392,12 +403,12 @@ Napi::Value SelectorCreate_(
 	}
 }
 
-// .selector_create(pubkey: Uint8Array(32), index_counts: number[], idx: number): Uint8Array
+// .selector_create(pubkey: Uint8Array(32), index_counts: number[], idx: number, r?: Uint8Array): Uint8Array
 Napi::Value SelectorCreate(const Napi::CallbackInfo &info) {
 	return SelectorCreate_(info, epir_selector_create);
 }
 
-// .selector_create_fast(privkey: Uint8Array(32), index_counts: number[], idx: number): Uint8Array
+// .selector_create_fast(privkey: Uint8Array(32), index_counts: number[], idx: number, r?: Uint8Array): Uint8Array
 Napi::Value SelectorCreateFast(const Napi::CallbackInfo &info) {
 	return SelectorCreate_(info, epir_selector_create_fast);
 }
