@@ -6,15 +6,19 @@
 extern "C" {
 #endif
 
-#ifndef EMSCRIPTEN_KEEPALIVE
-#  define EMSCRIPTEN_KEEPALIVE
+#ifdef __EMSCRIPTEN__
+#  include <emscripten.h>
+#else
+#  ifndef EMSCRIPTEN_KEEPALIVE
+#    define EMSCRIPTEN_KEEPALIVE
+#  endif
 #endif
 
 EMSCRIPTEN_KEEPALIVE
 size_t epir_reply_size(const uint8_t dimension, const uint8_t packing, const size_t elem_size);
 
 EMSCRIPTEN_KEEPALIVE
-size_t epir_reply_r_size(const uint8_t dimension, const uint8_t packing, const size_t elem_size);
+size_t epir_reply_r_count(const uint8_t dimension, const uint8_t packing, const size_t elem_size);
 
 /**
  * Generates a sample server reply.

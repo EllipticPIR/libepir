@@ -18,8 +18,12 @@ extern "C" {
 #pragma GCC diagnostic pop
 #undef CONFIGURED
 
-#ifndef EMSCRIPTEN_KEEPALIVE
-#  define EMSCRIPTEN_KEEPALIVE
+#ifdef __EMSCRIPTEN__
+#  include <emscripten.h>
+#else
+#  ifndef EMSCRIPTEN_KEEPALIVE
+#    define EMSCRIPTEN_KEEPALIVE
+#  endif
 #endif
 
 //#define EPIR_SCALAR_SIZE (crypto_core_ed25519_SCALARBYTES)

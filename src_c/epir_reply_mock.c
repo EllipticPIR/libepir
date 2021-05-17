@@ -12,14 +12,14 @@ size_t epir_reply_size(const uint8_t dimension, const uint8_t packing, const siz
 	return target_size;
 }
 
-size_t epir_reply_r_size(const uint8_t dimension, const uint8_t packing, const size_t elem_size) {
-	size_t r_size = 0;
+size_t epir_reply_r_count(const uint8_t dimension, const uint8_t packing, const size_t elem_size) {
+	size_t r_count = 0;
 	size_t target_size = elem_size;
 	for(uint8_t d=0; d<dimension; d++) {
-		r_size += EPIR_SCALAR_SIZE * divide_up(target_size, packing);
+		r_count += divide_up(target_size, packing);
 		target_size = EPIR_CIPHER_SIZE * divide_up(target_size, packing);
 	}
-	return r_size;
+	return r_count;
 }
 
 /**
