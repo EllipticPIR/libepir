@@ -136,13 +136,13 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 		});
 		*/
 		
-		/*
 		test('decrypt (success)', async () => {
+			expect(epir.decrypt(decCtx, privkey, cipher)).toBe(msg);
 		});
 		
 		test('decrypt (fail)', async () => {
+			expect(() => epir.decrypt(decCtx, pubkey, cipher)).toThrow(/^Failed to decrypt\.$/);
 		});
-		*/
 		
 		test('random encrypt (normal)', async () => {
 			const cipherTest = epir.encrypt(pubkey, msg);

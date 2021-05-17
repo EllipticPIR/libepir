@@ -301,7 +301,9 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	};
 	
 	const decrypt = (ctx: DecryptionContext, privkey: Uint8Array, cipher: Uint8Array) => {
-		return ctx.decrypt(wasm, privkey, cipher);
+		const decrypted = ctx.decrypt(wasm, privkey, cipher);
+		if(decrypted < 0) throw new Error('Failed to decrypt.');
+		return decrypted;
 	};
 	
 	const malloc_index_counts = (index_counts: number[]): number => {
