@@ -96,6 +96,18 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 	let epir: epir_t<any>;
 	let decCtx: any;
 	
+	const generateRandomScalars = (cnt: number) => {
+		const r = new Uint8Array(cnt * 32);
+		xorshift_init();
+		for(let i=0; i<cnt; i++) {
+			for(let j=0; j<32; j++) {
+				r[i * 32 + j] = xorshift() & 0xff;
+			}
+			r[i * 32 + 32 - 1] &= 0x1f;
+		}
+		return r;
+	};
+	
 	beforeAll(async () => {
 		epir = await createEpir();
 		decCtx = await epir.get_decryption_context(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
@@ -169,25 +181,13 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 		});
 		*/
 		
-		const generateSelectorR = () => {
-			const r = new Uint8Array(ciphers_count * 32);
-			xorshift_init();
-			for(let i=0; i<ciphers_count; i++) {
-				for(let j=0; j<32; j++) {
-					r[i * 32 + j] = xorshift() & 0xff;
-				}
-				r[i * 32 + 32 - 1] &= 0x1f;
-			}
-			return r;
-		};
-		
 		test('create selector (deterministic, normal)', async () => {
-			const selector = await epir.selector_create(pubkey, index_counts, idx, generateSelectorR());
+			const selector = await epir.selector_create(pubkey, index_counts, idx, generateRandomScalars(ciphers_count));
 			expect(sha256sum(selector)).toEqual(selectorHash);
 		});
 		
 		test('create selector (deterministic, fast)', async () => {
-			const selector = await epir.selector_create_fast(privkey, index_counts, idx, generateSelectorR());
+			const selector = await epir.selector_create_fast(privkey, index_counts, idx, generateRandomScalars(ciphers_count));
 			expect(sha256sum(selector)).toEqual(selectorHash);
 		});
 		
@@ -216,14 +216,30 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 			return elem;
 		};
 		
-		test('decrypt a reply (success)', async () => {
+		test('get a reply size', () => {
+			expect(epir.reply_size(DIMENSION, PACKING, ELEM_SIZE)).toBe(320896);
+		});
+		
+		test('get a reply random count', () => {
+			expect(epir.reply_r_count(DIMENSION, PACKING, ELEM_SIZE)).toBe(5260);
+		});
+		
+		test('decrypt a reply (deterministic, success)', async () => {
+			const elem = generateElem();
+			const reply_r_count = epir.reply_r_count(DIMENSION, PACKING, ELEM_SIZE);
+			const reply = epir.reply_mock(pubkey, DIMENSION, PACKING, elem, generateRandomScalars(reply_r_count));
+			const decrypted = await epir.reply_decrypt(decCtx, reply, privkey, DIMENSION, PACKING);
+			expect(new Uint8Array(decrypted.subarray(0, ELEM_SIZE))).toEqual(elem);
+		});
+		
+		test('decrypt a reply (random, success)', async () => {
 			const elem = generateElem();
 			const reply = epir.reply_mock(pubkey, DIMENSION, PACKING, elem);
 			const decrypted = await epir.reply_decrypt(decCtx, reply, privkey, DIMENSION, PACKING);
 			expect(new Uint8Array(decrypted.subarray(0, ELEM_SIZE))).toEqual(elem);
 		});
 		
-		test('decrypt a reply (fail)', async () => {
+		test('decrypt a reply (random, fail)', async () => {
 			const elem = generateElem();
 			const reply = epir.reply_mock(pubkey, DIMENSION, PACKING, elem);
 			// FIXME: Jest can't recognize exceptions thrown from asynchronous functions.
