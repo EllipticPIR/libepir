@@ -9,12 +9,7 @@
 extern "C" {
 #endif
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <string.h>
 
 #define CONFIGURED 1
 #pragma GCC diagnostic push
@@ -23,12 +18,8 @@ extern "C" {
 #pragma GCC diagnostic pop
 #undef CONFIGURED
 
-#ifdef __EMSCRIPTEN__
-#  include <emscripten.h>
-#else
-#  ifndef EMSCRIPTEN_KEEPALIVE
-#    define EMSCRIPTEN_KEEPALIVE
-#  endif
+#ifndef EMSCRIPTEN_KEEPALIVE
+#  define EMSCRIPTEN_KEEPALIVE
 #endif
 
 //#define EPIR_SCALAR_SIZE (crypto_core_ed25519_SCALARBYTES)
@@ -82,13 +73,9 @@ typedef struct __attribute__((__packed__)) {
 	uint32_t scalar;
 } epir_mG_t;
 
-static inline size_t epir_mG_default_path_length() {
-	return strlen(getenv("HOME")) + 1 + sizeof(EPIR_DEFAULT_DATA_DIR) + 1 + sizeof(EPIR_DEFAULT_MG_FILE);
-}
+size_t epir_mG_default_path_length();
 
-static inline void epir_mG_default_path(char *path, const size_t len) {
-	snprintf(path, len, "%s/%s/%s", getenv("HOME"), EPIR_DEFAULT_DATA_DIR, EPIR_DEFAULT_MG_FILE);
-}
+void epir_mG_default_path(char *path, const size_t len);
 
 EMSCRIPTEN_KEEPALIVE
 size_t epir_mG_load(epir_mG_t *mG, const size_t mmax, const char *path);
@@ -133,31 +120,11 @@ void epir_ecelgamal_decrypt_to_mG(const unsigned char *privkey, unsigned char *c
 EMSCRIPTEN_KEEPALIVE
 int32_t epir_ecelgamal_decrypt(const unsigned char *privkey, const unsigned char *cipher, const epir_mG_t *mG, const size_t mmax);
 
-#ifdef __EMSCRIPTEN__
 EMSCRIPTEN_KEEPALIVE
-#else
-static inline
-#endif
-uint64_t epir_selector_ciphers_count(const uint64_t *index_counts, const uint8_t n_indexes) {
-	uint64_t ret = 0;
-	for(size_t i=0; i<n_indexes; i++) {
-		ret += index_counts[i];
-	}
-	return ret;
-}
+uint64_t epir_selector_ciphers_count(const uint64_t *index_counts, const uint8_t n_indexes);
 
-#ifdef __EMSCRIPTEN__
 EMSCRIPTEN_KEEPALIVE
-#else
-static inline
-#endif
-uint64_t epir_selector_elements_count(const uint64_t *index_counts, const uint8_t n_indexes) {
-	uint64_t ret = 1;
-	for(size_t i=0; i<n_indexes; i++) {
-		ret *= index_counts[i];
-	}
-	return ret;
-}
+uint64_t epir_selector_elements_count(const uint64_t *index_counts, const uint8_t n_indexes);
 
 EMSCRIPTEN_KEEPALIVE
 void epir_selector_create_choice(unsigned char *ciphers, const uint64_t *index_counts, const uint8_t n_indexes, const uint64_t idx);
@@ -176,17 +143,11 @@ void epir_selector_create_(
  * @param n_indexes    The number of elements in the `index_counts`.
  * @param idx          The index to set.
  */
-#ifdef __EMSCRIPTEN__
 EMSCRIPTEN_KEEPALIVE
-#else
-static inline
-#endif
 void epir_selector_create(
 	unsigned char *ciphers, const unsigned char *pubkey,
 	const uint64_t *index_counts, const uint8_t n_indexes,
-	const uint64_t idx, const unsigned char *r) {
-	epir_selector_create_(ciphers, pubkey, index_counts, n_indexes, idx, epir_ecelgamal_encrypt, r);
-}
+	const uint64_t idx, const unsigned char *r);
 
 /**
  * Create a selector using a private key (fast).
@@ -196,17 +157,11 @@ void epir_selector_create(
  * @param n_indexes    The number of elements in the `index_counts`.
  * @param idx          The index to set.
  */
-#ifdef __EMSCRIPTEN__
 EMSCRIPTEN_KEEPALIVE
-#else
-static inline
-#endif
 void epir_selector_create_fast(
 	unsigned char *ciphers, const unsigned char *privkey,
 	const uint64_t *index_counts, const uint8_t n_indexes,
-	const uint64_t idx, const unsigned char *r) {
-	epir_selector_create_(ciphers, privkey, index_counts, n_indexes, idx, epir_ecelgamal_encrypt_fast, r);
-}
+	const uint64_t idx, const unsigned char *r);
 
 /**
  * Decrypt a server's reply.
