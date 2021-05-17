@@ -146,13 +146,12 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 		
 		test('random encrypt (normal)', async () => {
 			const cipherTest = epir.encrypt(pubkey, msg);
-			// XXX: check generated data!
+			expect(epir.decrypt(decCtx, privkey, cipherTest)).toBe(msg);
 		});
 		
 		test('random encrypt (fast)', async () => {
-			const epir = await createEpir();
 			const cipherTest = epir.encrypt_fast(privkey, msg);
-			// XXX: check generated data!
+			expect(epir.decrypt(decCtx, privkey, cipherTest)).toBe(msg);
 		});
 	});
 	

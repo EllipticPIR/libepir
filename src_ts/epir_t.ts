@@ -6,6 +6,7 @@ export type epir_t<DecryptionContext> = {
 	encrypt_fast: (pubkey: Uint8Array, msg: number, r?: Uint8Array) => Uint8Array;
 	get_decryption_context: (
 		param?: string | Uint8Array | ((points_computed: number) => void), mmax?: number) => Promise<DecryptionContext>;
+	decrypt: (ctx: DecryptionContext, privkey: Uint8Array, cipher: Uint8Array) => number;
 	ciphers_count: (index_counts: number[]) => number;
 	elements_count: (index_counts: number[]) => number;
 	selector_create: (pubkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array) => Promise<Uint8Array>;

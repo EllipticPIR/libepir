@@ -8,6 +8,7 @@ const epir_napi = require('bindings')('epir');
 
 export interface DecryptionContext {
 	constructor(path: string): DecryptionContext;
+	decrypt: (privkey: Uint8Array, cipher: Uint8Array) => number;
 	replyDecrypt: (reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number) => Uint8Array;
 }
 
@@ -43,6 +44,10 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 			});
 		}
 		return new epir_napi.DecryptionContext(param, mmax);
+	};
+	
+	const decrypt = (ctx: DecryptionContext, privkey: Uint8Array, cipher: Uint8Array) => {
+		return ctx.decrypt(privkey, cipher);
 	};
 	
 	const ciphers_count = (index_counts: number[]): number => {
@@ -85,6 +90,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		encrypt,
 		encrypt_fast,
 		get_decryption_context,
+		decrypt,
 		ciphers_count,
 		elements_count,
 		selector_create,

@@ -89,7 +89,21 @@ class DecryptionContext {
 		}
 		return -1;
 	}
-	async decrypt(ciphers: Uint8Array, privkey: Uint8Array, packing: number, nThreads: number = navigator.hardwareConcurrency): Promise<Uint8Array> {
+	decrypt(wasm: any, privkey: Uint8Array, cipher: Uint8Array): number {
+		const privkey_ = wasm._malloc(32);
+		wasm.HEAPU8.set(privkey, privkey_);
+		const cipher_ = wasm._malloc(64);
+		wasm.HEAPU8.set(cipher, cipher_);
+		wasm._epir_ecelgamal_decrypt_to_mG(privkey_, cipher_);
+		const mG = wasm.HEAPU8.subarray(cipher_, cipher_ + 32);
+		const decrypted = this.interpolationSearch(mG);
+		wasm._free(privkey_);
+		wasm._free(cipher_);
+		return decrypted;
+	}
+	async decryptMany(
+		ciphers: Uint8Array, privkey: Uint8Array, packing: number, nThreads: number = navigator.hardwareConcurrency):
+		Promise<Uint8Array> {
 		const ciphersCount = ciphers.length / 64;
 		const workers: EPIRWorker[] = [];
 		for(let t=0; t<nThreads; t++) workers.push(new EPIRWorker());
@@ -171,7 +185,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		const key_ = wasm._malloc(32);
 		wasm.HEAPU8.set(key, key_);
 		const cipher_ = wasm._malloc(64);
-		const rr = r ? r : getRandomBytes(32);
+		const rr = r ? r : create_privkey();
 		const rr_ = wasm._malloc(32);
 		wasm.HEAPU8.set(rr, rr_);
 		encrypt(cipher_, key_, msg&0xffffffff, Math.floor(msg/0x100000000), rr_);
@@ -263,6 +277,10 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		return new DecryptionContext(mG);
 	};
 	
+	const decrypt = (ctx: DecryptionContext, privkey: Uint8Array, cipher: Uint8Array) => {
+		return ctx.decrypt(wasm, privkey, cipher);
+	};
+	
 	const malloc_index_counts = (index_counts: number[]): number => {
 		const ic_ = wasm._malloc(8 * index_counts.length);
 		for(let i=0; i<index_counts.length; i++) {
@@ -336,7 +354,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		Promise<Uint8Array> => {
 		let midstate = reply;
 		for(let phase=0; phase<dimension; phase++) {
-			const decrypted = await ctx.decrypt(midstate, privkey, packing);
+			const decrypted = await ctx.decryptMany(midstate, privkey, packing);
 			if(phase == dimension - 1) {
 				midstate = decrypted;
 			} else {
@@ -352,6 +370,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		encrypt,
 		encrypt_fast,
 		get_decryption_context,
+		decrypt,
 		ciphers_count,
 		elements_count,
 		selector_create,
