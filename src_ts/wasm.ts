@@ -9,20 +9,6 @@ export const MMAX = 1 << MMAX_MOD;
 export const MG_SIZE = 36;
 export const MG_P3_SIZE = 4 * 40;
 
-const store_uint32_t = (wasm: any , offset: number, n: number) => {
-	for(let i=0; i<4; i++) {
-		wasm.HEAPU8[offset + i] = n & 0xff;
-		n >>= 8;
-	}
-}
-
-const store_uint64_t = (wasm: any, offset: number, n: number) => {
-	for(let i=0; i<8; i++) {
-		wasm.HEAPU8[offset + i] = n & 0xff;
-		n >>= 8;
-	}
-}
-
 const uint8ArrayConcat = (arr: Uint8Array[]) => {
 	const len = arr.reduce((acc, v) => acc + v.length, 0);
 	const ret = new Uint8Array(len);
@@ -79,9 +65,8 @@ const getRandomScalars = (cnt: number) => {
 }
 
 type Wasm = {
-	HEAPU8: {
-		subarray: (begin: number, end: number) => Uint8Array;
-	}
+	HEAPU8: Uint8Array,
+	_malloc: (ptr: number) => number;
 	_free: (ptr: number) => void;
 };
 
@@ -181,13 +166,32 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	const wasm_ = require('../dist/libepir.js');
 	const wasm = await wasm_();
 	
+	const store_uint32_t = (offset: number, n: number) => {
+		for(let i=0; i<4; i++) {
+			wasm.HEAPU8[offset + i] = n & 0xff;
+			n >>= 8;
+		}
+	};
+	
+	const store_uint64_t = (offset: number, n: number) => {
+		for(let i=0; i<8; i++) {
+			wasm.HEAPU8[offset + i] = n & 0xff;
+			n >>= 8;
+		}
+	};
+	
+	const malloc = (buf: Uint8Array) => {
+		const buf_ = wasm._malloc(buf.length);
+		wasm.HEAPU8.set(buf, buf_);
+		return buf_;
+	};
+	
 	const create_privkey = (): Uint8Array => {
 		return getRandomScalar();
 	};
 	
 	const pubkey_from_privkey = (privkey: Uint8Array): Uint8Array => {
-		const privkey_ = wasm._malloc(32);
-		wasm.HEAPU8.set(privkey, privkey_);
+		const privkey_ = malloc(privkey);
 		const pubkey_ = wasm._malloc(32);
 		wasm._epir_pubkey_from_privkey(pubkey_, privkey_);
 		const pubkey = wasm.HEAPU8.slice(pubkey_, pubkey_ + 32);
@@ -199,12 +203,9 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	const encrypt_ = (
 		key: Uint8Array, msg: number, r: Uint8Array | undefined,
 		encrypt: (cipher_: number, key_: number, msgL: number, msgH: number, r_: number) => void): Uint8Array => {
-		const key_ = wasm._malloc(32);
-		wasm.HEAPU8.set(key, key_);
+		const key_ = malloc(key);
 		const cipher_ = wasm._malloc(64);
-		const rr = r ? r : getRandomScalar();
-		const rr_ = wasm._malloc(32);
-		wasm.HEAPU8.set(rr, rr_);
+		const rr_ = malloc(r ? r : getRandomScalar());
 		encrypt(cipher_, key_, msg&0xffffffff, Math.floor(msg/0x100000000), rr_);
 		wasm._free(rr_);
 		const cipher = wasm.HEAPU8.slice(cipher_, cipher_ + 64);
@@ -224,7 +225,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	const mg_generate_prepare = (nThreads: number, mmax: number, cb: undefined | ((p: number) => void)) => {
 		const CTX_SIZE = 124;
 		const ctx_ = wasm._malloc(CTX_SIZE);
-		store_uint32_t(wasm, ctx_, mmax);
+		store_uint32_t(ctx_, mmax);
 		const mG_ = wasm._malloc(nThreads * MG_SIZE);
 		const mG_p3_ = wasm._malloc(nThreads * MG_P3_SIZE);
 		let pointsComputed = 0;
@@ -319,7 +320,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	const malloc_index_counts = (index_counts: number[]): number => {
 		const ic_ = wasm._malloc(8 * index_counts.length);
 		for(let i=0; i<index_counts.length; i++) {
-			store_uint64_t(wasm, ic_ + 8 * i, index_counts[i]);
+			store_uint64_t(ic_ + 8 * i, index_counts[i]);
 		}
 		return ic_;
 	};
@@ -342,7 +343,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	const create_choice = (index_counts: number[], idx: number): Uint8Array => {
 		const ic_ = wasm._malloc(8 * index_counts.length);
 		for(let i=0; i<index_counts.length; i++) {
-			store_uint64_t(wasm, ic_ + 8 * i, index_counts[i]);
+			store_uint64_t(ic_ + 8 * i, index_counts[i]);
 		}
 		const ciphers = wasm._epir_selector_ciphers_count(ic_, index_counts.length);
 		const selector_ = wasm._malloc(64 * ciphers);
@@ -419,14 +420,10 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	};
 	
 	const reply_mock = (pubkey: Uint8Array, dimension: number, packing: number, elem: Uint8Array, r?: Uint8Array) => {
-		const pubkey_ = wasm._malloc(32);
-		wasm.HEAPU8.set(pubkey, pubkey_);
-		const elem_ = wasm._malloc(elem.length);
-		wasm.HEAPU8.set(elem, elem_);
+		const pubkey_ = malloc(pubkey);
+		const elem_ = malloc(elem);
 		const rrc = reply_r_count(dimension, packing, elem.length);
-		const rr = r ? r : uint8ArrayConcat(getRandomScalars(rrc));
-		const rr_ = wasm._malloc(32 * rrc);
-		wasm.HEAPU8.set(rr, rr_);
+		const rr_ = malloc(r ? r : uint8ArrayConcat(getRandomScalars(rrc)));
 		const rs = reply_size(dimension, packing, elem.length);
 		const reply_ = wasm._malloc(rs);
 		wasm._epir_reply_mock(reply_, pubkey_, dimension, packing, elem_, elem.length, rr_);
