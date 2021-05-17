@@ -239,31 +239,37 @@ TEST(SelectorTest, selector_create_fast) {
 #define ELEM_SIZE (32)
 
 #ifdef TEST_USING_MG
-TEST(ReplyTest, decrypt_success) {
-	uint8_t elem[ELEM_SIZE];
+std::array<uint8_t, ELEM_SIZE> generateElem() {
+	srand(0);
+	std::array<uint8_t, ELEM_SIZE> elem;
 	for(size_t i=0; i<ELEM_SIZE; i++) {
 		elem[i] = rand() & 0xff;
 	}
+	return elem;
+}
+
+std::vector<uint8_t> generateReply(const std::array<uint8_t, ELEM_SIZE> elem) {
 	const size_t reply_size = epir_reply_size(DIMENSION, PACKING, ELEM_SIZE);
-	unsigned char *reply = (unsigned char*)malloc(reply_size);
-	epir_reply_mock(reply, pubkey, DIMENSION, PACKING, elem, ELEM_SIZE, NULL);
-	const int data_len = epir_reply_decrypt(reply, reply_size, privkey, DIMENSION, PACKING, mG_test.data(), EPIR_DEFAULT_MG_MAX);
+	std::vector<uint8_t> reply(reply_size);
+	epir_reply_mock(reply.data(), pubkey, DIMENSION, PACKING, elem.data(), ELEM_SIZE, NULL);
+	return reply;
+}
+
+TEST(ReplyTest, decrypt_success) {
+	const std::array<uint8_t, ELEM_SIZE> elem = generateElem();
+	std::vector<uint8_t> reply = generateReply(elem);
+	const int data_len = epir_reply_decrypt(
+		reply.data(), reply.size(), privkey, DIMENSION, PACKING, mG_test.data(), EPIR_DEFAULT_MG_MAX);
 	ASSERT_GE(data_len, (int)ELEM_SIZE);
-	ASSERT_PRED3(SameBuffer, reply, elem, ELEM_SIZE);
-	free(reply);
+	ASSERT_PRED3(SameBuffer, reply.data(), elem.data(), ELEM_SIZE);
 }
 
 TEST(ReplyTest, decrypt_fail) {
-	uint8_t elem[ELEM_SIZE];
-	for(size_t i=0; i<ELEM_SIZE; i++) {
-		elem[i] = rand() & 0xff;
-	}
-	const size_t reply_size = epir_reply_size(DIMENSION, PACKING, ELEM_SIZE);
-	unsigned char *reply = (unsigned char*)malloc(reply_size);
-	epir_reply_mock(reply, pubkey, DIMENSION, PACKING, elem, ELEM_SIZE, NULL);
-	const int data_len = epir_reply_decrypt(reply, reply_size, pubkey, DIMENSION, PACKING, mG_test.data(), EPIR_DEFAULT_MG_MAX);
+	const std::array<uint8_t, ELEM_SIZE> elem = generateElem();
+	std::vector<uint8_t> reply = generateReply(elem);
+	const int data_len = epir_reply_decrypt(
+		reply.data(), reply.size(), pubkey, DIMENSION, PACKING, mG_test.data(), EPIR_DEFAULT_MG_MAX);
 	ASSERT_EQ(data_len, -1);
-	free(reply);
 }
 #endif
 
