@@ -26,7 +26,9 @@ extern "C" {
 #ifdef __EMSCRIPTEN__
 #  include <emscripten.h>
 #else
-#  define EMSCRIPTEN_KEEPALIVE
+#  ifndef EMSCRIPTEN_KEEPALIVE
+#    define EMSCRIPTEN_KEEPALIVE
+#  endif
 #endif
 
 //#define EPIR_SCALAR_SIZE (crypto_core_ed25519_SCALARBYTES)
