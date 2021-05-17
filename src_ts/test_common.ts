@@ -247,12 +247,7 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 		test('decrypt a reply (random, fail)', async () => {
 			const elem = generateElem();
 			const reply = epir.reply_mock(pubkey, DIMENSION, PACKING, elem);
-			// FIXME: Jest can't recognize exceptions thrown from asynchronous functions.
-			try {
-				await epir.reply_decrypt(decCtx, reply, pubkey, DIMENSION, PACKING);
-			} catch(e) {
-				expect(() => { throw e }).toThrow(/^Failed to decrypt\.$/);
-			}
+			await expect(epir.reply_decrypt(decCtx, reply, pubkey, DIMENSION, PACKING)).rejects.toThrow(/^Failed to decrypt\.$/);
 		});
 	});
 	
