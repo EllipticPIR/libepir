@@ -60,6 +60,58 @@ Napi::Value PubkeyFromPrivkey(const Napi::CallbackInfo &info) {
 	return createUint8Array(env, pubkey);
 }
 
+Napi::Value Encrypt_(
+	const Napi::CallbackInfo &info,
+	void (*encrypt)(unsigned char*, const unsigned char*, const uint64_t, const unsigned char*)) {
+	// Check arguments.
+	Napi::Env env = info.Env();
+	if(info.Length() < 2) {
+		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	try {
+		checkIsUint8Array(info[0], EPIR_POINT_SIZE);
+	} catch(const char *err) {
+		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	if(!info[1].IsNumber()) {
+		Napi::TypeError::New(env, "The parameter 'msg' is not a number.").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	// Read arguments.
+	const uint8_t *key = info[0].As<Napi::TypedArrayOf<uint8_t>>().Data();
+	const int64_t msg = info[1].As<Napi::Number>().Int64Value();
+	if(msg < 0) {
+		Napi::TypeError::New(env, "The parameter 'msg' is should not be negative.").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	uint8_t *r = NULL;
+	if(info.Length() >= 3) {
+		try {
+			checkIsUint8Array(info[2], EPIR_SCALAR_SIZE);
+		} catch(const char *err) {
+			Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
+			return env.Null();
+		}
+		r = info[2].As<Napi::TypedArrayOf<uint8_t>>().Data();
+	}
+	// Create return value.
+	std::vector<uint8_t> cipher(EPIR_CIPHER_SIZE);
+	encrypt(cipher.data(), key, msg, r);
+	return createUint8Array(env, cipher);
+}
+
+// .encrypt(pubkey: Uint8Array(32), msg: number, r?: Uint8Array(32)): Uint8Array(64).
+Napi::Value Encrypt(const Napi::CallbackInfo &info) {
+	return Encrypt_(info, epir_ecelgamal_encrypt);
+}
+
+// .encrypt_fast(privkey: Uint8Array(32), msg: number, r?: Uint8Array(32)): Uint8Array(64).
+Napi::Value EncryptFast(const Napi::CallbackInfo &info) {
+	return Encrypt_(info, epir_ecelgamal_encrypt_fast);
+}
+
 class DecryptionContext : public Napi::ObjectWrap<DecryptionContext> {
 	
 private:
@@ -68,6 +120,7 @@ private:
 	
 	std::vector<epir_mG_t> mG;
 	
+	Napi::Value Decrypt(const Napi::CallbackInfo& info);
 	Napi::Value ReplyDecrypt(const Napi::CallbackInfo& info);
 	
 public:
@@ -79,6 +132,7 @@ public:
 
 Napi::Object DecryptionContext::Init(Napi::Env env, Napi::Object exports) {
 	Napi::Function func = DefineClass(env, "DecryptionContext", {
+		InstanceMethod("decrypt", &DecryptionContext::Decrypt),
 		InstanceMethod("replyDecrypt", &DecryptionContext::ReplyDecrypt),
 	});
 	constructor = Napi::Persistent(func);
@@ -163,6 +217,37 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 
 Napi::FunctionReference DecryptionContext::constructor;
 
+// DecryptionContext.decrypt(privkey: Uint8Array(32), cipher: Uint8Array(64)): number.
+Napi::Value DecryptionContext::Decrypt(const Napi::CallbackInfo &info) {
+	Napi::Env env = info.Env();
+	if(info.Length() < 2) {
+		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	try {
+		checkIsUint8Array(info[0], EPIR_SCALAR_SIZE);
+	} catch(const char *err) {
+		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	try {
+		checkIsUint8Array(info[1], EPIR_CIPHER_SIZE);
+	} catch(const char *err) {
+		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	// Load arguments.
+	const uint8_t *privkey = info[0].As<Napi::TypedArrayOf<uint8_t>>().Data();
+	const uint8_t *cipher = info[1].As<Napi::TypedArrayOf<uint8_t>>().Data();
+	// Decrypt.
+	const int32_t decrypted = epir_ecelgamal_decrypt(privkey, cipher, this->mG.data(), this->mG.size());
+	if(decrypted < 0) {
+		Napi::Error::New(env, "Failed to decrypt.").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	return Napi::Number::New(env, decrypted);
+}
+
 // DecryptionContext.replyDecrypt(reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number): Uint8Array;
 Napi::Value DecryptionContext::ReplyDecrypt(const Napi::CallbackInfo& info) {
 	Napi::Env env = info.Env();
@@ -203,6 +288,62 @@ Napi::Value DecryptionContext::ReplyDecrypt(const Napi::CallbackInfo& info) {
 	return createUint8Array(env, reply_v, decrypted_size);
 }
 
+std::vector<uint64_t> readIndexCounts(const Napi::Env env, const Napi::Value &val) {
+	if(!val.IsArray()) {
+		throw Napi::TypeError::New(env, "The parameter `index_counts` is not an array.");
+	}
+	const uint32_t n_indexes = val.As<Napi::Array>().Length();
+	if(n_indexes == 0) {
+		throw Napi::RangeError::New(env, "The number of elements in `index_counts` should be greater than zero.");
+	}
+	std::vector<uint64_t> index_counts(n_indexes);
+	for(uint32_t i=0; i<n_indexes; i++) {
+		Napi::Value v = val.As<Napi::Array>()[i];
+		if(!v.IsNumber()) {
+			throw Napi::TypeError::New(env, "The parameter `index_counts` has an element which is not a number.");
+		}
+		const int64_t tmp = v.As<Napi::Number>().Int64Value();
+		if(tmp <= 0) {
+			throw Napi::RangeError::New(env, "The parameter `index_counts` has an element which is less than one.");
+		}
+		index_counts[i] = tmp;
+	}
+	return index_counts;
+}
+
+Napi::Value CiphersOrElementsCount(
+	const Napi::CallbackInfo &info,
+	uint64_t (*count)(const uint64_t *index_counts, const uint8_t n_indexes)) {
+	Napi::Env env = info.Env();
+	if(info.Length() < 1) {
+		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	if(!info[0].IsArray()) {
+		Napi::TypeError::New(env, "The parameter `index_counts` is not an array.").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	// Load arguments.
+	try {
+		const std::vector<uint64_t> index_counts = readIndexCounts(env, info[0]);
+		// Return.
+		return Napi::Number::New(env, count(index_counts.data(), index_counts.size()));
+	} catch(Napi::Error &err) {
+		err.ThrowAsJavaScriptException();
+		return env.Null();
+	}
+}
+
+// .ciphers_count(index_counts: number[]): number.
+Napi::Value CiphersCount(const Napi::CallbackInfo &info) {
+	return CiphersOrElementsCount(info, epir_selector_ciphers_count);
+}
+
+// .elements_count(index_counts: number[]): number.
+Napi::Value ElementsCount(const Napi::CallbackInfo &info) {
+	return CiphersOrElementsCount(info, epir_selector_elements_count);
+}
+
 Napi::Value SelectorCreate_(
 	const Napi::CallbackInfo &info,
 	void (*selector_create)(unsigned char *ciphers, const unsigned char *privkey,
@@ -228,40 +369,27 @@ Napi::Value SelectorCreate_(
 	}
 	// Load arguments.
 	const uint8_t *key = info[0].As<Napi::TypedArrayOf<uint8_t>>().Data();
-	const uint32_t n_indexes = info[1].As<Napi::Array>().Length();
-	if(n_indexes == 0) {
-		Napi::RangeError::New(env, "The number of elements in `index_counts` should be greater than zero.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	std::vector<uint64_t> index_counts(n_indexes);
-	for(uint32_t i=0; i<n_indexes; i++) {
-		Napi::Value v = info[1].As<Napi::Array>()[i];
-		if(!v.IsNumber()) {
-			Napi::TypeError::New(env, "The parameter `index_counts` has an element which is not a number.").ThrowAsJavaScriptException();
+	try {
+		const std::vector<uint64_t> index_counts = readIndexCounts(env, info[1]);
+		const uint64_t elements_count = epir_selector_elements_count(index_counts.data(), index_counts.size());
+		const uint64_t ciphers_count = epir_selector_ciphers_count(index_counts.data(), index_counts.size());
+		if(elements_count == 0) {
+			Napi::TypeError::New(env, "The total number of `index_counts[i]` should be greater than zero.").ThrowAsJavaScriptException();
 			return env.Null();
 		}
-		const int64_t tmp = v.As<Napi::Number>().Int64Value();
-		if(tmp <= 0) {
-			Napi::RangeError::New(env, "The parameter `index_counts` has an element which is less than one.").ThrowAsJavaScriptException();
+		const int64_t idx = info[2].As<Napi::Number>().Int64Value();
+		if(idx < 0 || (uint64_t)idx >= elements_count) {
+			Napi::TypeError::New(env, "The `idx` has an invalid range.").ThrowAsJavaScriptException();
 			return env.Null();
 		}
-		index_counts[i] = tmp;
-	}
-	const uint64_t elements_count = epir_selector_elements_count(index_counts.data(), n_indexes);
-	const uint64_t ciphers_count = epir_selector_ciphers_count(index_counts.data(), n_indexes);
-	if(elements_count == 0) {
-		Napi::TypeError::New(env, "The total number of `index_counts[i]` should be greater than zero.").ThrowAsJavaScriptException();
+		// Generate a selector.
+		std::vector<uint8_t> ciphers(ciphers_count * EPIR_CIPHER_SIZE);
+		selector_create(ciphers.data(), key, index_counts.data(), index_counts.size(), idx, NULL);
+		return createUint8Array(env, ciphers);
+	} catch(Napi::Error &err) {
+		err.ThrowAsJavaScriptException();
 		return env.Null();
 	}
-	const int64_t idx = info[2].As<Napi::Number>().Int64Value();
-	if(idx < 0 || (uint64_t)idx >= elements_count) {
-		Napi::TypeError::New(env, "The `idx` has an invalid range.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	// Generate a selector.
-	std::vector<uint8_t> ciphers(ciphers_count * EPIR_CIPHER_SIZE);
-	selector_create(ciphers.data(), key, index_counts.data(), n_indexes, idx, NULL);
-	return createUint8Array(env, ciphers);
 }
 
 // .selector_create(pubkey: Uint8Array(32), index_counts: number[], idx: number): Uint8Array
@@ -277,6 +405,10 @@ Napi::Value SelectorCreateFast(const Napi::CallbackInfo &info) {
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
 	exports.Set(Napi::String::New(env, "create_privkey"), Napi::Function::New(env, CreatePrivkey));
 	exports.Set(Napi::String::New(env, "pubkey_from_privkey"), Napi::Function::New(env, PubkeyFromPrivkey));
+	exports.Set(Napi::String::New(env, "encrypt"), Napi::Function::New(env, Encrypt));
+	exports.Set(Napi::String::New(env, "encrypt_fast"), Napi::Function::New(env, EncryptFast));
+	exports.Set(Napi::String::New(env, "ciphers_count"), Napi::Function::New(env, CiphersCount));
+	exports.Set(Napi::String::New(env, "elements_count"), Napi::Function::New(env, ElementsCount));
 	exports.Set(Napi::String::New(env, "selector_create"), Napi::Function::New(env, SelectorCreate));
 	exports.Set(Napi::String::New(env, "selector_create_fast"), Napi::Function::New(env, SelectorCreateFast));
 	DecryptionContext::Init(env, exports);
