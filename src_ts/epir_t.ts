@@ -13,5 +13,9 @@ export type epir_t<DecryptionContext> = {
 	selector_create_fast: (privkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array) => Promise<Uint8Array>;
 	reply_decrypt: (ctx: DecryptionContext, reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number)
 		=> Promise<Uint8Array>;
+	// For testing.
+	reply_size: (dimension: number, packing: number, elem_size: number) => number;
+	reply_r_count: (dimension: number, packing: number, elem_size: number) => number;
+	reply_mock: (pubkey: Uint8Array, dimension: number, packing: number, elem: Uint8Array, r?: Uint8Array) => Uint8Array;
 };
 

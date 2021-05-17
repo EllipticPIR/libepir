@@ -1,10 +1,8 @@
 
 #include <napi.h>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-function"
 #include "../src_c/epir.h"
-#pragma GCC diagnostic pop
+#include "../src_c/epir_reply_mock.h"
 
 static void checkIsTypedArray(const Napi::Value val, const napi_typedarray_type type, const size_t expectedLength) {
 	if(!val.IsTypedArray()) {
@@ -282,7 +280,7 @@ Napi::Value DecryptionContext::ReplyDecrypt(const Napi::CallbackInfo& info) {
 	memcpy(reply_v.data(), reply, reply_size);
 	const int decrypted_size = epir_reply_decrypt(reply_v.data(), reply_size, privkey, dimension, packing, this->mG.data(), this->mG.size());
 	if(decrypted_size < 0) {
-		Napi::Error::New(env, "Decryption failed.").ThrowAsJavaScriptException();
+		Napi::Error::New(env, "Failed to decrypt.").ThrowAsJavaScriptException();
 		return env.Null();
 	}
 	return createUint8Array(env, reply_v, decrypted_size);
@@ -403,14 +401,81 @@ Napi::Value SelectorCreate_(
 	}
 }
 
-// .selector_create(pubkey: Uint8Array(32), index_counts: number[], idx: number, r?: Uint8Array): Uint8Array
+// .selector_create(pubkey: Uint8Array(32), index_counts: number[], idx: number, r?: Uint8Array): Uint8Array.
 Napi::Value SelectorCreate(const Napi::CallbackInfo &info) {
 	return SelectorCreate_(info, epir_selector_create);
 }
 
-// .selector_create_fast(privkey: Uint8Array(32), index_counts: number[], idx: number, r?: Uint8Array): Uint8Array
+// .selector_create_fast(privkey: Uint8Array(32), index_counts: number[], idx: number, r?: Uint8Array): Uint8Array.
 Napi::Value SelectorCreateFast(const Napi::CallbackInfo &info) {
 	return SelectorCreate_(info, epir_selector_create_fast);
+}
+
+Napi::Value ReplyXSize(
+	const Napi::CallbackInfo &info, size_t (*func)(const uint8_t dimension, const uint8_t packing, const size_t elem_size)) {
+	Napi::Env env = info.Env();
+	if(info.Length() < 3) {
+		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	if(!info[0].IsNumber() || !info[1].IsNumber() || !info[2].IsNumber()) {
+		Napi::TypeError::New(env, "The parameters are not numbers.").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	const uint8_t dimension = info[0].As<Napi::Number>().Uint32Value();
+	const uint8_t packing = info[1].As<Napi::Number>().Uint32Value();
+	const size_t elem_size = info[2].As<Napi::Number>().Int64Value();
+	return Napi::Number::New(env, func(dimension, packing, elem_size));
+}
+
+// .reply_size(dimension: number, packing: number, elem_size: number): number.
+Napi::Value ReplySize(const Napi::CallbackInfo &info) {
+	return ReplyXSize(info, epir_reply_size);
+}
+
+// .reply_r_count(dimension: number, packing: number, elem_size: number): number.
+Napi::Value ReplyRCount(const Napi::CallbackInfo &info) {
+	return ReplyXSize(info, epir_reply_r_count);
+}
+
+// .reply_mock(pubkey: Uint8Array, dimension: number, packing: number, elem: Uint8Array, r?: Uint8Array): Uint8Array.
+Napi::Value ReplyMock(const Napi::CallbackInfo &info) {
+	Napi::Env env = info.Env();
+	if(info.Length() < 4) {
+		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	// Check arguments.
+	try {
+		checkIsUint8Array(info[0], EPIR_POINT_SIZE);
+	} catch(const char *err) {
+		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	if(!info[1].IsNumber() || !info[2].IsNumber()) {
+		Napi::TypeError::New(env, "The parameters are not numbers.").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	try {
+		checkIsUint8Array(info[3], 0);
+	} catch(const char *err) {
+		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
+		return env.Null();
+	}
+	// Read arguments.
+	const uint8_t *pubkey = info[0].As<Napi::TypedArrayOf<uint8_t>>().Data();
+	const uint8_t dimension = info[1].As<Napi::Number>().Uint32Value();
+	const uint8_t packing = info[2].As<Napi::Number>().Uint32Value();
+	const uint8_t *elem = info[3].As<Napi::TypedArrayOf<uint8_t>>().Data();
+	const size_t elem_size = info[3].As<Napi::TypedArray>().ElementLength();
+	uint8_t *r = NULL;
+	if(info.Length() >= 5) {
+		r = info[4].As<Napi::TypedArrayOf<uint8_t>>().Data();
+	}
+	const size_t reply_size = epir_reply_size(dimension, packing, elem_size);
+	std::vector<uint8_t> reply(reply_size);
+	epir_reply_mock(reply.data(), pubkey, dimension, packing, elem, elem_size, r);
+	return createUint8Array(env, reply);
 }
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
@@ -423,6 +488,10 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
 	exports.Set(Napi::String::New(env, "selector_create"), Napi::Function::New(env, SelectorCreate));
 	exports.Set(Napi::String::New(env, "selector_create_fast"), Napi::Function::New(env, SelectorCreateFast));
 	DecryptionContext::Init(env, exports);
+	// For testing.
+	exports.Set(Napi::String::New(env, "reply_size"), Napi::Function::New(env, ReplySize));
+	exports.Set(Napi::String::New(env, "reply_r_count"), Napi::Function::New(env, ReplyRCount));
+	exports.Set(Napi::String::New(env, "reply_mock"), Napi::Function::New(env, ReplyMock));
 	return exports;
 }
 

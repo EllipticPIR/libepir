@@ -52,6 +52,32 @@ const getRandomBytes = (len: number) => {
 	}
 };
 
+const getRandomScalar = () => {
+	const isCanonical = (buf: Uint8Array): boolean => {
+		let c = (buf[31] & 0x7f) ^ 0x7f;
+		for(let i=30; i>0; i--) {
+			c |= buf[i] ^ 0xff;
+		}
+		const d = (0xed - 1 - buf[0]) >> 8;
+		return !((c == 0) && d)
+	};
+	const isZero = (buf: Uint8Array): boolean => {
+		return buf.reduce<boolean>((acc, v) => acc && (v == 0), true);
+	};
+	for(;;) {
+		const privkey = getRandomBytes(32);
+		privkey[31] &= 0x1f;
+		if(!isCanonical(privkey) || isZero(privkey)) continue;
+		return privkey;
+	}
+};
+
+const getRandomScalars = (cnt: number) => {
+	const ret: Uint8Array[] = [];
+	for(let i=0; i<cnt; i++) ret.push(getRandomScalar());
+	return ret;
+}
+
 type Wasm = {
 	HEAPU8: {
 		subarray: (begin: number, end: number) => Uint8Array;
@@ -141,7 +167,7 @@ class DecryptionContext {
 		const decrypted = new Uint8Array(packing * ciphersCount);
 		for(let i=0; i<ms.length; i++) {
 			const m = ms[i];
-			if(m == -1) throw new Error('Failed to decrypt');
+			if(m == -1) throw new Error('Failed to decrypt.');
 			for(let p=0; p<packing; p++) {
 				decrypted[i * packing + p] = (m >> (8 * p)) & 0xff;
 			}
@@ -156,23 +182,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 	const wasm = await wasm_();
 	
 	const create_privkey = (): Uint8Array => {
-		const isCanonical = (buf: Uint8Array): boolean => {
-			let c = (buf[31] & 0x7f) ^ 0x7f;
-			for(let i=30; i>0; i--) {
-				c |= buf[i] ^ 0xff;
-			}
-			const d = (0xed - 1 - buf[0]) >> 8;
-			return !((c == 0) && d)
-		};
-		const isZero = (buf: Uint8Array): boolean => {
-			return buf.reduce<boolean>((acc, v) => acc && (v == 0), true);
-		};
-		for(;;) {
-			const privkey = getRandomBytes(32);
-			privkey[31] &= 0x1f;
-			if(!isCanonical(privkey) || isZero(privkey)) continue;
-			return privkey;
-		}
+		return getRandomScalar();
 	};
 	
 	const pubkey_from_privkey = (privkey: Uint8Array): Uint8Array => {
@@ -192,7 +202,7 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		const key_ = wasm._malloc(32);
 		wasm.HEAPU8.set(key, key_);
 		const cipher_ = wasm._malloc(64);
-		const rr = r ? r : create_privkey();
+		const rr = r ? r : getRandomScalar();
 		const rr_ = wasm._malloc(32);
 		wasm.HEAPU8.set(rr, rr_);
 		encrypt(cipher_, key_, msg&0xffffffff, Math.floor(msg/0x100000000), rr_);
@@ -400,6 +410,34 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		return midstate;
 	};
 	
+	const reply_size = (dimension: number, packing: number, elem_size: number) => {
+		return wasm._epir_reply_size(dimension, packing, elem_size);
+	};
+	
+	const reply_r_count = (dimension: number, packing: number, elem_size: number) => {
+		return wasm._epir_reply_r_count(dimension, packing, elem_size);
+	};
+	
+	const reply_mock = (pubkey: Uint8Array, dimension: number, packing: number, elem: Uint8Array, r?: Uint8Array) => {
+		const pubkey_ = wasm._malloc(32);
+		wasm.HEAPU8.set(pubkey, pubkey_);
+		const elem_ = wasm._malloc(elem.length);
+		wasm.HEAPU8.set(elem, elem_);
+		const rrc = reply_r_count(dimension, packing, elem.length);
+		const rr = r ? r : uint8ArrayConcat(getRandomScalars(rrc));
+		const rr_ = wasm._malloc(32 * rrc);
+		wasm.HEAPU8.set(rr, rr_);
+		const rs = reply_size(dimension, packing, elem.length);
+		const reply_ = wasm._malloc(rs);
+		wasm._epir_reply_mock(reply_, pubkey_, dimension, packing, elem_, elem.length, rr_);
+		const reply = wasm.HEAPU8.slice(reply_, reply_ + rs);
+		wasm._free(pubkey_);
+		wasm._free(elem_);
+		wasm._free(rr_);
+		wasm._free(reply_);
+		return reply;
+	};
+	
 	return {
 		create_privkey,
 		pubkey_from_privkey,
@@ -412,6 +450,9 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		selector_create,
 		selector_create_fast,
 		reply_decrypt,
+		reply_size,
+		reply_r_count,
+		reply_mock,
 	};
 	
 };

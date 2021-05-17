@@ -84,6 +84,20 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		});
 	};
 	
+	const reply_size = (dimension: number, packing: number, elem_size: number) => {
+		return epir_napi.reply_size(dimension, packing, elem_size);
+	};
+	
+	const reply_r_count = (dimension: number, packing: number, elem_size: number) => {
+		return epir_napi.reply_r_count(dimension, packing, elem_size);
+	};
+	
+	const reply_mock = (pubkey: Uint8Array, dimension: number, packing: number, elem: Uint8Array, r?: Uint8Array) => {
+		return (r ?
+			epir_napi.reply_mock(pubkey, dimension, packing, elem, r) :
+			epir_napi.reply_mock(pubkey, dimension, packing, elem));
+	};
+	
 	return {
 		create_privkey,
 		pubkey_from_privkey,
@@ -96,6 +110,9 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		selector_create,
 		selector_create_fast,
 		reply_decrypt,
+		reply_size,
+		reply_r_count,
+		reply_mock,
 	};
 	
 };

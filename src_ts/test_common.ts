@@ -90,7 +90,7 @@ const selectorHash = new Uint8Array([
 export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 	
 	// For WebAssembly tests, we have tests which uses max CPU cores (x2 for main threads and worker threads).
-	const testsWithWorkersCount = 4;
+	const testsWithWorkersCount = 7;
 	process.setMaxListeners(testsWithWorkersCount * 2 * navigator.hardwareConcurrency);
 	
 	let epir: epir_t<any>;
@@ -203,18 +203,36 @@ export const runTests = (createEpir: (() => Promise<epir_t<any>>)) => {
 	});
 	
 	describe('Reply', () => {
+		const DIMENSION = 3;
+		const PACKING = 3;
+		const ELEM_SIZE = 32;
+		
+		const generateElem = () => {
+			xorshift_init();
+			const elem = new Uint8Array(ELEM_SIZE);
+			for(let i=0; i<ELEM_SIZE; i++) {
+				elem[i] = xorshift() & 0xff;
+			}
+			return elem;
+		};
+		
 		test('decrypt a reply (success)', async () => {
-			// XXX: generate mock data.
-			const data = require('./bench_js_reply_data.json');
-			const decrypted = await epir.reply_decrypt(
-				decCtx, new Uint8Array(data.reply), new Uint8Array(data.privkey), data.dimension, data.packing);
-			expect(new Uint8Array(decrypted.subarray(0, data.correct.length))).toEqual(new Uint8Array(data.correct));
+			const elem = generateElem();
+			const reply = epir.reply_mock(pubkey, DIMENSION, PACKING, elem);
+			const decrypted = await epir.reply_decrypt(decCtx, reply, privkey, DIMENSION, PACKING);
+			expect(new Uint8Array(decrypted.subarray(0, ELEM_SIZE))).toEqual(elem);
 		});
 		
-		/*
 		test('decrypt a reply (fail)', async () => {
+			const elem = generateElem();
+			const reply = epir.reply_mock(pubkey, DIMENSION, PACKING, elem);
+			// FIXME: Jest can't recognize exceptions thrown from asynchronous functions.
+			try {
+				await epir.reply_decrypt(decCtx, reply, pubkey, DIMENSION, PACKING);
+			} catch(e) {
+				expect(() => { throw e }).toThrow(/^Failed to decrypt\.$/);
+			}
 		});
-		*/
 	});
 	
 };
