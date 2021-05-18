@@ -1,7 +1,14 @@
 
 import crypto from 'crypto';
 
-import { EpirCreateFunction, EpirBase, DecryptionContextCreateFunction, DecryptionContextBase } from './EpirBase';
+import {
+	EpirCreateFunction,
+	EpirBase,
+	DecryptionContextCreateFunction,
+	DecryptionContextBase,
+	SCALAR_SIZE,
+	CIPHER_SIZE
+} from './EpirBase';
 
 const MMAX = 1 << 16;
 
@@ -104,13 +111,13 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 	let decCtx: DecryptionContextBase;
 	
 	const generateRandomScalars = (cnt: number) => {
-		const r = new Uint8Array(cnt * 32);
+		const r = new Uint8Array(cnt * SCALAR_SIZE);
 		xorshift_init();
 		for(let i=0; i<cnt; i++) {
-			for(let j=0; j<32; j++) {
-				r[i * 32 + j] = xorshift() & 0xff;
+			for(let j=0; j<SCALAR_SIZE; j++) {
+				r[i * SCALAR_SIZE + j] = xorshift() & 0xff;
 			}
-			r[i * 32 + 32 - 1] &= 0x1f;
+			r[(i + 1) * SCALAR_SIZE - 1] &= 0x1f;
 		}
 		return r;
 	};
@@ -123,7 +130,7 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 	describe('ECElGamal', () => {
 		test('create private key', async () => {
 			const privkey = epir.createPrivkey();
-			expect(privkey).toHaveLength(32);
+			expect(privkey).toHaveLength(SCALAR_SIZE);
 		});
 		
 		test('create public key', async () => {
@@ -203,12 +210,12 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 		
 		test('create selector (random, normal)', async () => {
 			const selector = await epir.createSelector(pubkey, index_counts, idx);
-			expect(selector).toHaveLength(ciphers_count * 64);
+			expect(selector).toHaveLength(ciphers_count * CIPHER_SIZE);
 		});
 		
 		test('create selector (random, fast)', async () => {
 			const selector = await epir.createSelectorFast(privkey, index_counts, idx);
-			expect(selector).toHaveLength(ciphers_count * 64);
+			expect(selector).toHaveLength(ciphers_count * CIPHER_SIZE);
 		});
 	});
 	
