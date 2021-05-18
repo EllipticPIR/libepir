@@ -148,6 +148,12 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 			expect(new Uint8Array(cipherTest)).toEqual(cipher);
 		});
 		
+		test('create DecryptionContext from Uint8Array', async () => {
+			const decCtx2 = await createDecryptionContext(decCtx.getMG());
+			const mG = decCtx2.getMG();
+			expect(sha256sum(mG)).toEqual(mGHash);
+		});
+		
 		test('generate mG (without callback)', async () => {
 			const decCtx = await createDecryptionContext(undefined, MMAX);
 			const mG = decCtx.getMG();

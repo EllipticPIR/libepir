@@ -333,7 +333,7 @@ const getMG = async (helper: WasmHelper, param: undefined | string | ((p: number
 export const createDecryptionContext: DecryptionContextCreateFunction = async (
 	param?: DecryptionContextParameter, mmax: number = DEFAULT_MMAX) => {
 	const helper = new WasmHelper(await wasm_());
-	const mG = (param instanceof Uint8Array ? param : await getMG(helper, param, mmax ? mmax : DEFAULT_MMAX));
+	const mG = (param instanceof Uint8Array ? param : await getMG(helper, param, mmax));
 	return new DecryptionContext(helper, mG);
 };
 
