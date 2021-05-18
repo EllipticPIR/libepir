@@ -1,5 +1,6 @@
 
-const wasm_ = require('../dist/libepir.js')();
+import { LibEpir, libEpirModule } from './wasm.libepir';
+const wasm_ = libEpirModule();
 
 const worker: Worker = self as any;
 

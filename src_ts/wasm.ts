@@ -17,7 +17,7 @@ const time = () => new Date().getTime();
 export const MG_SIZE = 36;
 export const MG_P3_SIZE = 4 * 40;
 
-const wasm_ = require('../dist/libepir.js');
+import { LibEpir as Wasm, libEpirModule as wasm_ } from './wasm.libepir';
 
 const uint8ArrayConcat = (arr: Uint8Array[]) => {
 	const len = arr.reduce((acc, v) => acc + v.length, 0);
@@ -79,9 +79,9 @@ const getRandomScalars = (cnt: number) => {
 
 class WasmHelper {
 	
-	wasm: any;
+	wasm: Wasm;
 	
-	constructor(wasm: any) {
+	constructor(wasm: Wasm) {
 		this.wasm = wasm;
 	}
 	
