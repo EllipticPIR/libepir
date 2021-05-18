@@ -1,5 +1,5 @@
 
-import { epir_t } from './epir_t';
+import { EpirBase, DecryptionContextBase, DecryptionContextParameter } from './EpirBase';
 import EPIRWorker from './wasm.worker.ts';
 
 const time = () => new Date().getTime();
@@ -8,6 +8,8 @@ export const MMAX_MOD = 24;
 export const MMAX = 1 << MMAX_MOD;
 export const MG_SIZE = 36;
 export const MG_P3_SIZE = 4 * 40;
+
+const wasm_ = require('../dist/libepir.js');
 
 const uint8ArrayConcat = (arr: Uint8Array[]) => {
 	const len = arr.reduce((acc, v) => acc + v.length, 0);
@@ -64,17 +66,189 @@ const getRandomScalars = (cnt: number) => {
 	return ret;
 }
 
-type Wasm = {
-	HEAPU8: Uint8Array,
-	_malloc: (ptr: number) => number;
-	_free: (ptr: number) => void;
-};
-
-class DecryptionContext {
-	mG: Uint8Array;
-	constructor(mG: Uint8Array) {
-		this.mG = mG;
+class WasmHelper {
+	
+	wasm: any;
+	
+	constructor(wasm: any) {
+		this.wasm = wasm;
 	}
+	
+	store_uint32_t(offset: number, n: number) {
+		for(let i=0; i<4; i++) {
+			this.wasm.HEAPU8[offset + i] = n & 0xff;
+			n >>= 8;
+		}
+	}
+	
+	store_uint64_t(offset: number, n: number) {
+		for(let i=0; i<8; i++) {
+			this.wasm.HEAPU8[offset + i] = n & 0xff;
+			n >>= 8;
+		}
+	}
+	
+	set(buf: Uint8Array, offset: number) {
+		this.wasm.HEAPU8.set(buf, offset);
+	}
+	
+	malloc(param: Uint8Array | number): number {
+		if(typeof param == 'number') {
+			return this.wasm._malloc(param);
+		} else {
+			const buf_ = this.wasm._malloc(param.length);
+			this.wasm.HEAPU8.set(param, buf_);
+			return buf_;
+		}
+	}
+	
+	free(buf_: number) {
+		this.wasm._free(buf_);
+	}
+	
+	call(func: string, ...params: any[]) {
+		return this.wasm[`_epir_${func}`].apply(null, params);
+	}
+	
+	slice(begin: number, len: number) {
+		return this.wasm.HEAPU8.slice(begin, begin + len);
+	}
+	
+	subarray(begin: number, len: number) {
+		return this.wasm.HEAPU8.subarray(begin, begin + len);
+	}
+	
+}
+
+export class DecryptionContext extends DecryptionContextBase {
+	
+	helper: WasmHelper | null = null;
+	mG: Uint8Array | null = null;
+	
+	mg_generate_prepare(nThreads: number, mmax: number, cb: undefined | ((p: number) => void)) {
+		if(!this.helper) throw new Error('Please call init() first.');
+		const CTX_SIZE = 124;
+		const ctx_ = this.helper.malloc(CTX_SIZE);
+		this.helper.store_uint32_t(ctx_, mmax);
+		const mG_ = this.helper.malloc(nThreads * MG_SIZE);
+		const mG_p3_ = this.helper.malloc(nThreads * MG_P3_SIZE);
+		let pointsComputed = 0;
+		const cb_ = this.helper.wasm.addFunction((data: any) => {
+			if(cb) cb(++pointsComputed);
+		}, 'vi');
+		this.helper.call('mG_generate_prepare', ctx_, mG_, mG_p3_, nThreads, cb_, null);
+		this.helper.wasm.removeFunction(cb_);
+		const ctx = this.helper.slice(ctx_, CTX_SIZE);
+		const mG = this.helper.slice(mG_, nThreads * MG_SIZE);
+		const mG_p3 = this.helper.slice(mG_p3_, nThreads * MG_P3_SIZE);
+		this.helper.free(ctx_);
+		this.helper.free(mG_);
+		this.helper.free(mG_p3_);
+		return { ctx: ctx, mG: mG, mG_p3: mG_p3 };
+	};
+	
+	async mg_generate(mG_: number, cb: undefined | ((p: number) => void), mmax: number): Promise<void> {
+		if(!this.helper) throw new Error('Please call init() first.');
+		// XXX: not working for navigator.hardwareConcurrency.
+		const nThreads = navigator.hardwareConcurrency / 2;
+		const workers: EPIRWorker[] = [];
+		for(let i=0; i<nThreads; i++) {
+			workers.push(new EPIRWorker());
+		}
+		const mG: Uint8Array[] = [];
+		const beginCompute = time();
+		const prepare = this.mg_generate_prepare(nThreads, mmax, cb);
+		for(let t=0; t<nThreads; t++) {
+			mG.push(prepare.mG.subarray(t * MG_SIZE, (t + 1) * MG_SIZE));
+		}
+		let pointsComputed = nThreads;
+		const promises = workers.map(async (worker, workerId) => {
+			return new Promise<void>((resolve, reject) => {
+				worker.onmessage = (ev) => {
+					switch(ev.data.method) {
+						case 'mg_generate_cb':
+							if(cb) cb(++pointsComputed);
+							break;
+						case 'mg_generate_compute':
+							//console.log(`mg_generate_compute (workerId = ${workerId}) DONE.`);
+							for(let i=0; i*MG_SIZE<ev.data.mG.length; i++) {
+								mG.push(ev.data.mG.subarray(i * MG_SIZE, (i + 1) * MG_SIZE));
+							}
+							resolve();
+							break;
+					}
+				};
+				workers[workerId].postMessage({
+					method: 'mg_generate_compute', nThreads: nThreads, mmax: mmax,
+					ctx: prepare.ctx, mG_p3: prepare.mG_p3.slice(MG_P3_SIZE * workerId, MG_P3_SIZE * (workerId + 1)),
+					threadId: workerId,
+				});
+			});
+		});
+		await Promise.all(promises);
+		//console.log(`Computation done in ${(time() - beginCompute).toLocaleString()}ms.`);
+		//console.log('Sorting...');
+		const beginSort = time();
+		mG.sort((a, b) => {
+			return uint8ArrayCompare(a, b, 32);
+		});
+		//console.log(`Sorting done in ${(time() - beginSort).toLocaleString()}ms.`);
+		for(let i=0; i<mmax; i++) {
+			this.helper.set(mG[i], mG_ + i * MG_SIZE);
+		}
+	}
+	
+	async getMG_(param: undefined | string | ((p: number) => void), mmax: number): Promise<Uint8Array> {
+		if(typeof param == 'string') {
+			return new Uint8Array(await require('fs/promises').readFile(param));
+		} else {
+			if(!this.helper) throw new Error('Please call init() first.');
+			const mG_ = this.helper.malloc(MG_SIZE * mmax);
+			await this.mg_generate(mG_, param, mmax);
+			const mG = this.helper.slice(mG_, MG_SIZE * mmax);
+			this.helper.free(mG_);
+			return mG;
+		}
+	}
+	
+	async init(): Promise<void> {
+		this.helper = new WasmHelper(await wasm_());
+		this.mG = (this.param instanceof Uint8Array ? this.param : await this.getMG_(this.param, this.mmax ? this.mmax : MMAX));
+	}
+	
+	getMG(): ArrayBuffer {
+		if(!this.mG) throw new Error('Please call init() first.');
+		return this.mG.buffer;
+	}
+	
+	decryptCipher(privkey: Uint8Array, cipher: Uint8Array): number {
+		if(!this.helper) throw new Error('Please call init() first.');
+		const privkey_ = this.helper.malloc(32);
+		this.helper.set(privkey, privkey_);
+		const cipher_ = this.helper.malloc(64);
+		this.helper.set(cipher, cipher_);
+		this.helper.call('ecelgamal_decrypt_to_mG', privkey_, cipher_);
+		const mG = this.helper.subarray(cipher_, 32);
+		const decrypted = this.interpolationSearch(mG);
+		this.helper.free(privkey_);
+		this.helper.free(cipher_);
+		if(decrypted < 0) throw new Error('Failed to decrypt.');
+		return decrypted;
+	}
+	
+	async decryptReply(privkey: Uint8Array, dimension: number, packing: number, reply: Uint8Array): Promise<Uint8Array> {
+		let midstate = reply;
+		for(let phase=0; phase<dimension; phase++) {
+			const decrypted = await this.decryptMany(midstate, privkey, packing);
+			if(phase == dimension - 1) {
+				midstate = decrypted;
+			} else {
+				midstate = decrypted.subarray(0, decrypted.length - (decrypted.length % 64));
+			}
+		}
+		return midstate;
+	}
+	
 	static load_uint32_t(buf: Uint8Array, le: boolean = false): number {
 		if(le) {
 			return (buf[3] * (1 << 24)) + (buf[2] << 16) + (buf[1] << 8) + buf[0];
@@ -82,10 +256,14 @@ class DecryptionContext {
 			return (buf[0] * (1 << 24)) + (buf[1] << 16) + (buf[2] << 8) + buf[3];
 		}
 	}
+	
 	load_uint32_t_from_mG(idx: number): number {
+		if(!this.mG) throw new Error('Please call init() first.');
 		return DecryptionContext.load_uint32_t(this.mG.subarray(36 * idx, 36 * idx + 4));
 	}
+	
 	interpolationSearch(mG: Uint8Array): number {
+		if(!this.mG) throw new Error('Please call init() first.');
 		const mmax = this.mG.length / MG_SIZE;
 		let imin = 0;
 		let imax = mmax - 1;
@@ -107,18 +285,7 @@ class DecryptionContext {
 		}
 		return -1;
 	}
-	decrypt(wasm: any, privkey: Uint8Array, cipher: Uint8Array): number {
-		const privkey_ = wasm._malloc(32);
-		wasm.HEAPU8.set(privkey, privkey_);
-		const cipher_ = wasm._malloc(64);
-		wasm.HEAPU8.set(cipher, cipher_);
-		wasm._epir_ecelgamal_decrypt_to_mG(privkey_, cipher_);
-		const mG = wasm.HEAPU8.subarray(cipher_, cipher_ + 32);
-		const decrypted = this.interpolationSearch(mG);
-		wasm._free(privkey_);
-		wasm._free(cipher_);
-		return decrypted;
-	}
+	
 	async decryptMany(
 		ciphers: Uint8Array, privkey: Uint8Array, packing: number, nThreads: number = navigator.hardwareConcurrency):
 		Promise<Uint8Array> {
@@ -159,210 +326,100 @@ class DecryptionContext {
 		}
 		return decrypted;
 	}
+	
 }
 
-export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
+export class Epir implements EpirBase {
 	
-	const wasm_ = require('../dist/libepir.js');
-	const wasm = await wasm_();
+	helper: WasmHelper | null = null;
 	
-	const store_uint32_t = (offset: number, n: number) => {
-		for(let i=0; i<4; i++) {
-			wasm.HEAPU8[offset + i] = n & 0xff;
-			n >>= 8;
-		}
-	};
-	
-	const store_uint64_t = (offset: number, n: number) => {
-		for(let i=0; i<8; i++) {
-			wasm.HEAPU8[offset + i] = n & 0xff;
-			n >>= 8;
-		}
-	};
-	
-	const malloc = (buf: Uint8Array) => {
-		const buf_ = wasm._malloc(buf.length);
-		wasm.HEAPU8.set(buf, buf_);
-		return buf_;
-	};
-	
-	const create_privkey = (): Uint8Array => {
-		return getRandomScalar();
-	};
-	
-	const pubkey_from_privkey = (privkey: Uint8Array): Uint8Array => {
-		const privkey_ = malloc(privkey);
-		const pubkey_ = wasm._malloc(32);
-		wasm._epir_pubkey_from_privkey(pubkey_, privkey_);
-		const pubkey = wasm.HEAPU8.slice(pubkey_, pubkey_ + 32);
-		wasm._free(pubkey_);
-		wasm._free(privkey_);
-		return pubkey;
-	};
-	
-	const encrypt_ = (
-		key: Uint8Array, msg: number, r: Uint8Array | undefined,
-		encrypt: (cipher_: number, key_: number, msgL: number, msgH: number, r_: number) => void): Uint8Array => {
-		const key_ = malloc(key);
-		const cipher_ = wasm._malloc(64);
-		const rr_ = malloc(r ? r : getRandomScalar());
-		encrypt(cipher_, key_, msg&0xffffffff, Math.floor(msg/0x100000000), rr_);
-		wasm._free(rr_);
-		const cipher = wasm.HEAPU8.slice(cipher_, cipher_ + 64);
-		wasm._free(key_);
-		wasm._free(cipher_);
-		return cipher;
-	};
-	
-	const encrypt = (pubkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array => {
-		return encrypt_(pubkey, msg, r, wasm._epir_ecelgamal_encrypt);
-	};
-	
-	const encrypt_fast = (privkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array => {
-		return encrypt_(privkey, msg, r, wasm._epir_ecelgamal_encrypt_fast);
-	};
-	
-	const mg_generate_prepare = (nThreads: number, mmax: number, cb: undefined | ((p: number) => void)) => {
-		const CTX_SIZE = 124;
-		const ctx_ = wasm._malloc(CTX_SIZE);
-		store_uint32_t(ctx_, mmax);
-		const mG_ = wasm._malloc(nThreads * MG_SIZE);
-		const mG_p3_ = wasm._malloc(nThreads * MG_P3_SIZE);
-		let pointsComputed = 0;
-		const cb_ = wasm.addFunction((data: any) => {
-			if(cb) cb(++pointsComputed);
-		}, 'vi');
-		wasm._epir_mG_generate_prepare(ctx_, mG_, mG_p3_, nThreads, cb_, null);
-		wasm.removeFunction(cb_);
-		const ctx = wasm.HEAPU8.slice(ctx_, ctx_ + CTX_SIZE);
-		const mG = wasm.HEAPU8.slice(mG_, mG_ + nThreads * MG_SIZE);
-		const mG_p3 = wasm.HEAPU8.slice(mG_p3_, mG_p3_ + nThreads * MG_P3_SIZE);
-		wasm._free(ctx_);
-		wasm._free(mG_);
-		wasm._free(mG_p3_);
-		return { ctx: ctx, mG: mG, mG_p3: mG_p3 };
-	};
-	
-	const mg_generate = async (mG_: number, cb: undefined | ((p: number) => void), mmax: number): Promise<void> => {
-		// XXX: not working for navigator.hardwareConcurrency.
-		const nThreads = navigator.hardwareConcurrency / 2;
-		const workers: EPIRWorker[] = [];
-		for(let i=0; i<nThreads; i++) {
-			workers.push(new EPIRWorker());
-		}
-		const mG: Uint8Array[] = [];
-		const beginCompute = time();
-		const prepare = mg_generate_prepare(nThreads, mmax, cb);
-		for(let t=0; t<nThreads; t++) {
-			mG.push(prepare.mG.subarray(t * MG_SIZE, (t + 1) * MG_SIZE));
-		}
-		let pointsComputed = nThreads;
-		const promises = workers.map(async (worker, workerId) => {
-			return new Promise<void>((resolve, reject) => {
-				worker.onmessage = (ev) => {
-					switch(ev.data.method) {
-						case 'mg_generate_cb':
-							if(cb) cb(++pointsComputed);
-							break;
-						case 'mg_generate_compute':
-							//console.log(`mg_generate_compute (workerId = ${workerId}) DONE.`);
-							for(let i=0; i*MG_SIZE<ev.data.mG.length; i++) {
-								mG.push(ev.data.mG.subarray(i * MG_SIZE, (i + 1) * MG_SIZE));
-							}
-							resolve();
-							break;
-					}
-				};
-				workers[workerId].postMessage({
-					method: 'mg_generate_compute', nThreads: nThreads, mmax: mmax,
-					ctx: prepare.ctx, mG_p3: prepare.mG_p3.slice(MG_P3_SIZE * workerId, MG_P3_SIZE * (workerId + 1)),
-					threadId: workerId,
-				});
-			});
-		});
-		await Promise.all(promises);
-		//console.log(`Computation done in ${(time() - beginCompute).toLocaleString()}ms.`);
-		//console.log('Sorting...');
-		const beginSort = time();
-		mG.sort((a, b) => {
-			return uint8ArrayCompare(a, b, 32);
-		});
-		//console.log(`Sorting done in ${(time() - beginSort).toLocaleString()}ms.`);
-		for(let i=0; i<mmax; i++) {
-			wasm.HEAPU8.set(mG[i], mG_ + i * MG_SIZE);
-		}
+	async init(): Promise<void> {
+		this.helper = new WasmHelper(await wasm_());
 	}
 	
-	const get_mG = async (param: undefined | string | ((p: number) => void), mmax: number): Promise<Uint8Array> => {
-		if(typeof param == 'string') {
-			return new Uint8Array(await require('fs/promises').readFile(param));
-		} else {
-			const mG_ = wasm._malloc(MG_SIZE * mmax);
-			await mg_generate(mG_, param, mmax);
-			const mG = wasm.HEAPU8.slice(mG_, mG_ + MG_SIZE * mmax);
-			wasm._free(mG_);
-			return mG;
-		}
-	};
+	createPrivkey(): Uint8Array {
+		return getRandomScalar();
+	}
 	
-	const get_decryption_context = async (
-		param?: string | Uint8Array | ((p: number) => void), mmax: number = MMAX): Promise<DecryptionContext> => {
-		const mG = (param instanceof Uint8Array ? param : await get_mG(param, mmax));
-		return new DecryptionContext(mG);
-	};
+	createPubkey(privkey: Uint8Array): Uint8Array {
+		if(!this.helper) throw new Error('Please call init() first.');
+		const privkey_ = this.helper.malloc(privkey);
+		const pubkey_ = this.helper.malloc(32);
+		this.helper.call('pubkey_from_privkey', pubkey_, privkey_);
+		const pubkey = this.helper.slice(pubkey_, 32);
+		this.helper.free(pubkey_);
+		this.helper.free(privkey_);
+		return pubkey;
+	}
 	
-	const decrypt = (ctx: DecryptionContext, privkey: Uint8Array, cipher: Uint8Array) => {
-		const decrypted = ctx.decrypt(wasm, privkey, cipher);
-		if(decrypted < 0) throw new Error('Failed to decrypt.');
-		return decrypted;
-	};
+	encrypt_(
+		key: Uint8Array, msg: number, r: Uint8Array | undefined,
+		encrypt: string): Uint8Array {
+		if(!this.helper) throw new Error('Please call init() first.');
+		const key_ = this.helper.malloc(key);
+		const cipher_ = this.helper.malloc(64);
+		const rr_ = this.helper.malloc(r ? r : getRandomScalar());
+		this.helper.call(encrypt, cipher_, key_, msg&0xffffffff, Math.floor(msg/0x100000000), rr_);
+		this.helper.free(rr_);
+		const cipher = this.helper.slice(cipher_, 64);
+		this.helper.free(key_);
+		this.helper.free(cipher_);
+		return cipher;
+	}
 	
-	const malloc_index_counts = (index_counts: number[]): number => {
-		const ic_ = wasm._malloc(8 * index_counts.length);
+	encrypt(pubkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array {
+		return this.encrypt_(pubkey, msg, r, 'ecelgamal_encrypt');
+	}
+	
+	encryptFast(privkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array {
+		return this.encrypt_(privkey, msg, r, 'ecelgamal_encrypt_fast');
+	}
+	
+	ciphers_or_elements_count(index_counts: number[], count: string): number {
+		if(!this.helper) throw new Error('Please call init() first.');
+		const ic_ = this.helper.malloc(8 * index_counts.length);
 		for(let i=0; i<index_counts.length; i++) {
-			store_uint64_t(ic_ + 8 * i, index_counts[i]);
+			this.helper.store_uint64_t(ic_ + 8 * i, index_counts[i]);
 		}
-		return ic_;
-	};
-	
-	const ciphers_or_elements_count = (index_counts: number[], count: (ic_: number, size: number) => number): number => {
-		const ic_ = malloc_index_counts(index_counts);
-		const c = count(ic_, index_counts.length);
-		wasm._free(ic_);
+		const c = this.helper.call(count, ic_, index_counts.length);
+		this.helper.free(ic_);
 		return c;
-	};
+	}
 	
-	const ciphers_count = (index_counts: number[]): number => {
-		return ciphers_or_elements_count(index_counts, wasm._epir_selector_ciphers_count);
-	};
+	ciphersCount(index_counts: number[]): number {
+		if(!this.helper) throw new Error('Please call init() first.');
+		return this.ciphers_or_elements_count(index_counts, 'selector_ciphers_count');
+	}
 	
-	const elements_count = (index_counts: number[]): number => {
-		return ciphers_or_elements_count(index_counts, wasm._epir_selector_elements_count);
-	};
+	elementsCount(index_counts: number[]): number {
+		if(!this.helper) throw new Error('Please call init() first.');
+		return this.ciphers_or_elements_count(index_counts, 'selector_elements_count');
+	}
 	
-	const create_choice = (index_counts: number[], idx: number): Uint8Array => {
-		const ic_ = wasm._malloc(8 * index_counts.length);
+	create_choice(index_counts: number[], idx: number): Uint8Array {
+		if(!this.helper) throw new Error('Please call init() first.');
+		const ic_ = this.helper.malloc(8 * index_counts.length);
 		for(let i=0; i<index_counts.length; i++) {
-			store_uint64_t(ic_ + 8 * i, index_counts[i]);
+			this.helper.store_uint64_t(ic_ + 8 * i, index_counts[i]);
 		}
-		const ciphers = wasm._epir_selector_ciphers_count(ic_, index_counts.length);
-		const selector_ = wasm._malloc(64 * ciphers);
-		wasm._epir_selector_create_choice(
+		const ciphers = this.helper.call('selector_ciphers_count', ic_, index_counts.length);
+		const selector_ = this.helper.malloc(64 * ciphers);
+		this.helper.call('selector_create_choice',
 			selector_, ic_, index_counts.length, idx&0xffffffff, Math.floor(idx / 0xffffffff)&0xffffffff);
-		const selector = wasm.HEAPU8.slice(selector_, selector_ + 64 * ciphers);
-		wasm._free(selector_);
-		wasm._free(ic_);
+		const selector = this.helper.slice(selector_, 64 * ciphers);
+		this.helper.free(selector_);
+		this.helper.free(ic_);
 		return selector;
-	};
+	}
 	
-	const selector_create_ = async (
-		key: Uint8Array, index_counts: number[], idx: number, r: Uint8Array | undefined, isFast: boolean): Promise<Uint8Array> => {
+	async selector_create_(
+		key: Uint8Array, index_counts: number[], idx: number, r: Uint8Array | undefined, isFast: boolean): Promise<Uint8Array> {
 		return new Promise(async (resolve, reject) => {
 			const nThreads = navigator.hardwareConcurrency;
 			const workers: EPIRWorker[] = [];
 			const promises: Promise<Uint8Array>[] = [];
-			const random = r ? r : getRandomBytes(ciphers_count(index_counts) * 32);
-			const choice = create_choice(index_counts, idx);
+			const random = r ? r : getRandomBytes(this.ciphersCount(index_counts) * 32);
+			const choice = this.create_choice(index_counts, idx);
 			for(let t=0; t<nThreads; t++) {
 				workers.push(new EPIRWorker());
 				promises.push(new Promise((resolve, reject) => {
@@ -388,69 +445,41 @@ export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
 		});
 	}
 	
-	const selector_create = (pubkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array> => {
-		return selector_create_(pubkey, index_counts, idx, r, false);
-	};
+	async createSelector(pubkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array> {
+		return this.selector_create_(pubkey, index_counts, idx, r, false);
+	}
 	
-	const selector_create_fast = (privkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array> => {
-		return selector_create_(privkey, index_counts, idx, r, true);
-	};
+	async createSelectorFast(privkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array> {
+		return this.selector_create_(privkey, index_counts, idx, r, true);
+	}
 	
-	const reply_decrypt = async (
-		ctx: DecryptionContext, reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number):
-		Promise<Uint8Array> => {
-		let midstate = reply;
-		for(let phase=0; phase<dimension; phase++) {
-			const decrypted = await ctx.decryptMany(midstate, privkey, packing);
-			if(phase == dimension - 1) {
-				midstate = decrypted;
-			} else {
-				midstate = decrypted.subarray(0, decrypted.length - (decrypted.length % 64));
-			}
-		}
-		return midstate;
-	};
+	// For testing.
+	computeReplySize(dimension: number, packing: number, elem_size: number): number {
+		if(!this.helper) throw new Error('Please call init() first.');
+		return this.helper.call('reply_size', dimension, packing, elem_size);
+	}
 	
-	const reply_size = (dimension: number, packing: number, elem_size: number) => {
-		return wasm._epir_reply_size(dimension, packing, elem_size);
-	};
+	computeReplyRCount(dimension: number, packing: number, elem_size: number): number {
+		if(!this.helper) throw new Error('Please call init() first.');
+		return this.helper.call('reply_r_count', dimension, packing, elem_size);
+	}
 	
-	const reply_r_count = (dimension: number, packing: number, elem_size: number) => {
-		return wasm._epir_reply_r_count(dimension, packing, elem_size);
-	};
-	
-	const reply_mock = (pubkey: Uint8Array, dimension: number, packing: number, elem: Uint8Array, r?: Uint8Array) => {
-		const pubkey_ = malloc(pubkey);
-		const elem_ = malloc(elem);
-		const rrc = reply_r_count(dimension, packing, elem.length);
-		const rr_ = malloc(r ? r : uint8ArrayConcat(getRandomScalars(rrc)));
-		const rs = reply_size(dimension, packing, elem.length);
-		const reply_ = wasm._malloc(rs);
-		wasm._epir_reply_mock(reply_, pubkey_, dimension, packing, elem_, elem.length, rr_);
-		const reply = wasm.HEAPU8.slice(reply_, reply_ + rs);
-		wasm._free(pubkey_);
-		wasm._free(elem_);
-		wasm._free(rr_);
-		wasm._free(reply_);
+	computeReplyMock(pubkey: Uint8Array, dimension: number, packing: number, elem: Uint8Array, r?: Uint8Array): Uint8Array {
+		if(!this.helper) throw new Error('Please call init() first.');
+		const pubkey_ = this.helper.malloc(pubkey);
+		const elem_ = this.helper.malloc(elem);
+		const rrc = this.computeReplyRCount(dimension, packing, elem.length);
+		const rr_ = this.helper.malloc(r ? r : uint8ArrayConcat(getRandomScalars(rrc)));
+		const rs = this.computeReplySize(dimension, packing, elem.length);
+		const reply_ = this.helper.malloc(rs);
+		this.helper.call('reply_mock', reply_, pubkey_, dimension, packing, elem_, elem.length, rr_);
+		const reply = this.helper.slice(reply_, rs);
+		this.helper.free(pubkey_);
+		this.helper.free(elem_);
+		this.helper.free(rr_);
+		this.helper.free(reply_);
 		return reply;
-	};
+	}
 	
-	return {
-		create_privkey,
-		pubkey_from_privkey,
-		encrypt,
-		encrypt_fast,
-		get_decryption_context,
-		decrypt,
-		ciphers_count,
-		elements_count,
-		selector_create,
-		selector_create_fast,
-		reply_decrypt,
-		reply_size,
-		reply_r_count,
-		reply_mock,
-	};
-	
-};
+}
 

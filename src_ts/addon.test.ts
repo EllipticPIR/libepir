@@ -1,6 +1,6 @@
 
 import { runTests } from './test_common'
-import { createEpir } from './addon';
+import { Epir, DecryptionContext } from './addon';
 
-runTests(createEpir);
+runTests(Epir, DecryptionContext);
 

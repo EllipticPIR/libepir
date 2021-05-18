@@ -2,118 +2,115 @@
  * Node.js (TypeScript) bindings for Native C EllipticPIR library interface.
  */
 
-import { epir_t } from './epir_t';
+import { EpirBase, DecryptionContextBase, DecryptionContextParameter } from './EpirBase';
 
 const epir_napi = require('bindings')('epir');
 
-export interface DecryptionContext {
-	constructor(path: string): DecryptionContext;
+export interface DecryptionContextNapi {
+	constructor(path: string): DecryptionContextNapi;
 	decrypt: (privkey: Uint8Array, cipher: Uint8Array) => number;
 	replyDecrypt: (reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number) => Uint8Array;
 }
 
-export const createEpir = async (): Promise<epir_t<DecryptionContext>> => {
+export class DecryptionContext extends DecryptionContextBase {
 	
-	const create_privkey = (): Uint8Array => {
-		return epir_napi.create_privkey();
-	};
+	napi: DecryptionContextNapi | null = null;
 	
-	const pubkey_from_privkey = (pubkey: Uint8Array): Uint8Array => {
-		return epir_napi.pubkey_from_privkey(pubkey);
-	};
+	constructor(param?: DecryptionContextParameter, mmax: number = 1 << 24) {
+		super(param, mmax);
+	}
 	
-	const encrypt = (pubkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array => {
-		return r ? epir_napi.encrypt(pubkey, msg, r) : epir_napi.encrypt(pubkey, msg);
-	};
-	
-	const encrypt_fast = (privkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array => {
-		return r ? epir_napi.encrypt_fast(privkey, msg, r) : epir_napi.encrypt_fast(privkey, msg);
-	};
-	
-	const get_decryption_context = async (
-		param?: string | Uint8Array | ((p: number) => void), mmax: number = 1 << 24): Promise<DecryptionContext> => {
-		if(typeof param === 'function') {
-			// We ensure that all the JS callbacks are called.
-			return new Promise((resolve, reject) => {
-				const decCtx = new epir_napi.DecryptionContext((points_computed: number) => {
-					param(points_computed);
-					if(points_computed == mmax) {
-						resolve(decCtx);
+	async init(): Promise<void> {
+		return new Promise((resolve, reject) => {
+			if(typeof this.param === 'function') {
+				// We ensure that all the JS callbacks are called.
+				this.napi = new epir_napi.DecryptionContext((points_computed: number) => {
+					if(typeof this.param === 'function') this.param(points_computed);
+					if(points_computed == this.mmax) {
+						resolve();
 					}
-				}, mmax);
-			});
-		}
-		return new epir_napi.DecryptionContext(param, mmax);
-	};
+				}, this.mmax);
+			} else {
+				this.napi = new epir_napi.DecryptionContext(this.param, this.mmax);
+				resolve();
+			}
+		});
+	}
 	
-	const decrypt = (ctx: DecryptionContext, privkey: Uint8Array, cipher: Uint8Array) => {
-		return ctx.decrypt(privkey, cipher);
-	};
+	getMG(): ArrayBuffer {
+		// XXX:
+		throw new Error('Not implemented.');
+	}
 	
-	const ciphers_count = (index_counts: number[]): number => {
+	decryptCipher(privkey: Uint8Array, cipher: Uint8Array): number {
+		if(!this.napi) throw new Error('Please call init() first.');
+		return this.napi.decrypt(privkey, cipher);
+	}
+	
+	async decryptReply(privkey: Uint8Array, dimension: number, packing: number, reply: Uint8Array): Promise<Uint8Array> {
+		return new Promise((resolve, reject) => {
+			if(!this.napi) throw new Error('Please call init() first.');
+			resolve(this.napi.replyDecrypt(reply, privkey, dimension, packing));
+		});
+	}
+	
+}
+
+export class Epir implements EpirBase {
+	
+	async init(): Promise<void> {
+	}
+	
+	createPrivkey(): Uint8Array {
+		return epir_napi.create_privkey();
+	}
+	
+	createPubkey(privkey: Uint8Array): Uint8Array {
+		return epir_napi.pubkey_from_privkey(privkey);
+	}
+	
+	encrypt(pubkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array {
+		return r ? epir_napi.encrypt(pubkey, msg, r) : epir_napi.encrypt(pubkey, msg);
+	}
+	
+	encryptFast(privkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array {
+		return r ? epir_napi.encrypt_fast(privkey, msg, r) : epir_napi.encrypt_fast(privkey, msg);
+	}
+	
+	ciphersCount(index_counts: number[]): number {
 		return epir_napi.ciphers_count(index_counts);
-	};
+	}
 	
-	const elements_count = (index_counts: number[]): number => {
+	elementsCount(index_counts: number[]): number {
 		return epir_napi.elements_count(index_counts);
-	};
+	}
 	
-	const selector_create = async (
-		pubkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array> => {
-		return new Promise((resolve, reject) => {
-			resolve(r ?
-				epir_napi.selector_create(pubkey, index_counts, idx, r) :
-				epir_napi.selector_create(pubkey, index_counts, idx));
-		});
-	};
+	async createSelector(pubkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array> {
+		return (r ?
+			epir_napi.selector_create(pubkey, index_counts, idx, r) :
+			epir_napi.selector_create(pubkey, index_counts, idx));
+	}
 	
-	const selector_create_fast = async (
-		privkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array> => {
-		return new Promise((resolve, reject) => {
-			resolve(r ?
-				epir_napi.selector_create_fast(privkey, index_counts, idx, r) :
-				epir_napi.selector_create_fast(privkey, index_counts, idx));
-		});
-	};
+	async createSelectorFast(privkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array> {
+		return (r ?
+			epir_napi.selector_create_fast(privkey, index_counts, idx, r) :
+			epir_napi.selector_create_fast(privkey, index_counts, idx));
+	}
 	
-	const reply_decrypt = async (
-		decCtx: DecryptionContext, reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number):
-		Promise<Uint8Array> => {
-		return new Promise((resolve, reject) => {
-			resolve(decCtx.replyDecrypt(reply, privkey, dimension, packing));
-		});
-	};
-	
-	const reply_size = (dimension: number, packing: number, elem_size: number) => {
+	// For testing.
+	computeReplySize(dimension: number, packing: number, elem_size: number): number {
 		return epir_napi.reply_size(dimension, packing, elem_size);
-	};
+	}
 	
-	const reply_r_count = (dimension: number, packing: number, elem_size: number) => {
+	computeReplyRCount(dimension: number, packing: number, elem_size: number): number {
 		return epir_napi.reply_r_count(dimension, packing, elem_size);
-	};
+	}
 	
-	const reply_mock = (pubkey: Uint8Array, dimension: number, packing: number, elem: Uint8Array, r?: Uint8Array) => {
+	computeReplyMock(pubkey: Uint8Array, dimension: number, packing: number, elem: Uint8Array, r?: Uint8Array): Uint8Array {
 		return (r ?
 			epir_napi.reply_mock(pubkey, dimension, packing, elem, r) :
 			epir_napi.reply_mock(pubkey, dimension, packing, elem));
-	};
+	}
 	
-	return {
-		create_privkey,
-		pubkey_from_privkey,
-		encrypt,
-		encrypt_fast,
-		get_decryption_context,
-		decrypt,
-		ciphers_count,
-		elements_count,
-		selector_create,
-		selector_create_fast,
-		reply_decrypt,
-		reply_size,
-		reply_r_count,
-		reply_mock,
-	};
-	
-};
+}
 
