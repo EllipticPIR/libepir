@@ -3,23 +3,23 @@ export const SCALAR_SIZE = 32;
 export const POINT_SIZE = 32;
 export const CIPHER_SIZE = 2 * POINT_SIZE;
 
+export const DEFAULT_MMAX_MOD = 24;
+export const DEFAULT_MMAX = 1 << DEFAULT_MMAX_MOD;
+
 export type DecryptionContextParameter = string | Uint8Array | ((points_computed: number) => void);
 
-export abstract class DecryptionContextBase {
-	readonly param?: DecryptionContextParameter;
-	readonly mmax?: number;
-	constructor(param?: DecryptionContextParameter, mmax?: number) {
-		this.param = param;
-		this.mmax = mmax;
-	}
-	abstract init(): Promise<void>;
-	abstract getMG(): Uint8Array;
-	abstract decryptCipher(privkey: Uint8Array, cipher: Uint8Array): number;
-	abstract decryptReply(privkey: Uint8Array, dimension: number, packing: number, reply: Uint8Array): Promise<Uint8Array>;
+export type DecryptionContextCreateFunction =
+	(param?: DecryptionContextParameter, mmax?: number) => Promise<DecryptionContextBase>;
+
+export interface DecryptionContextBase {
+	getMG(): Uint8Array;
+	decryptCipher(privkey: Uint8Array, cipher: Uint8Array): number;
+	decryptReply(privkey: Uint8Array, dimension: number, packing: number, reply: Uint8Array): Promise<Uint8Array>;
 }
 
+export type EpirCreateFunction = () => Promise<EpirBase>;
+
 export interface EpirBase {
-	init(): Promise<void>;
 	createPrivkey(): Uint8Array;
 	createPubkey(privkey: Uint8Array): Uint8Array;
 	encrypt(pubkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array;

@@ -2,7 +2,14 @@
  * Node.js (TypeScript) bindings for Native C EllipticPIR library interface.
  */
 
-import { EpirBase, DecryptionContextBase, DecryptionContextParameter } from './EpirBase';
+import {
+	EpirBase,
+	EpirCreateFunction,
+	DecryptionContextBase,
+	DecryptionContextParameter,
+	DecryptionContextCreateFunction,
+	DEFAULT_MMAX
+} from './EpirBase';
 
 const epir_napi = require('bindings')('epir');
 
@@ -13,51 +20,47 @@ export interface DecryptionContextNapi {
 	replyDecrypt: (reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number) => Uint8Array;
 }
 
-export class DecryptionContext extends DecryptionContextBase {
+export class DecryptionContext implements DecryptionContextBase {
 	
-	napi: DecryptionContextNapi | null = null;
+	napi: DecryptionContextNapi;
 	
-	constructor(param?: DecryptionContextParameter, mmax: number = 1 << 24) {
-		super(param, mmax);
-	}
-	
-	async init(): Promise<void> {
-		return new Promise((resolve, reject) => {
-			if(typeof this.param === 'function') {
-				// We ensure that all the JS callbacks are called.
-				this.napi = new epir_napi.DecryptionContext((points_computed: number) => {
-					(this.param as (pc: number) => void)(points_computed);
-					if(points_computed == this.mmax) {
-						resolve();
-					}
-				}, this.mmax);
-			} else {
-				this.napi = new epir_napi.DecryptionContext(this.param, this.mmax);
-				resolve();
-			}
-		});
+	constructor(napi: DecryptionContextNapi) {
+		this.napi = napi;
 	}
 	
 	getMG(): Uint8Array {
-		return this.napi!.getMG();
+		return this.napi.getMG();
 	}
 	
 	decryptCipher(privkey: Uint8Array, cipher: Uint8Array): number {
-		return this.napi!.decrypt(privkey, cipher);
+		return this.napi.decrypt(privkey, cipher);
 	}
 	
 	async decryptReply(privkey: Uint8Array, dimension: number, packing: number, reply: Uint8Array): Promise<Uint8Array> {
-		return new Promise((resolve, reject) => {
-			resolve(this.napi!.replyDecrypt(reply, privkey, dimension, packing));
-		});
+		return this.napi.replyDecrypt(reply, privkey, dimension, packing);
 	}
 	
 }
 
+export const createDecryptionContext: DecryptionContextCreateFunction = async (
+	param?: DecryptionContextParameter, mmax: number = DEFAULT_MMAX) => {
+	const napi = await new Promise<DecryptionContextNapi>((resolve, reject) => {
+		if(typeof param === 'function') {
+			// We ensure that all the JS callbacks are called.
+			const napi = new epir_napi.DecryptionContext((points_computed: number) => {
+				param(points_computed);
+				if(points_computed == mmax) {
+					resolve(napi);
+				}
+			}, mmax);
+		} else {
+			resolve(new epir_napi.DecryptionContext(param, mmax));
+		}
+	});
+	return new DecryptionContext(napi);
+};
+
 export class Epir implements EpirBase {
-	
-	async init(): Promise<void> {
-	}
 	
 	createPrivkey(): Uint8Array {
 		return epir_napi.create_privkey();
@@ -111,4 +114,8 @@ export class Epir implements EpirBase {
 	}
 	
 }
+
+export const createEpir: EpirCreateFunction = async () => {
+	return new Epir();
+};
 

@@ -1,6 +1,6 @@
 
 import { runTests } from './test_common'
-import { Epir, DecryptionContext } from './wasm';
+import { createEpir, createDecryptionContext } from './wasm';
 
-runTests(Epir, DecryptionContext);
+runTests(createEpir, createDecryptionContext);
 

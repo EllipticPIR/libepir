@@ -1,11 +1,16 @@
 
-import { EpirBase, DecryptionContextBase, DecryptionContextParameter } from './EpirBase';
+import {
+	EpirBase,
+	EpirCreateFunction,
+	DecryptionContextBase,
+	DecryptionContextParameter,
+	DecryptionContextCreateFunction,
+	DEFAULT_MMAX
+} from './EpirBase';
 import EPIRWorker from './wasm.worker.ts';
 
 const time = () => new Date().getTime();
 
-export const MMAX_MOD = 24;
-export const MMAX = 1 << MMAX_MOD;
 export const MG_SIZE = 36;
 export const MG_P3_SIZE = 4 * 40;
 
@@ -120,109 +125,21 @@ class WasmHelper {
 	
 }
 
-export class DecryptionContext extends DecryptionContextBase {
+export class DecryptionContext implements DecryptionContextBase {
 	
-	helper: WasmHelper | null = null;
-	mG: Uint8Array | null = null;
+	helper: WasmHelper;
+	mG: Uint8Array;
 	
-	mg_generate_prepare(nThreads: number, mmax: number, cb: undefined | ((p: number) => void)) {
-		if(!this.helper) throw new Error('Please call init() first.');
-		const CTX_SIZE = 124;
-		const ctx_ = this.helper.malloc(CTX_SIZE);
-		this.helper.store_uint32_t(ctx_, mmax);
-		const mG_ = this.helper.malloc(nThreads * MG_SIZE);
-		const mG_p3_ = this.helper.malloc(nThreads * MG_P3_SIZE);
-		let pointsComputed = 0;
-		const cb_ = this.helper.wasm.addFunction((data: any) => {
-			if(cb) cb(++pointsComputed);
-		}, 'vi');
-		this.helper.call('mG_generate_prepare', ctx_, mG_, mG_p3_, nThreads, cb_, null);
-		this.helper.wasm.removeFunction(cb_);
-		const ctx = this.helper.slice(ctx_, CTX_SIZE);
-		const mG = this.helper.slice(mG_, nThreads * MG_SIZE);
-		const mG_p3 = this.helper.slice(mG_p3_, nThreads * MG_P3_SIZE);
-		this.helper.free(ctx_);
-		this.helper.free(mG_);
-		this.helper.free(mG_p3_);
-		return { ctx: ctx, mG: mG, mG_p3: mG_p3 };
-	};
-	
-	async mg_generate(mG_: number, cb: undefined | ((p: number) => void), mmax: number): Promise<void> {
-		if(!this.helper) throw new Error('Please call init() first.');
-		// XXX: not working for navigator.hardwareConcurrency.
-		const nThreads = navigator.hardwareConcurrency / 2;
-		const workers: EPIRWorker[] = [];
-		for(let i=0; i<nThreads; i++) {
-			workers.push(new EPIRWorker());
-		}
-		const mG: Uint8Array[] = [];
-		const beginCompute = time();
-		const prepare = this.mg_generate_prepare(nThreads, mmax, cb);
-		for(let t=0; t<nThreads; t++) {
-			mG.push(prepare.mG.subarray(t * MG_SIZE, (t + 1) * MG_SIZE));
-		}
-		let pointsComputed = nThreads;
-		const promises = workers.map(async (worker, workerId) => {
-			return new Promise<void>((resolve, reject) => {
-				worker.onmessage = (ev) => {
-					switch(ev.data.method) {
-						case 'mg_generate_cb':
-							if(cb) cb(++pointsComputed);
-							break;
-						case 'mg_generate_compute':
-							//console.log(`mg_generate_compute (workerId = ${workerId}) DONE.`);
-							for(let i=0; i*MG_SIZE<ev.data.mG.length; i++) {
-								mG.push(ev.data.mG.subarray(i * MG_SIZE, (i + 1) * MG_SIZE));
-							}
-							resolve();
-							break;
-					}
-				};
-				workers[workerId].postMessage({
-					method: 'mg_generate_compute', nThreads: nThreads, mmax: mmax,
-					ctx: prepare.ctx, mG_p3: prepare.mG_p3.slice(MG_P3_SIZE * workerId, MG_P3_SIZE * (workerId + 1)),
-					threadId: workerId,
-				});
-			});
-		});
-		await Promise.all(promises);
-		//console.log(`Computation done in ${(time() - beginCompute).toLocaleString()}ms.`);
-		//console.log('Sorting...');
-		const beginSort = time();
-		mG.sort((a, b) => {
-			return uint8ArrayCompare(a, b, 32);
-		});
-		//console.log(`Sorting done in ${(time() - beginSort).toLocaleString()}ms.`);
-		for(let i=0; i<mmax; i++) {
-			this.helper.set(mG[i], mG_ + i * MG_SIZE);
-		}
-	}
-	
-	async getMG_(param: undefined | string | ((p: number) => void), mmax: number): Promise<Uint8Array> {
-		if(typeof param == 'string') {
-			return new Uint8Array(await require('fs/promises').readFile(param));
-		} else {
-			if(!this.helper) throw new Error('Please call init() first.');
-			const mG_ = this.helper.malloc(MG_SIZE * mmax);
-			await this.mg_generate(mG_, param, mmax);
-			const mG = this.helper.slice(mG_, MG_SIZE * mmax);
-			this.helper.free(mG_);
-			return mG;
-		}
-	}
-	
-	async init(): Promise<void> {
-		this.helper = new WasmHelper(await wasm_());
-		this.mG = (this.param instanceof Uint8Array ? this.param : await this.getMG_(this.param, this.mmax ? this.mmax : MMAX));
+	constructor(helper: WasmHelper, mG: Uint8Array) {
+		this.helper = helper;
+		this.mG = mG;
 	}
 	
 	getMG(): Uint8Array {
-		if(!this.mG) throw new Error('Please call init() first.');
 		return this.mG;
 	}
 	
 	decryptCipher(privkey: Uint8Array, cipher: Uint8Array): number {
-		if(!this.helper) throw new Error('Please call init() first.');
 		const privkey_ = this.helper.malloc(32);
 		this.helper.set(privkey, privkey_);
 		const cipher_ = this.helper.malloc(64);
@@ -258,12 +175,10 @@ export class DecryptionContext extends DecryptionContextBase {
 	}
 	
 	load_uint32_t_from_mG(idx: number): number {
-		if(!this.mG) throw new Error('Please call init() first.');
 		return DecryptionContext.load_uint32_t(this.mG.subarray(36 * idx, 36 * idx + 4));
 	}
 	
 	interpolationSearch(mG: Uint8Array): number {
-		if(!this.mG) throw new Error('Please call init() first.');
 		const mmax = this.mG.length / MG_SIZE;
 		let imin = 0;
 		let imax = mmax - 1;
@@ -329,12 +244,102 @@ export class DecryptionContext extends DecryptionContextBase {
 	
 }
 
+const mGGeneratePrepare = (helper: WasmHelper, nThreads: number, mmax: number, cb: undefined | ((p: number) => void)) => {
+	const CTX_SIZE = 124;
+	const ctx_ = helper.malloc(CTX_SIZE);
+	helper.store_uint32_t(ctx_, mmax);
+	const mG_ = helper.malloc(nThreads * MG_SIZE);
+	const mG_p3_ = helper.malloc(nThreads * MG_P3_SIZE);
+	let pointsComputed = 0;
+	const cb_ = helper.wasm.addFunction((data: any) => {
+		if(cb) cb(++pointsComputed);
+	}, 'vi');
+	helper.call('mG_generate_prepare', ctx_, mG_, mG_p3_, nThreads, cb_, null);
+	helper.wasm.removeFunction(cb_);
+	const ctx = helper.slice(ctx_, CTX_SIZE);
+	const mG = helper.slice(mG_, nThreads * MG_SIZE);
+	const mG_p3 = helper.slice(mG_p3_, nThreads * MG_P3_SIZE);
+	helper.free(ctx_);
+	helper.free(mG_);
+	helper.free(mG_p3_);
+	return { ctx: ctx, mG: mG, mG_p3: mG_p3 };
+};
+
+const mGGenerate = async (helper: WasmHelper, mG_: number, cb: undefined | ((p: number) => void), mmax: number): Promise<void> => {
+	// XXX: not working for navigator.hardwareConcurrency.
+	const nThreads = navigator.hardwareConcurrency / 2;
+	const workers: EPIRWorker[] = [];
+	for(let i=0; i<nThreads; i++) {
+		workers.push(new EPIRWorker());
+	}
+	const mG: Uint8Array[] = [];
+	const beginCompute = time();
+	const prepare = mGGeneratePrepare(helper, nThreads, mmax, cb);
+	for(let t=0; t<nThreads; t++) {
+		mG.push(prepare.mG.subarray(t * MG_SIZE, (t + 1) * MG_SIZE));
+	}
+	let pointsComputed = nThreads;
+	const promises = workers.map(async (worker, workerId) => {
+		return new Promise<void>((resolve, reject) => {
+			worker.onmessage = (ev) => {
+				switch(ev.data.method) {
+					case 'mg_generate_cb':
+						if(cb) cb(++pointsComputed);
+						break;
+					case 'mg_generate_compute':
+						//console.log(`mg_generate_compute (workerId = ${workerId}) DONE.`);
+						for(let i=0; i*MG_SIZE<ev.data.mG.length; i++) {
+							mG.push(ev.data.mG.subarray(i * MG_SIZE, (i + 1) * MG_SIZE));
+						}
+						resolve();
+						break;
+				}
+			};
+			workers[workerId].postMessage({
+				method: 'mg_generate_compute', nThreads: nThreads, mmax: mmax,
+				ctx: prepare.ctx, mG_p3: prepare.mG_p3.slice(MG_P3_SIZE * workerId, MG_P3_SIZE * (workerId + 1)),
+				threadId: workerId,
+			});
+		});
+	});
+	await Promise.all(promises);
+	//console.log(`Computation done in ${(time() - beginCompute).toLocaleString()}ms.`);
+	//console.log('Sorting...');
+	const beginSort = time();
+	mG.sort((a, b) => {
+		return uint8ArrayCompare(a, b, 32);
+	});
+	//console.log(`Sorting done in ${(time() - beginSort).toLocaleString()}ms.`);
+	for(let i=0; i<mmax; i++) {
+		helper.set(mG[i], mG_ + i * MG_SIZE);
+	}
+}
+
+const getMG = async (helper: WasmHelper, param: undefined | string | ((p: number) => void), mmax: number): Promise<Uint8Array> => {
+	if(typeof param == 'string') {
+		return new Uint8Array(await require('fs/promises').readFile(param));
+	} else {
+		const mG_ = helper.malloc(MG_SIZE * mmax);
+		await mGGenerate(helper, mG_, param, mmax);
+		const mG = helper.slice(mG_, MG_SIZE * mmax);
+		helper.free(mG_);
+		return mG;
+	}
+}
+
+export const createDecryptionContext: DecryptionContextCreateFunction = async (
+	param?: DecryptionContextParameter, mmax: number = DEFAULT_MMAX) => {
+	const helper = new WasmHelper(await wasm_());
+	const mG = (param instanceof Uint8Array ? param : await getMG(helper, param, mmax ? mmax : DEFAULT_MMAX));
+	return new DecryptionContext(helper, mG);
+};
+
 export class Epir implements EpirBase {
 	
-	helper: WasmHelper | null = null;
+	helper: WasmHelper;
 	
-	async init(): Promise<void> {
-		this.helper = new WasmHelper(await wasm_());
+	constructor(helper: WasmHelper) {
+		this.helper = helper;
 	}
 	
 	createPrivkey(): Uint8Array {
@@ -342,7 +347,6 @@ export class Epir implements EpirBase {
 	}
 	
 	createPubkey(privkey: Uint8Array): Uint8Array {
-		if(!this.helper) throw new Error('Please call init() first.');
 		const privkey_ = this.helper.malloc(privkey);
 		const pubkey_ = this.helper.malloc(32);
 		this.helper.call('pubkey_from_privkey', pubkey_, privkey_);
@@ -355,7 +359,6 @@ export class Epir implements EpirBase {
 	encrypt_(
 		key: Uint8Array, msg: number, r: Uint8Array | undefined,
 		encrypt: string): Uint8Array {
-		if(!this.helper) throw new Error('Please call init() first.');
 		const key_ = this.helper.malloc(key);
 		const cipher_ = this.helper.malloc(64);
 		const rr_ = this.helper.malloc(r ? r : getRandomScalar());
@@ -376,7 +379,6 @@ export class Epir implements EpirBase {
 	}
 	
 	ciphers_or_elements_count(index_counts: number[], count: string): number {
-		if(!this.helper) throw new Error('Please call init() first.');
 		const ic_ = this.helper.malloc(8 * index_counts.length);
 		for(let i=0; i<index_counts.length; i++) {
 			this.helper.store_uint64_t(ic_ + 8 * i, index_counts[i]);
@@ -387,17 +389,14 @@ export class Epir implements EpirBase {
 	}
 	
 	ciphersCount(index_counts: number[]): number {
-		if(!this.helper) throw new Error('Please call init() first.');
 		return this.ciphers_or_elements_count(index_counts, 'selector_ciphers_count');
 	}
 	
 	elementsCount(index_counts: number[]): number {
-		if(!this.helper) throw new Error('Please call init() first.');
 		return this.ciphers_or_elements_count(index_counts, 'selector_elements_count');
 	}
 	
 	create_choice(index_counts: number[], idx: number): Uint8Array {
-		if(!this.helper) throw new Error('Please call init() first.');
 		const ic_ = this.helper.malloc(8 * index_counts.length);
 		for(let i=0; i<index_counts.length; i++) {
 			this.helper.store_uint64_t(ic_ + 8 * i, index_counts[i]);
@@ -455,17 +454,14 @@ export class Epir implements EpirBase {
 	
 	// For testing.
 	computeReplySize(dimension: number, packing: number, elem_size: number): number {
-		if(!this.helper) throw new Error('Please call init() first.');
 		return this.helper.call('reply_size', dimension, packing, elem_size);
 	}
 	
 	computeReplyRCount(dimension: number, packing: number, elem_size: number): number {
-		if(!this.helper) throw new Error('Please call init() first.');
 		return this.helper.call('reply_r_count', dimension, packing, elem_size);
 	}
 	
 	computeReplyMock(pubkey: Uint8Array, dimension: number, packing: number, elem: Uint8Array, r?: Uint8Array): Uint8Array {
-		if(!this.helper) throw new Error('Please call init() first.');
 		const pubkey_ = this.helper.malloc(pubkey);
 		const elem_ = this.helper.malloc(elem);
 		const rrc = this.computeReplyRCount(dimension, packing, elem.length);
@@ -482,4 +478,9 @@ export class Epir implements EpirBase {
 	}
 	
 }
+
+export const createEpir: EpirCreateFunction = async () => {
+	const helper = new WasmHelper(await wasm_());
+	return new Epir(helper);
+};
 

@@ -1,7 +1,7 @@
 
 import crypto from 'crypto';
 
-import { EpirBase, DecryptionContextBase, DecryptionContextParameter } from './EpirBase';
+import { EpirCreateFunction, EpirBase, DecryptionContextCreateFunction, DecryptionContextBase } from './EpirBase';
 
 const MMAX = 1 << 16;
 
@@ -94,9 +94,7 @@ const selectorHash = new Uint8Array([
 	0x1f, 0x3d, 0x19, 0x2f, 0x59, 0xac, 0xe9, 0x0c
 ]);
 
-export const runTests = (
-	Epir: new () => EpirBase,
-	DecryptionContext: new (param?: DecryptionContextParameter, mmax?: number) => DecryptionContextBase) => {
+export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext: DecryptionContextCreateFunction) => {
 	
 	// For WebAssembly tests, we have tests which uses max CPU cores (x2 for main threads and worker threads).
 	const testsWithWorkersCount = 7;
@@ -118,10 +116,8 @@ export const runTests = (
 	};
 	
 	beforeAll(async () => {
-		epir = new Epir();
-		await epir.init();
-		decCtx = new DecryptionContext(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
-		await decCtx.init();
+		epir = await createEpir();
+		decCtx = await createDecryptionContext(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
 	});
 	
 	describe('ECElGamal', () => {
@@ -146,19 +142,17 @@ export const runTests = (
 		});
 		
 		test('generate mG (without callback)', async () => {
-			const decCtx = new DecryptionContext(undefined, MMAX);
-			await decCtx.init();
+			const decCtx = await createDecryptionContext(undefined, MMAX);
 			const mG = decCtx.getMG();
 			expect(sha256sum(mG)).toEqual(mGHashSmall);
 		});
 		
 		test('generate mG (with callback)', async () => {
 			let pointsComputed = 0;
-			const decCtx = new DecryptionContext((pointsComputedTest: number) => {
+			const decCtx = await createDecryptionContext((pointsComputedTest: number) => {
 				pointsComputed++;
 				expect(pointsComputedTest).toBe(pointsComputed);
 			}, MMAX);
-			await decCtx.init();
 			const mG = decCtx.getMG();
 			expect(sha256sum(mG)).toEqual(mGHashSmall);
 		});

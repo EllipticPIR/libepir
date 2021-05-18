@@ -1,5 +1,5 @@
 
-import { Epir } from './wasm'
+import { createEpir } from './wasm'
 
 describe('Browser', () => {
 	
@@ -9,8 +9,7 @@ describe('Browser', () => {
 				getRandomValues: (buf: Uint8Array) => buf.set(require('crypto').randomBytes(buf.length)),
 			}
 		});
-		const epir = new Epir();
-		await epir.init();
+		const epir = await createEpir();
 		const privkey = epir.createPrivkey();
 		expect(privkey).toHaveLength(32);
 	});
