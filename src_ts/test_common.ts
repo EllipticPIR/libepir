@@ -168,7 +168,7 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 			}, MMAX);
 			const mG = decCtx.getMG();
 			expect(sha256sum(mG)).toEqual(mGHashSmall);
-		});
+		}, 30 * 1000);
 		
 		//test('interpolation search of mG', async () => {
 		//});
