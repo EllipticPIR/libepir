@@ -253,6 +253,16 @@ TEST(SelectorTest, selector_create_fast) {
 #define PACKING   (3)
 #define ELEM_SIZE (32)
 
+TEST(ReplyMockTest, reply_size) {
+	const size_t reply_size = epir_reply_size(DIMENSION, PACKING, ELEM_SIZE);
+	ASSERT_EQ(reply_size, 320896ULL);
+}
+
+TEST(ReplyMockTest, reply_r_count) {
+	const size_t reply_r_count = epir_reply_r_count(DIMENSION, PACKING, ELEM_SIZE);
+	ASSERT_EQ(reply_r_count, 5260ULL);
+}
+
 #ifdef TEST_USING_MG
 std::array<uint8_t, ELEM_SIZE> generateElem() {
 	xorshift_init();
