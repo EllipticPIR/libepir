@@ -4,6 +4,10 @@ import Dexie from 'dexie';
 import { DEFAULT_MMAX } from './EpirBase';
 import { createEpir, createDecryptionContext } from './wasm';
 
+const DIMENSION = 3;
+const PACKING = 3;
+const ELEM_SIZE = 32;
+
 const time = () => new Date().getTime();
 
 const uint8ArrayToString = (arr: Uint8Array) => {
@@ -74,13 +78,17 @@ class MGDatabase extends Dexie {
 	const selectorFast = await epir.createSelectorFast(privkey, index_counts, 1024);
 	log(`Selector created (fast) in ${(time() - beginSelectorsFastCreate).toLocaleString()}ms.`);
 	// reply_decrypt().
-	const data = require('../src_ts/bench_js_reply_data.json');
+	const beginReplyMock = time();
+	const elem = new Uint8Array(ELEM_SIZE);
+	window.crypto.getRandomValues(elem);
+	const reply = epir.computeReplyMock(pubkey, DIMENSION, PACKING, elem);
+	log(`Reply data generated in ${(time() - beginReplyMock).toLocaleString()}ms.`);
 	const beginDecrypt = time();
 	const decrypted = await decCtx.decryptReply(
-		new Uint8Array(data.privkey), data.dimension, data.packing, new Uint8Array(data.reply));
+		privkey, DIMENSION, PACKING, new Uint8Array(reply));
 	log(`Reply decrypted in ${(time() - beginDecrypt).toLocaleString()}ms.`);
-	for(let i=0; i<data.correct.length; i++) {
-		if(decrypted[i] != data.correct[i]) {
+	for(let i=0; i<ELEM_SIZE; i++) {
+		if(decrypted[i] != elem[i]) {
 			throw new Error('Decrypted is not correct.');
 		}
 	}
