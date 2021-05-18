@@ -1,10 +1,13 @@
 
-import { epir_t } from './epir_t';
+import { EpirCreateFunction, DecryptionContextCreateFunction } from './EpirBase';
 
-export let createEpir: () => Promise<epir_t<any>>;
+let epir: any;
 try {
-	createEpir = require('./addon').createEpir;
+	epir = require('./addon');
 } catch(e) {
-	createEpir = require('./wasm').createEpir;
+	epir = require('./wasm');
 }
+
+export const createEpir: EpirCreateFunction = epir.createEpir;
+export const createDecryptionContext: DecryptionContextCreateFunction = epir.createDecryptionContext;
 
