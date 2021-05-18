@@ -39,8 +39,11 @@ const uint8ArrayCompare = (a: Uint8Array, b: Uint8Array, len: number = Math.min(
 
 const getRandomBytes = (len: number) => {
 	if(window && window.crypto && window.crypto.getRandomValues) {
+		const MAX_ENTROPY = 65536;
 		const ret = new Uint8Array(len);
-		window.crypto.getRandomValues(ret);
+		for(let offset=0; offset<len; offset+=MAX_ENTROPY) {
+			window.crypto.getRandomValues(ret.subarray(offset, Math.min(len, offset + MAX_ENTROPY)));
+		}
 		return ret;
 	} else {
 		const crypto = require('crypto');

@@ -1,7 +1,8 @@
 
 import Dexie from 'dexie';
 
-import { createEpir, MMAX } from './wasm';
+import { DEFAULT_MMAX } from './EpirBase';
+import { createEpir, createDecryptionContext } from './wasm';
 
 const time = () => new Date().getTime();
 
@@ -40,10 +41,10 @@ class MGDatabase extends Dexie {
 (async () => {
 	const epir = await createEpir();
 	// create_privkey().
-	const privkey = epir.create_privkey();
+	const privkey = epir.createPrivkey();
 	log(`privkey: 0x${uint8ArrayToString(privkey)}`);
 	// pubkey_from_privkey().
-	const pubkey = epir.pubkey_from_privkey(privkey);
+	const pubkey = epir.createPubkey(privkey);
 	log(`pubkey:  0x${uint8ArrayToString(pubkey)}`);
 	// load_mG().
 	const beginMG = time();
@@ -51,14 +52,14 @@ class MGDatabase extends Dexie {
 	const mGDB = await db.mG.get(0);
 	const decCtx = await (async () => {
 		if(mGDB) {
-			return await epir.get_decryption_context(mGDB.value);
+			return await createDecryptionContext(mGDB.value);
 		} else {
-			const decCtx = await epir.get_decryption_context((points_computed: number) => {
+			const decCtx = await createDecryptionContext((points_computed: number) => {
 				if(points_computed % (100 * 1000) == 0) {
-					log(`Points computed: ${points_computed.toLocaleString()} of ${MMAX.toLocaleString()} (${(100 * points_computed / MMAX).toFixed(2)}%)`);
+					log(`Points computed: ${points_computed.toLocaleString()} of ${DEFAULT_MMAX.toLocaleString()} (${(100 * points_computed / DEFAULT_MMAX).toFixed(2)}%)`);
 				}
 			});
-			await db.mG.put({ key: 0, value: decCtx.mG });
+			await db.mG.put({ key: 0, value: decCtx.getMG() });
 			return decCtx;
 		}
 	})();
@@ -66,17 +67,17 @@ class MGDatabase extends Dexie {
 	// selector_create().
 	const index_counts = [1000, 1000, 1000];
 	const beginSelectorsCreate = time();
-	const selector = await epir.selector_create(pubkey, index_counts, 1024);
+	const selector = await epir.createSelector(pubkey, index_counts, 1024);
 	log(`Selector created (normal) in ${(time() - beginSelectorsCreate).toLocaleString()}ms.`);
 	// selector_create_fast().
 	const beginSelectorsFastCreate = time();
-	const selectorFast = await epir.selector_create_fast(privkey, index_counts, 1024);
+	const selectorFast = await epir.createSelectorFast(privkey, index_counts, 1024);
 	log(`Selector created (fast) in ${(time() - beginSelectorsFastCreate).toLocaleString()}ms.`);
 	// reply_decrypt().
 	const data = require('../src_ts/bench_js_reply_data.json');
 	const beginDecrypt = time();
-	const decrypted = await epir.reply_decrypt(
-		decCtx, new Uint8Array(data.reply), new Uint8Array(data.privkey), data.dimension, data.packing);
+	const decrypted = await decCtx.decryptReply(
+		new Uint8Array(data.privkey), data.dimension, data.packing, new Uint8Array(data.reply));
 	log(`Reply decrypted in ${(time() - beginDecrypt).toLocaleString()}ms.`);
 	for(let i=0; i<data.correct.length; i++) {
 		if(decrypted[i] != data.correct[i]) {
