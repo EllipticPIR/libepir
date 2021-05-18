@@ -51,18 +51,20 @@ const getRandomBytes = (len: number) => {
 	}
 };
 
-const getRandomScalar = () => {
-	const isCanonical = (buf: Uint8Array): boolean => {
-		let c = (buf[31] & 0x7f) ^ 0x7f;
-		for(let i=30; i>0; i--) {
-			c |= buf[i] ^ 0xff;
-		}
-		const d = (0xed - 1 - buf[0]) >> 8;
-		return !((c == 0) && d)
-	};
-	const isZero = (buf: Uint8Array): boolean => {
-		return buf.reduce<boolean>((acc, v) => acc && (v == 0), true);
-	};
+export const isCanonical = (buf: Uint8Array): boolean => {
+	let c = (buf[31] & 0x7f) ^ 0x7f;
+	for(let i=30; i>0; i--) {
+		c |= buf[i] ^ 0xff;
+	}
+	const d = (0xed - 1 - buf[0]) >> 8;
+	return !((c == 0) && d)
+};
+
+export const isZero = (buf: Uint8Array): boolean => {
+	return buf.reduce<boolean>((acc, v) => acc && (v == 0), true);
+};
+
+export const getRandomScalar = () => {
 	for(;;) {
 		const scalar = getRandomBytes(SCALAR_SIZE);
 		scalar[31] &= 0x1f;
