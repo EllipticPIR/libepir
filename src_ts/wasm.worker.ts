@@ -1,6 +1,5 @@
 
-import { LibEpir, libEpirModule } from './wasm.libepir';
-const wasm_ = libEpirModule();
+import { LibEpir } from './wasm.libepir';
 
 const worker: Worker = self as any;
 
@@ -9,11 +8,10 @@ interface KeyValue {
 }
 const funcs: KeyValue = {
 	// For mG.bin generation.
-	mg_generate_compute: async (params: { nThreads: number, mmax: number, ctx: Uint8Array, mG_p3: Uint8Array, threadId: number }) => {
+	mg_generate_compute: async (wasm: LibEpir, params: { nThreads: number, mmax: number, ctx: Uint8Array, mG_p3: Uint8Array, threadId: number }) => {
 		const CTX_SIZE = 124;
 		const MG_SIZE = 36;
 		const MG_P3_SIZE = 4 * 40;
-		const wasm = await wasm_;
 		const mG_count = Math.ceil(params.mmax / params.nThreads) - 1;
 		const ctx_ = wasm._malloc(CTX_SIZE);
 		wasm.HEAPU8.set(params.ctx, ctx_);
@@ -35,8 +33,7 @@ const funcs: KeyValue = {
 		wasm._free(mG_p3_);
 	},
 	// For selector creation.
-	selector_create: async (params: { choice: Uint8Array, key: Uint8Array, random: Uint8Array, isFast: boolean }) => {
-		const wasm = await wasm_;
+	selector_create: async (wasm: LibEpir, params: { choice: Uint8Array, key: Uint8Array, random: Uint8Array, isFast: boolean }) => {
 		const key_ = wasm._malloc(32);
 		wasm.HEAPU8.set(params.key, key_);
 		const cipher_ = wasm._malloc(64);
@@ -56,8 +53,7 @@ const funcs: KeyValue = {
 		wasm._free(random_);
 	},
 	// For reply decryption.
-	decrypt_mG_many: async (params: { ciphers: Uint8Array, privkey: Uint8Array }) => {
-		const wasm = await wasm_;
+	decrypt_mG_many: async (wasm: LibEpir, params: { ciphers: Uint8Array, privkey: Uint8Array }) => {
 		const privkey_ = wasm._malloc(32);
 		wasm.HEAPU8.set(params.privkey, privkey_);
 		const cipher_ = wasm._malloc(64);
@@ -75,7 +71,9 @@ const funcs: KeyValue = {
 	},
 };
 
-worker.onmessage = (ev) => {
-	funcs[ev.data.method].call(null, ev.data);
+worker.onmessage = async (ev) => {
+	const { libEpirModule } = await import('./wasm.libepir');
+	const wasm = await libEpirModule();
+	funcs[ev.data.method](wasm, ev.data);
 };
 

@@ -17,7 +17,7 @@ const time = () => new Date().getTime();
 export const MG_SIZE = 36;
 export const MG_P3_SIZE = 4 * 40;
 
-import { LibEpir as Wasm, libEpirModule as wasm_ } from './wasm.libepir';
+import { LibEpir as Wasm } from './wasm.libepir';
 
 const uint8ArrayConcat = (arr: Uint8Array[]) => {
 	const len = arr.reduce((acc, v) => acc + v.length, 0);
@@ -335,7 +335,9 @@ const getMG = async (helper: WasmHelper, param: undefined | string | ((p: number
 
 export const createDecryptionContext: DecryptionContextCreateFunction = async (
 	param?: DecryptionContextParameter, mmax: number = DEFAULT_MMAX) => {
-	const helper = new WasmHelper(await wasm_());
+	const { libEpirModule } = await import('./wasm.libepir');
+	const wasm = await libEpirModule();
+	const helper = new WasmHelper(wasm);
 	const mG = (param instanceof Uint8Array ? param : await getMG(helper, param, mmax));
 	return new DecryptionContext(helper, mG);
 };
@@ -486,7 +488,9 @@ export class Epir implements EpirBase {
 }
 
 export const createEpir: EpirCreateFunction = async () => {
-	const helper = new WasmHelper(await wasm_());
+	const { libEpirModule } = await import('./wasm.libepir');
+	const wasm = await libEpirModule();
+	const helper = new WasmHelper(wasm);
 	return new Epir(helper);
 };
 
