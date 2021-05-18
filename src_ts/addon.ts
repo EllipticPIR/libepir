@@ -8,6 +8,7 @@ const epir_napi = require('bindings')('epir');
 
 export interface DecryptionContextNapi {
 	constructor(path: string): DecryptionContextNapi;
+	getMG: () => Uint8Array;
 	decrypt: (privkey: Uint8Array, cipher: Uint8Array) => number;
 	replyDecrypt: (reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number) => Uint8Array;
 }
@@ -25,7 +26,7 @@ export class DecryptionContext extends DecryptionContextBase {
 			if(typeof this.param === 'function') {
 				// We ensure that all the JS callbacks are called.
 				this.napi = new epir_napi.DecryptionContext((points_computed: number) => {
-					if(typeof this.param === 'function') this.param(points_computed);
+					(this.param as (pc: number) => void)(points_computed);
 					if(points_computed == this.mmax) {
 						resolve();
 					}
@@ -37,20 +38,17 @@ export class DecryptionContext extends DecryptionContextBase {
 		});
 	}
 	
-	getMG(): ArrayBuffer {
-		// XXX:
-		throw new Error('Not implemented.');
+	getMG(): Uint8Array {
+		return this.napi!.getMG();
 	}
 	
 	decryptCipher(privkey: Uint8Array, cipher: Uint8Array): number {
-		if(!this.napi) throw new Error('Please call init() first.');
-		return this.napi.decrypt(privkey, cipher);
+		return this.napi!.decrypt(privkey, cipher);
 	}
 	
 	async decryptReply(privkey: Uint8Array, dimension: number, packing: number, reply: Uint8Array): Promise<Uint8Array> {
 		return new Promise((resolve, reject) => {
-			if(!this.napi) throw new Error('Please call init() first.');
-			resolve(this.napi.replyDecrypt(reply, privkey, dimension, packing));
+			resolve(this.napi!.replyDecrypt(reply, privkey, dimension, packing));
 		});
 	}
 	

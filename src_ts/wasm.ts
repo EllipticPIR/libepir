@@ -216,9 +216,9 @@ export class DecryptionContext extends DecryptionContextBase {
 		this.mG = (this.param instanceof Uint8Array ? this.param : await this.getMG_(this.param, this.mmax ? this.mmax : MMAX));
 	}
 	
-	getMG(): ArrayBuffer {
+	getMG(): Uint8Array {
 		if(!this.mG) throw new Error('Please call init() first.');
-		return this.mG.buffer;
+		return this.mG;
 	}
 	
 	decryptCipher(privkey: Uint8Array, cipher: Uint8Array): number {

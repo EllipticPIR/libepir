@@ -13,7 +13,7 @@ export abstract class DecryptionContextBase {
 		this.mmax = mmax;
 	}
 	abstract init(): Promise<void>;
-	abstract getMG(): ArrayBuffer;
+	abstract getMG(): Uint8Array;
 	abstract decryptCipher(privkey: Uint8Array, cipher: Uint8Array): number;
 	abstract decryptReply(privkey: Uint8Array, dimension: number, packing: number, reply: Uint8Array): Promise<Uint8Array>;
 }

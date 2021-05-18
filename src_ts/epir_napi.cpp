@@ -118,6 +118,7 @@ private:
 	
 	std::vector<epir_mG_t> mG;
 	
+	Napi::Value GetMG(const Napi::CallbackInfo& info);
 	Napi::Value Decrypt(const Napi::CallbackInfo& info);
 	Napi::Value ReplyDecrypt(const Napi::CallbackInfo& info);
 	
@@ -130,6 +131,7 @@ public:
 
 Napi::Object DecryptionContext::Init(Napi::Env env, Napi::Object exports) {
 	Napi::Function func = DefineClass(env, "DecryptionContext", {
+		InstanceMethod("getMG", &DecryptionContext::GetMG),
 		InstanceMethod("decrypt", &DecryptionContext::Decrypt),
 		InstanceMethod("replyDecrypt", &DecryptionContext::ReplyDecrypt),
 	});
@@ -214,6 +216,15 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 }
 
 Napi::FunctionReference DecryptionContext::constructor;
+
+// DecryptionContext.getMG(): Uint8Array.
+Napi::Value DecryptionContext::GetMG(const Napi::CallbackInfo &info) {
+	Napi::Env env = info.Env();
+	const size_t s = sizeof(epir_mG_t) * this->mG.size();
+	auto ret = Napi::TypedArrayOf<uint8_t>::New(env, s);
+	memcpy(ret.Data(), this->mG.data(), s);
+	return ret;
+}
 
 // DecryptionContext.decrypt(privkey: Uint8Array(32), cipher: Uint8Array(64)): number.
 Napi::Value DecryptionContext::Decrypt(const Napi::CallbackInfo &info) {
