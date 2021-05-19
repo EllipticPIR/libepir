@@ -1,6 +1,6 @@
 
-import { runTests } from './addon.test';
-import { createEpir, createDecryptionContext, isCanonical } from './wasm';
+import { runTests } from './addon';
+import { createEpir, createDecryptionContext, isCanonical } from '../wasm';
 
 runTests(createEpir, createDecryptionContext);
 

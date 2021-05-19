@@ -1,5 +1,5 @@
 
-import { createEpir, createDecryptionContext } from './index';
+import { createEpir, createDecryptionContext } from '../index';
 
 test('create an Epir instance', async () => {
 	const epir = await createEpir();

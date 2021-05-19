@@ -1,7 +1,7 @@
 
 import crypto from 'crypto';
 
-import { createEpir, createDecryptionContext } from './addon';
+import { createEpir, createDecryptionContext } from '../addon';
 import {
 	EpirCreateFunction,
 	EpirBase,
@@ -9,7 +9,7 @@ import {
 	DecryptionContextBase,
 	SCALAR_SIZE,
 	CIPHER_SIZE
-} from './EpirBase';
+} from '../EpirBase';
 
 const MMAX = 1 << 16;
 

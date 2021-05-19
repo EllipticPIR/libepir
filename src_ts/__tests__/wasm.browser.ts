@@ -1,5 +1,5 @@
 
-import { createEpir } from './wasm'
+import { createEpir } from '../wasm'
 
 describe('Browser', () => {
 	
