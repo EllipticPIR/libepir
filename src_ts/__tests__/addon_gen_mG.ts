@@ -13,9 +13,6 @@ const mGHashSmall = new Uint8Array([
 ]);
 
 export const runTests = (createDecryptionContext: DecryptionContextCreateFunction) => {
-	// For WebAssembly tests, we have tests which uses max CPU cores (x2 for main threads and worker threads).
-	const testsWithWorkersCount = 3;
-	process.setMaxListeners(testsWithWorkersCount * 2 * navigator.hardwareConcurrency);
 	describe('Generate mG', () => {
 		test('without callback', async () => {
 			const decCtx = await createDecryptionContext(undefined, MMAX);

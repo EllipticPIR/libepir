@@ -10,10 +10,6 @@ import { generateRandomScalars, xorshift_init, xorshift, privkey, pubkey } from 
 
 export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext: DecryptionContextCreateFunction) => {
 	
-	// For WebAssembly tests, we have tests which uses max CPU cores (x2 for main threads and worker threads).
-	const testsWithWorkersCount = 4;
-	process.setMaxListeners(testsWithWorkersCount * 2 * navigator.hardwareConcurrency);
-	
 	let epir: EpirBase;
 	let decCtx: DecryptionContextBase;
 	
