@@ -11,8 +11,6 @@ import {
 	CIPHER_SIZE
 } from '../EpirBase';
 
-const MMAX = 1 << 16;
-
 let x: number;
 let y: number;
 let z: number;
@@ -36,7 +34,7 @@ const xorshift = () => {
 	return w;
 };
 
-const sha256sum = (buf: Uint8Array): Uint8Array => {
+export const sha256sum = (buf: Uint8Array): Uint8Array => {
 	const hash = crypto.createHash('sha256');
 	hash.update(buf);
 	return new Uint8Array(Buffer.from(hash.digest('hex'), 'hex'));
@@ -81,13 +79,6 @@ const mGHash = new Uint8Array([
 	0x40, 0xc9, 0x3c, 0xda, 0x6f, 0xec, 0x88, 0x85,
 	0x08, 0x44, 0xe3, 0xf0, 0x04, 0xb7, 0x24, 0x87,
 	0xb6, 0x53, 0x39, 0xbd, 0xc0, 0xe4, 0x17, 0x97
-]);
-
-const mGHashSmall = new Uint8Array([
-	0x8c, 0x55, 0x49, 0x7e, 0x28, 0xd5, 0xea, 0x75,
-	0x15, 0xdd, 0x32, 0xb3, 0x98, 0x34, 0x0b, 0xfa,
-	0xf8, 0x89, 0x40, 0x35, 0xe0, 0x30, 0xd2, 0x13,
-	0x50, 0x80, 0x84, 0x31, 0xb8, 0x00, 0x8a, 0xf2
 ]);
 
 const index_counts = [1000, 1000, 1000];
@@ -154,22 +145,6 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 			const mG = decCtx2.getMG();
 			expect(sha256sum(mG)).toEqual(mGHash);
 		});
-		
-		test('generate mG (without callback)', async () => {
-			const decCtx = await createDecryptionContext(undefined, MMAX);
-			const mG = decCtx.getMG();
-			expect(sha256sum(mG)).toEqual(mGHashSmall);
-		});
-		
-		test('generate mG (with callback)', async () => {
-			let pointsComputed = 0;
-			const decCtx = await createDecryptionContext((pointsComputedTest: number) => {
-				pointsComputed++;
-				expect(pointsComputedTest).toBe(pointsComputed);
-			}, MMAX);
-			const mG = decCtx.getMG();
-			expect(sha256sum(mG)).toEqual(mGHashSmall);
-		}, 30 * 1000);
 		
 		//test('interpolation search of mG', async () => {
 		//});
