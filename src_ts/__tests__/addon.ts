@@ -1,22 +1,22 @@
 
 import crypto from 'crypto';
 
-import { createEpir, createDecryptionContext } from '../addon';
 import {
-	EpirCreateFunction,
 	EpirBase,
-	DecryptionContextCreateFunction,
+	EpirCreateFunction,
 	DecryptionContextBase,
+	DecryptionContextCreateFunction,
 	SCALAR_SIZE,
 	CIPHER_SIZE
 } from '../EpirBase';
+import { createEpir, createDecryptionContext } from '../addon';
 
 let x: number;
 let y: number;
 let z: number;
 let w: number;
 
-const xorshift_init = () => {
+export const xorshift_init = () => {
 	x = 123456789;
 	y = 362436069;
 	z = 521288629;
@@ -27,7 +27,7 @@ const shiftL = (n: number, cnt: number) => {
 	return (n * (2 ** cnt)) & 0xffffffff;
 };
 
-const xorshift = () => {
+export const xorshift = () => {
 	const t = x ^ (shiftL(x, 11));
 	x = y; y = z; z = w;
 	w = (w ^ (w >>> 19)) ^ (t ^ (t >>> 8));
@@ -40,14 +40,26 @@ export const sha256sum = (buf: Uint8Array): Uint8Array => {
 	return new Uint8Array(Buffer.from(hash.digest('hex'), 'hex'));
 };
 
-const privkey = new Uint8Array([
+export const generateRandomScalars = (cnt: number) => {
+	const r = new Uint8Array(cnt * SCALAR_SIZE);
+	xorshift_init();
+	for(let i=0; i<cnt; i++) {
+		for(let j=0; j<SCALAR_SIZE; j++) {
+			r[i * SCALAR_SIZE + j] = xorshift() & 0xff;
+		}
+		r[(i + 1) * SCALAR_SIZE - 1] &= 0x1f;
+	}
+	return r;
+};
+
+export const privkey = new Uint8Array([
 	0x7e, 0xf6, 0xad, 0xd2, 0xbe, 0xd5, 0x9a, 0x79,
 	0xba, 0x6e, 0xdc, 0xfb, 0xa4, 0x8f, 0xde, 0x7a,
 	0x55, 0x31, 0x75, 0x4a, 0xf5, 0x93, 0x76, 0x34,
 	0x6c, 0x8b, 0x52, 0x84, 0xee, 0xf2, 0x52, 0x07
 ]);
 
-const pubkey = new Uint8Array([
+export const pubkey = new Uint8Array([
 	0x9c, 0x76, 0x82, 0x3d, 0xbd, 0xb9, 0xbf, 0x04,
 	0x8f, 0xc5, 0xc2, 0xaf, 0x00, 0x0e, 0x28, 0xa1,
 	0x48, 0xee, 0x02, 0x19, 0x99, 0xfb, 0x7f, 0x21,
@@ -96,23 +108,11 @@ const selectorHash = new Uint8Array([
 export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext: DecryptionContextCreateFunction) => {
 	
 	// For WebAssembly tests, we have tests which uses max CPU cores (x2 for main threads and worker threads).
-	const testsWithWorkersCount = 7;
+	const testsWithWorkersCount = 4;
 	process.setMaxListeners(testsWithWorkersCount * 2 * navigator.hardwareConcurrency);
 	
 	let epir: EpirBase;
 	let decCtx: DecryptionContextBase;
-	
-	const generateRandomScalars = (cnt: number) => {
-		const r = new Uint8Array(cnt * SCALAR_SIZE);
-		xorshift_init();
-		for(let i=0; i<cnt; i++) {
-			for(let j=0; j<SCALAR_SIZE; j++) {
-				r[i * SCALAR_SIZE + j] = xorshift() & 0xff;
-			}
-			r[(i + 1) * SCALAR_SIZE - 1] &= 0x1f;
-		}
-		return r;
-	};
 	
 	beforeAll(async () => {
 		epir = await createEpir();
@@ -120,22 +120,22 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 	});
 	
 	describe('ECElGamal', () => {
-		test('create private key', async () => {
+		test('create private key', () => {
 			const privkey = epir.createPrivkey();
 			expect(privkey).toHaveLength(SCALAR_SIZE);
 		});
 		
-		test('create public key', async () => {
+		test('create public key', () => {
 			const pubkeyTest = epir.createPubkey(privkey);
 			expect(new Uint8Array(pubkeyTest)).toEqual(pubkey);
 		});
 		
-		test('encrypt (normal)', async () => {
+		test('encrypt (normal)', () => {
 			const cipherTest = epir.encrypt(pubkey, msg, r);
 			expect(new Uint8Array(cipherTest)).toEqual(cipher);
 		});
 		
-		test('encrypt (fast)', async () => {
+		test('encrypt (fast)', () => {
 			const cipherTest = epir.encryptFast(privkey, msg, r);
 			expect(new Uint8Array(cipherTest)).toEqual(cipher);
 		});
@@ -149,31 +149,31 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 		//test('interpolation search of mG', async () => {
 		//});
 		
-		test('decrypt (success)', async () => {
+		test('decrypt (success)', () => {
 			expect(decCtx.decryptCipher(privkey, cipher)).toBe(msg);
 		});
 		
-		test('decrypt (fail)', async () => {
+		test('decrypt (fail)', () => {
 			expect(() => decCtx.decryptCipher(pubkey, cipher)).toThrow(/^Failed to decrypt\.$/);
 		});
 		
-		test('random encrypt (normal)', async () => {
+		test('random encrypt (normal)', () => {
 			const cipherTest = epir.encrypt(pubkey, msg);
 			expect(decCtx.decryptCipher(privkey, cipherTest)).toBe(msg);
 		});
 		
-		test('random encrypt (fast)', async () => {
+		test('random encrypt (fast)', () => {
 			const cipherTest = epir.encryptFast(privkey, msg);
 			expect(decCtx.decryptCipher(privkey, cipherTest)).toBe(msg);
 		});
 	});
 	
 	describe('Selector', () => {
-		test('ciphers count', async () => {
+		test('ciphers count', () => {
 			expect(epir.ciphersCount(index_counts)).toBe(ciphers_count);
 		});
 		
-		test('elements count', async () => {
+		test('elements count', () => {
 			expect(epir.elementsCount(index_counts)).toBe(elements_count);
 		});
 		
@@ -198,50 +198,6 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 		test('create selector (random, fast)', async () => {
 			const selector = await epir.createSelectorFast(privkey, index_counts, idx);
 			expect(selector).toHaveLength(ciphers_count * CIPHER_SIZE);
-		});
-	});
-	
-	describe('Reply', () => {
-		const DIMENSION = 3;
-		const PACKING = 3;
-		const ELEM_SIZE = 32;
-		
-		const generateElem = () => {
-			xorshift_init();
-			const elem = new Uint8Array(ELEM_SIZE);
-			for(let i=0; i<ELEM_SIZE; i++) {
-				elem[i] = xorshift() & 0xff;
-			}
-			return elem;
-		};
-		
-		test('get a reply size', () => {
-			expect(epir.computeReplySize(DIMENSION, PACKING, ELEM_SIZE)).toBe(320896);
-		});
-		
-		test('get a reply random count', () => {
-			expect(epir.computeReplyRCount(DIMENSION, PACKING, ELEM_SIZE)).toBe(5260);
-		});
-		
-		test('decrypt a reply (deterministic, success)', async () => {
-			const elem = generateElem();
-			const reply_r_count = epir.computeReplyRCount(DIMENSION, PACKING, ELEM_SIZE);
-			const reply = epir.computeReplyMock(pubkey, DIMENSION, PACKING, elem, generateRandomScalars(reply_r_count));
-			const decrypted = await decCtx.decryptReply(privkey, DIMENSION, PACKING, reply);
-			expect(new Uint8Array(decrypted.subarray(0, ELEM_SIZE))).toEqual(elem);
-		});
-		
-		test('decrypt a reply (random, success)', async () => {
-			const elem = generateElem();
-			const reply = epir.computeReplyMock(pubkey, DIMENSION, PACKING, elem);
-			const decrypted = await decCtx.decryptReply(privkey, DIMENSION, PACKING, reply);
-			expect(new Uint8Array(decrypted.subarray(0, ELEM_SIZE))).toEqual(elem);
-		});
-		
-		test('decrypt a reply (random, fail)', async () => {
-			const elem = generateElem();
-			const reply = epir.computeReplyMock(pubkey, DIMENSION, PACKING, elem);
-			await expect(decCtx.decryptReply(pubkey, DIMENSION, PACKING, reply)).rejects.toThrow(/^Failed to decrypt\.$/);
 		});
 	});
 	
