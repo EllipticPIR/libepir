@@ -58,11 +58,9 @@ class MGDatabase extends Dexie {
 		if(mGDB) {
 			return await createDecryptionContext(mGDB.value);
 		} else {
-			const decCtx = await createDecryptionContext((points_computed: number) => {
-				if(points_computed % (100 * 1000) == 0) {
-					log(`Points computed: ${points_computed.toLocaleString()} of ${DEFAULT_MMAX.toLocaleString()} (${(100 * points_computed / DEFAULT_MMAX).toFixed(2)}%)`);
-				}
-			});
+			const decCtx = await createDecryptionContext({ cb: (points_computed: number) => {
+				log(`Points computed: ${points_computed.toLocaleString()} of ${DEFAULT_MMAX.toLocaleString()} (${(100 * points_computed / DEFAULT_MMAX).toFixed(2)}%)`);
+			}, interval: 100 * 1000 });
 			await db.mG.put({ key: 0, value: decCtx.getMG() });
 			return decCtx;
 		}
