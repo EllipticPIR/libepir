@@ -1,6 +1,6 @@
 {
   "name": "epir",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "EllipticPIR client library (Node.js / TypeScript bindings).",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -10,7 +10,7 @@
     "install": "node-gyp rebuild",
     "postinstall": "",
     "build": "tsc",
-    "clean": "rm -rf build_c build_em dist",
+    "clean": "rm -rf build build_c build_em dist coverage",
     "c:build": "mkdir -p build_c && cd build_c && cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && make -j$(cat /proc/cpuinfo | grep processor | wc -l)",
     "gyp:rebuild": "node-gyp rebuild",
     "em:build": "npm run em:mkdir && npm run em:cmake && npm run em:make",
@@ -52,6 +52,7 @@
     "@types/jest": "^26.0.23",
     "@types/node": "^14.14.37",
     "dexie": "^3.0.3",
+    "jest": "^26.6.3",
     "node-gyp": "^8.0.0",
     "process": "^0.11.10",
     "ts-jest": "^26.5.6",
@@ -65,7 +66,6 @@
   },
   "dependencies": {
     "bindings": "^1.5.0",
-    "jest": "^26.6.3",
     "node-addon-api": "^3.1.0"
   }
 }
