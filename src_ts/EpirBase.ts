@@ -6,7 +6,9 @@ export const CIPHER_SIZE = 2 * POINT_SIZE;
 export const DEFAULT_MMAX_MOD = 24;
 export const DEFAULT_MMAX = 1 << DEFAULT_MMAX_MOD;
 
-export type DecryptionContextParameter = string | Uint8Array | ((points_computed: number) => void);
+export type DecryptionContextCallbackFunction = ((points_computed: number) => void);
+export type DecryptionContextCallback = { cb: DecryptionContextCallbackFunction, interval: number };
+export type DecryptionContextParameter = string | Uint8Array | DecryptionContextCallback;
 
 export type DecryptionContextCreateFunction =
 	(param?: DecryptionContextParameter, mmax?: number) => Promise<DecryptionContextBase>;

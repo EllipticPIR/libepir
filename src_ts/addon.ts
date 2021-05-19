@@ -29,7 +29,7 @@ export class DecryptionContext implements DecryptionContextBase {
 	}
 	
 	getMG(): Uint8Array {
-		return this.napi.getMG();
+		return new Uint8Array(this.napi.getMG().buffer);
 	}
 	
 	decryptCipher(privkey: Uint8Array, cipher: Uint8Array): number {
@@ -45,16 +45,16 @@ export class DecryptionContext implements DecryptionContextBase {
 export const createDecryptionContext: DecryptionContextCreateFunction = async (
 	param?: DecryptionContextParameter, mmax: number = DEFAULT_MMAX) => {
 	const napi = await new Promise<DecryptionContextNapi>((resolve, reject) => {
-		if(typeof param === 'function') {
+		if((typeof param === 'undefined') || (typeof param === 'string') || (param instanceof Uint8Array)) {
+			resolve(new epir_napi.DecryptionContext(param, mmax));
+		} else {
 			// We ensure that all the JS callbacks are called.
-			const napi = new epir_napi.DecryptionContext((points_computed: number) => {
-				param(points_computed);
+			const napi = new epir_napi.DecryptionContext({ cb: (points_computed: number) => {
+				param.cb(points_computed);
 				if(points_computed == mmax) {
 					resolve(napi);
 				}
-			}, mmax);
-		} else {
-			resolve(new epir_napi.DecryptionContext(param, mmax));
+			}, interval: param.interval }, mmax);
 		}
 	});
 	return new DecryptionContext(napi);

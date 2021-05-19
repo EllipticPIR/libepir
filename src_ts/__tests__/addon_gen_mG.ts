@@ -13,18 +13,31 @@ const mGHashSmall = new Uint8Array([
 ]);
 
 export const runTests = (createDecryptionContext: DecryptionContextCreateFunction) => {
+	// For WebAssembly tests, we have tests which uses max CPU cores (x2 for main threads and worker threads).
+	const testsWithWorkersCount = 3;
+	process.setMaxListeners(testsWithWorkersCount * 2 * navigator.hardwareConcurrency);
 	describe('Generate mG', () => {
 		test('without callback', async () => {
 			const decCtx = await createDecryptionContext(undefined, MMAX);
 			const mG = decCtx.getMG();
 			expect(sha256sum(mG)).toEqual(mGHashSmall);
 		});
-		test('with callback', async () => {
+		const INTERVAL = 1000;
+		test(`with callback (interval: ${INTERVAL.toLocaleString()})`, async () => {
 			let pointsComputed = 0;
-			const decCtx = await createDecryptionContext((pointsComputedTest: number) => {
+			const decCtx = await createDecryptionContext({ cb: (pointsComputedTest: number) => {
+				pointsComputed = Math.min(MMAX, pointsComputed + INTERVAL);
+				expect(pointsComputedTest).toBe(pointsComputed);
+			}, interval: INTERVAL }, MMAX);
+			const mG = decCtx.getMG();
+			expect(sha256sum(mG)).toEqual(mGHashSmall);
+		}, 30 * 1000);
+		test('with callback (interval: 1)', async () => {
+			let pointsComputed = 0;
+			const decCtx = await createDecryptionContext({ cb: (pointsComputedTest: number) => {
 				pointsComputed++;
 				expect(pointsComputedTest).toBe(pointsComputed);
-			}, MMAX);
+			}, interval: 1 }, MMAX);
 			const mG = decCtx.getMG();
 			expect(sha256sum(mG)).toEqual(mGHashSmall);
 		}, 30 * 1000);

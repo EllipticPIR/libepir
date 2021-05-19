@@ -4,6 +4,8 @@ import {
 	EpirCreateFunction,
 	DecryptionContextBase,
 	DecryptionContextParameter,
+	DecryptionContextCallback,
+	DecryptionContextCallbackFunction,
 	DecryptionContextCreateFunction,
 	DEFAULT_MMAX,
 	SCALAR_SIZE,
@@ -252,18 +254,24 @@ export class DecryptionContext implements DecryptionContextBase {
 	
 }
 
-const mGGeneratePrepare = (helper: WasmHelper, nThreads: number, mmax: number, cb: undefined | ((p: number) => void)) => {
+const mGGeneratePrepare = (helper: WasmHelper, nThreads: number, mmax: number, cb: undefined | DecryptionContextCallback) => {
 	const CTX_SIZE = 124;
 	const ctx_ = helper.malloc(CTX_SIZE);
 	helper.store_uint32_t(ctx_, mmax);
 	const mG_ = helper.malloc(nThreads * MG_SIZE);
 	const mG_p3_ = helper.malloc(nThreads * MG_P3_SIZE);
-	let pointsComputed = 0;
-	const cb_ = helper.wasm.addFunction((data: any) => {
-		if(cb) cb(++pointsComputed);
-	}, 'vi');
-	helper.call('mG_generate_prepare', ctx_, mG_, mG_p3_, nThreads, cb_, null);
-	helper.wasm.removeFunction(cb_);
+	if(cb) {
+		let pointsComputed = 0;
+		const cb_ = helper.wasm.addFunction((data: any) => {
+			pointsComputed++;
+			if(pointsComputed % cb.interval != 0) return;
+			cb.cb(pointsComputed);
+		}, 'vi');
+		helper.call('mG_generate_prepare', ctx_, mG_, mG_p3_, nThreads, cb_, null);
+		helper.wasm.removeFunction(cb_);
+	} else {
+		helper.call('mG_generate_prepare', ctx_, mG_, mG_p3_, nThreads, null, null);
+	}
 	const ctx = helper.slice(ctx_, CTX_SIZE);
 	const mG = helper.slice(mG_, nThreads * MG_SIZE);
 	const mG_p3 = helper.slice(mG_p3_, nThreads * MG_P3_SIZE);
@@ -273,7 +281,7 @@ const mGGeneratePrepare = (helper: WasmHelper, nThreads: number, mmax: number, c
 	return { ctx: ctx, mG: mG, mG_p3: mG_p3 };
 };
 
-const mGGenerate = async (helper: WasmHelper, mG_: number, cb: undefined | ((p: number) => void), mmax: number): Promise<void> => {
+const mGGenerate = async (helper: WasmHelper, mG_: number, cb: undefined | DecryptionContextCallback, mmax: number): Promise<void> => {
 	// XXX: not working for navigator.hardwareConcurrency.
 	const nThreads = navigator.hardwareConcurrency / 2;
 	const workers: EPIRWorker[] = [];
@@ -292,7 +300,10 @@ const mGGenerate = async (helper: WasmHelper, mG_: number, cb: undefined | ((p: 
 			worker.onmessage = (ev) => {
 				switch(ev.data.method) {
 					case 'mg_generate_cb':
-						if(cb) cb(++pointsComputed);
+						pointsComputed++;
+						if(!cb) break;
+						if(pointsComputed % cb.interval != 0 && pointsComputed != mmax) break;
+						cb.cb(pointsComputed);
 						break;
 					case 'mg_generate_compute':
 						//console.log(`mg_generate_compute (workerId = ${workerId}) DONE.`);
@@ -323,7 +334,7 @@ const mGGenerate = async (helper: WasmHelper, mG_: number, cb: undefined | ((p: 
 	}
 }
 
-const getMG = async (helper: WasmHelper, param: undefined | string | ((p: number) => void), mmax: number): Promise<Uint8Array> => {
+const getMG = async (helper: WasmHelper, param: undefined | string | DecryptionContextCallback, mmax: number): Promise<Uint8Array> => {
 	if(typeof param == 'string') {
 		return new Uint8Array(await require('fs/promises').readFile(param));
 	} else {

@@ -152,7 +152,8 @@ void mGCallJs(Napi::Env env, Napi::Function cb, Context *ctx, size_t *data) {
 }
 using TSFN = Napi::TypedThreadSafeFunction<Context, size_t, mGCallJs>;
 
-// new DecrytionContext(param: string | Uint8Array | undefined | ((p: number) => void), mmax = EPIR_DEFAULT_MG_MAX);
+// new DecrytionContext(
+//   param: string | Uint8Array | undefined | { cb: ((p: number) => void), interval: number }, mmax = EPIR_DEFAULT_MG_MAX);
 DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::ObjectWrap<DecryptionContext>(info) {
 	Napi::Env env = info.Env();
 	if(info.Length() == 0) {
@@ -171,25 +172,6 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 	if(param.IsUndefined()) {
 		// Generate mG.bin WITHOUT using the specified callback.
 		epir_mG_generate(this->mG.data(), this->mG.size(), NULL, NULL);
-	} else if(param.IsFunction()) {
-		// Generate mG.bin using the specified callback.
-		Context *ctx = new Context(Napi::Persistent(info.This()));
-		auto tsfn = TSFN::New(env, param.As<Napi::Function>(), "new DecryptionContext", 0, 1, ctx, [](Napi::Env, void*, Context *ctx) {
-			delete ctx;
-		});
-		typedef struct {
-			Napi::Env env;
-			TSFN tsfn;
-		} mG_cb_data;
-		mG_cb_data data = { env, tsfn };
-		epir_mG_generate(this->mG.data(), this->mG.size(), [](const size_t points_computed, void *cb_data) {
-			mG_cb_data *data = (mG_cb_data*)cb_data;
-			size_t *pc = new size_t(points_computed);
-			if(data->tsfn.BlockingCall(pc) != napi_ok) {
-				return;
-			}
-		}, &data);
-		tsfn.Release();
 	} else if(param.IsString()) {
 		// Load mG.bin from the path.
 		const std::string path = std::string(param.As<Napi::String>());
@@ -209,6 +191,47 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 		}
 		const uint8_t *mG = param.As<Napi::TypedArrayOf<uint8_t>>().Data();
 		memcpy(this->mG.data(), mG, sizeof(epir_mG_t) * this->mG.size());
+	} else if(param.IsObject()) {
+		const Napi::Object cbObj = param.As<Napi::Object>();
+		if(!cbObj.Has("cb") || !cbObj.Has("interval")) {
+			Napi::TypeError::New(env, "The parameter 'param' has missing property.").ThrowAsJavaScriptException();
+			return;
+		}
+		if(!cbObj.Get("cb").IsFunction()) {
+			Napi::TypeError::New(env, "The parameter 'param.cb' is not a function.").ThrowAsJavaScriptException();
+			return;
+		}
+		if(!cbObj.Get("interval").IsNumber()) {
+			Napi::TypeError::New(env, "The parameter 'param.interval' is not a number.").ThrowAsJavaScriptException();
+			return;
+		}
+		const Napi::Function cb = cbObj.Get("cb").As<Napi::Function>();
+		const int64_t interval = cbObj.Get("interval").As<Napi::Number>().Int64Value();
+		if(interval <= 0) {
+			Napi::RangeError::New(env, "The parameter 'param.interval' should be greater than zero.").ThrowAsJavaScriptException();
+			return;
+		}
+		// Generate mG.bin using the specified callback.
+		Context *ctx = new Context(Napi::Persistent(info.This()));
+		auto tsfn = TSFN::New(env, cb, "new DecryptionContext", 0, 1, ctx, [](Napi::Env, void*, Context *ctx) {
+			delete ctx;
+		});
+		typedef struct {
+			Napi::Env env;
+			TSFN tsfn;
+			size_t mmax;
+			uint64_t interval;
+		} mG_cb_data;
+		mG_cb_data data = { env, tsfn, mmax, (uint64_t)interval };
+		epir_mG_generate(this->mG.data(), this->mG.size(), [](const size_t points_computed, void *cb_data) {
+			mG_cb_data *data = (mG_cb_data*)cb_data;
+			if((points_computed % data->interval) != 0 && points_computed != data->mmax) return;
+			size_t *pc = new size_t(points_computed);
+			if(data->tsfn.BlockingCall(pc) != napi_ok) {
+				return;
+			}
+		}, &data);
+		tsfn.Release();
 	} else {
 		Napi::TypeError::New(env, "The parameter has an invalid type.").ThrowAsJavaScriptException();
 		return;
