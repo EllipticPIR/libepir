@@ -15,7 +15,6 @@ module.exports = {
 		'src_ts/**/*.ts',
 		'!src_ts/index.ts',
 		'!src_ts/browser.ts',
-		'!src_ts/test_common.ts',
 	],
 };
 
