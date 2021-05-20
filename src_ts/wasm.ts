@@ -336,7 +336,7 @@ const mGGenerate = async (helper: WasmHelper, mG_: number, cb: undefined | Decry
 
 const getMG = async (helper: WasmHelper, param: undefined | string | DecryptionContextCallback, mmax: number): Promise<Uint8Array> => {
 	if(typeof param == 'string') {
-		return new Uint8Array(await require('fs/promises').readFile(param));
+		return new Uint8Array(await require('fs').promises.readFile(param));
 	} else {
 		const mG_ = helper.malloc(MG_SIZE * mmax);
 		await mGGenerate(helper, mG_, param, mmax);
