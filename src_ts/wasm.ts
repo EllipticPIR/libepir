@@ -139,10 +139,12 @@ export class DecryptionContext implements DecryptionContextBase {
 	
 	helper: WasmHelper;
 	mG: Uint8Array;
+	workers: EPIRWorker[] = [];
 	
-	constructor(helper: WasmHelper, mG: Uint8Array) {
+	constructor(helper: WasmHelper, mG: Uint8Array, nThreads: number = navigator.hardwareConcurrency) {
 		this.helper = helper;
 		this.mG = mG;
+		for(let t=0; t<nThreads; t++) this.workers.push(new EPIRWorker());
 	}
 	
 	getMG(): Uint8Array {
@@ -211,13 +213,10 @@ export class DecryptionContext implements DecryptionContextBase {
 		return -1;
 	}
 	
-	async decryptMany(
-		ciphers: Uint8Array, privkey: Uint8Array, packing: number, nThreads: number = navigator.hardwareConcurrency):
-		Promise<Uint8Array> {
+	async decryptMany(ciphers: Uint8Array, privkey: Uint8Array, packing: number): Promise<Uint8Array> {
+		const nThreads = this.workers.length;
 		const ciphersCount = ciphers.length / CIPHER_SIZE;
-		const workers: EPIRWorker[] = [];
-		for(let t=0; t<nThreads; t++) workers.push(new EPIRWorker());
-		const mGs = await Promise.all(workers.map((worker, i): Promise<Uint8Array> => {
+		const mGs = await Promise.all(this.workers.map((worker, i): Promise<Uint8Array> => {
 			return new Promise((resolve, reject) => {
 				worker.onmessage = (ev) => {
 					switch(ev.data.method) {
@@ -358,9 +357,11 @@ export const createDecryptionContext: DecryptionContextCreateFunction = async (
 export class Epir implements EpirBase {
 	
 	helper: WasmHelper;
+	workers: EPIRWorker[] = [];
 	
-	constructor(helper: WasmHelper) {
+	constructor(helper: WasmHelper, nThreads: number = navigator.hardwareConcurrency) {
 		this.helper = helper;
+		for(let t=0; t<nThreads; t++) this.workers.push(new EPIRWorker());
 	}
 	
 	createPrivkey(): Uint8Array {
@@ -435,15 +436,13 @@ export class Epir implements EpirBase {
 	async selector_create_(
 		key: Uint8Array, index_counts: number[], idx: number, r: Uint8Array | undefined, isFast: boolean): Promise<Uint8Array> {
 		return new Promise(async (resolve, reject) => {
-			const nThreads = navigator.hardwareConcurrency;
-			const workers: EPIRWorker[] = [];
+			const nThreads = this.workers.length;
 			const promises: Promise<Uint8Array>[] = [];
 			const random = r ? r : uint8ArrayConcat(getRandomScalars(this.ciphersCount(index_counts)));
 			const choice = this.create_choice(index_counts, idx);
 			for(let t=0; t<nThreads; t++) {
-				workers.push(new EPIRWorker());
 				promises.push(new Promise((resolve, reject) => {
-					workers[t].onmessage = (ev) => {
+					this.workers[t].onmessage = (ev) => {
 						switch(ev.data.method) {
 							case 'selector_create':
 								resolve(ev.data.selector);
@@ -455,7 +454,7 @@ export class Epir implements EpirBase {
 				const begin = t * ciphersPerThread;
 				const end = Math.min((choice.length / CIPHER_SIZE) + 1, (t + 1) * ciphersPerThread);
 				const choice_t = choice.subarray(begin * CIPHER_SIZE, end * CIPHER_SIZE);
-				workers[t].postMessage({
+				this.workers[t].postMessage({
 					method: 'selector_create',
 					choice: choice_t, key: key, random: random.subarray(begin * SCALAR_SIZE, end * SCALAR_SIZE), isFast: isFast
 				});

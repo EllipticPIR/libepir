@@ -71,9 +71,8 @@ const funcs: KeyValue = {
 	},
 };
 
+const wasm_ = import('./wasm.libepir').then(({ libEpirModule }) => libEpirModule());
 worker.onmessage = async (ev) => {
-	const { libEpirModule } = await import('./wasm.libepir');
-	const wasm = await libEpirModule();
-	funcs[ev.data.method](wasm, ev.data);
+	funcs[ev.data.method](await wasm_, ev.data);
 };
 
