@@ -438,7 +438,7 @@ export class Epir implements EpirBase {
 			const nThreads = navigator.hardwareConcurrency;
 			const workers: EPIRWorker[] = [];
 			const promises: Promise<Uint8Array>[] = [];
-			const random = r ? r : getRandomBytes(this.ciphersCount(index_counts) * SCALAR_SIZE);
+			const random = r ? r : uint8ArrayConcat(getRandomScalars(this.ciphersCount(index_counts)));
 			const choice = this.create_choice(index_counts, idx);
 			for(let t=0; t<nThreads; t++) {
 				workers.push(new EPIRWorker());
