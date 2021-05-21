@@ -11,6 +11,7 @@ add_compile_options(-Wall -Wextra -Werror)
 option(BUILD_TESTING "Build tests." OFF)
 option(BUILD_BENCHES "Build benchmarks." OFF)
 option(EMSCRIPTEN "Build for Emscripten." OFF)
+option(TEST_USING_MG "Test using mG.bin. Setting off to reduce the test duration" ON)
 
 # Load libsodium.
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../../libsodium/include)
