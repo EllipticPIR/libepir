@@ -19,11 +19,11 @@
     "em:make": "cd build_em && EM_NODE_JS=$(which node) emmake make -j$(node -e 'console.log(require(\"os\").cpus().length)') all install",
     "browser:build": "webpack",
     "serve": "webpack-cli serve --mode development",
-    "epir_genm": "LD_LIBRARY_PATH=./build_c/epir/lib ./build_c/epir/bin/epir_genm",
+    "epir_genm": "./build_c/epir-prefix/src/epir-build/epir_genm",
     "test": "npm run epir_genm && jest --coverage --verbose"
   },
   "bin": {
-    "epir_genm": "build_c/epir/bin/epir_genm"
+    "epir_genm": "./build_c/epir-prefix/src/epir-build/epir_genm"
   },
   "files": [
     "src_c/*",
