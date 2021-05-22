@@ -14,14 +14,14 @@ import {
 } from './EpirBase';
 import EPIRWorker from './wasm.worker.ts';
 
-const time = () => new Date().getTime();
+export const time = () => new Date().getTime();
 
 export const MG_SIZE = 36;
 export const MG_P3_SIZE = 4 * 40;
 
 import { LibEpir as Wasm } from './wasm.libepir';
 
-const uint8ArrayConcat = (arr: Uint8Array[]) => {
+export const uint8ArrayConcat = (arr: Uint8Array[]) => {
 	const len = arr.reduce((acc, v) => acc + v.length, 0);
 	const ret = new Uint8Array(len);
 	for(let i=0, offset=0; i<arr.length; i++) {
@@ -31,7 +31,7 @@ const uint8ArrayConcat = (arr: Uint8Array[]) => {
 	return ret;
 }
 
-const uint8ArrayCompare = (a: Uint8Array, b: Uint8Array, len: number = Math.min(a.length, b.length)): number => {
+export const uint8ArrayCompare = (a: Uint8Array, b: Uint8Array, len: number = Math.min(a.length, b.length)): number => {
 	for(let i=0; i<len; i++) {
 		if(a[i] == b[i]) continue;
 		return a[i] - b[i];
@@ -39,8 +39,8 @@ const uint8ArrayCompare = (a: Uint8Array, b: Uint8Array, len: number = Math.min(
 	return 0;
 }
 
-const getRandomBytes = (len: number) => {
-	if(window && window.crypto && window.crypto.getRandomValues) {
+export const getRandomBytes = (len: number) => {
+	if(typeof window !== 'undefined' && typeof window.crypto !== 'undefined' && typeof window.crypto.getRandomValues !== 'undefined') {
 		const MAX_ENTROPY = 65536;
 		const ret = new Uint8Array(len);
 		for(let offset=0; offset<len; offset+=MAX_ENTROPY) {
@@ -75,13 +75,13 @@ export const getRandomScalar = () => {
 	}
 };
 
-const getRandomScalars = (cnt: number) => {
+export const getRandomScalars = (cnt: number) => {
 	const ret: Uint8Array[] = [];
 	for(let i=0; i<cnt; i++) ret.push(getRandomScalar());
 	return ret;
 }
 
-class WasmHelper {
+export class WasmHelper {
 	
 	wasm: Wasm;
 	
