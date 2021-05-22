@@ -8,9 +8,7 @@
 		
 		<h2>Generate mG</h2>
 		
-		<div class="text-center">
-			<b-button @click="generateMG">Generate mG</b-button>
-		</div>
+		<ClickableButton value="Generate mG" :click="generateMG" />
 		
 		<b-progress :max="mmax" height="2rem" animated class="my-4">
 			<b-progress-bar :value="pointsComputed" style="font-size:150%;">
@@ -26,59 +24,32 @@
 		
 		<h2>Generate a key pair</h2>
 		
-		<div class="text-center">
-			<b-button @click="generatePrivkey">Generate private key</b-button>
-		</div>
+		<ClickableButton value="Generate private key" :click="generatePrivkey" />
 		
-		<b-form-group label="Private Key">
-			<b-form-input v-model="privkeyStr"></b-form-input>
-		</b-form-group>
-		
-		<b-form-group label="Public Key">
-			<b-form-input :value="pubkeyStr" disabled></b-form-input>
-		</b-form-group>
+		<InputWithLabel v-model="privkeyStr" label="Private Key" />
+		<InputWithLabel v-model="pubkeyStr" label="Public Key" disabled />
 		
 		<h2>Specify index counts</h2>
 		
-		<b-form-group label="Index counts">
-			<b-form-input v-model="indexCountsStr"></b-form-input>
-		</b-form-group>
+		<InputWithLabel v-model="indexCountsStr" label="Index counts" />
 		
 		<h2>Generate a selector (normal)</h2>
 		
-		<div class="text-center">
-			<b-button @click="createSelector">Generate selector (normal)</b-button>
-		</div>
+		<ClickableButton value="Generate selector (normal)" :click="createSelector" />
 		
-		<div>
-			<p>Selector (normal)</p>
-			<textarea :value="selectorStr" rows="10" class="w-100" disabled />
-			<p>Selector size: {{ (selectorStr.length / 2).toLocaleString() }} bytes</p>
-			<p>Computation time: {{ createSelectorTime.toLocaleString() }} ms</p>
-		</div>
+		<HexWindow v-model="selectorStr" label="Selector (normal)" :time="createSelectorTime" />
 		
 		<h2>Generate a selector (fast)</h2>
 		
-		<div class="text-center">
-			<b-button @click="createSelectorFast">Generate selector (fast)</b-button>
-		</div>
+		<ClickableButton value="Generate selector (fast)" :click="createSelectorFast" />
 		
-		<div>
-			<p>Selector (fast)</p>
-			<textarea :value="selectorStrFast" rows="10" class="w-100" disabled />
-			<p>Selector size: {{ (selectorStrFast.length / 2).toLocaleString() }} bytes</p>
-			<p>Computation time: {{ createSelectorTimeFast.toLocaleString() }} ms</p>
-		</div>
+		<HexWindow v-model="selectorStrFast" label="Selector (fast)" :time="createSelectorTimeFast" />
 		
 		<h2>Generate or input a database element</h2>
 		
-		<b-form-group label="Element size">
-			<b-form-input v-model="elemSize" type="number" min="1" max="255"></b-form-input>
-		</b-form-group>
+		<InputWithLabel v-model="elemSize" label="Element size" type="number" min="1" max="255" />
 		
-		<div class="text-center">
-			<b-button @click="generateElement">Generate random database element</b-button>
-		</div>
+		<ClickableButton value="Generate random database element" :click="generateElement" />
 		
 		<div>
 			<p>Element (hex)</p>
@@ -87,32 +58,18 @@
 		
 		<h2>Specify a dimension and a packing</h2>
 		
-		<b-form-group label="Dimension">
-			<b-form-input v-model="dimension" type="number" min="1" max="10"></b-form-input>
-		</b-form-group>
-		
-		<b-form-group label="Packing">
-			<b-form-input v-model="packing" type="number" min="1" max="3"></b-form-input>
-		</b-form-group>
+		<InputWithLabel v-model="dimension" label="Dimension" type="number" min="1" max="10" />
+		<InputWithLabel v-model="packing" label="Packing" type="number" min="1" max="3" />
 		
 		<h2>Compute a server's reply (mock)</h2>
 		
-		<div class="text-center">
-			<b-button @click="computeReplyMock">Compute reply (mock)</b-button>
-		</div>
+		<ClickableButton value="Compute reply (mock)" :click="computeReplyMock" />
 		
-		<div>
-			<p>Reply</p>
-			<textarea :value="replyStr" rows="10" class="w-100" disabled />
-			<p>Reply size: {{ (replyStr.length / 2).toLocaleString() }} bytes</p>
-			<p>Computation time: {{ computeReplyMockTime.toLocaleString() }} ms</p>
-		</div>
+		<HexWindow v-model="replyStr" label="Reply" :time="computeReplyMockTime" />
 		
 		<h2>Decrypt the server's reply</h2>
 		
-		<div class="text-center">
-			<b-button @click="decryptReply">Decrypt reply</b-button>
-		</div>
+		<ClickableButton value="Decrypt reply" :click="decryptReply" />
 		
 		<div>
 			<p>Decrypted</p>
@@ -138,7 +95,7 @@
 </style>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue'
+import Vue from 'vue';
 import Dexie from 'dexie';
 
 import { EpirBase, DecryptionContextBase, DEFAULT_MMAX, SCALAR_SIZE, POINT_SIZE } from '../src_ts/EpirBase';
@@ -366,6 +323,6 @@ export default Vue.extend({
 			}
 		},
 	},
-})
+});
 </script>
 
