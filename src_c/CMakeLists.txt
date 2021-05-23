@@ -13,13 +13,11 @@ option(BUILD_BENCHES "Build benchmarks." OFF)
 option(EMSCRIPTEN "Build for Emscripten." OFF)
 option(TEST_USING_MG "Test using mG.bin. Setting off to reduce the test duration" ON)
 
-# Load libsodium.
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../../libsodium/include)
-link_directories(${CMAKE_CURRENT_BINARY_DIR}/../../../libsodium/lib)
-
 set(EPIR_SOURCES epir.c epir.h epir_reply_mock.c epir_reply_mock.h)
 
 if(EMSCRIPTEN)
+	include_directories(${CMAKE_SOURCE_DIR}/../node_modules/libepir-sodium-wasm/dist/include)
+	link_directories(${CMAKE_SOURCE_DIR}/../node_modules/libepir-sodium-wasm/dist/lib)
 	# Enable optimizations.
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -flto=full -O3")
 	# ./libepir.js
@@ -31,10 +29,14 @@ if(EMSCRIPTEN)
 		"SHELL:-s ALLOW_TABLE_GROWTH=1"
 		"SHELL:-s SINGLE_FILE=1"
 		"SHELL:-s EXPORTED_FUNCTIONS=['_malloc, _free']"
-		"SHELL:-s EXTRA_EXPORTED_RUNTIME_METHODS=['addFunction, removeFunction']")
+		"SHELL:-s EXPORTED_RUNTIME_METHODS=['addFunction, removeFunction']")
 	install(TARGETS libepir.js DESTINATION .)
 	return()
 endif()
+
+# Load libsodium.
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../../libsodium/include)
+link_directories(${CMAKE_CURRENT_BINARY_DIR}/../../../libsodium/lib)
 
 # Enable OpenMP.
 find_package(OpenMP REQUIRED)

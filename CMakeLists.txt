@@ -13,20 +13,7 @@ option(EMSCRIPTEN "Build for Emscripten." OFF)
 # Build libsodium.
 set(LIBSODIUM_GIT_REPOSITORY "https://github.com/EllipticPIR/libsodium.git")
 set(LIBSODIUM_GIT_TAG ci-master)
-if(EMSCRIPTEN)
-	set(LIBSODIUM_CONFIGURE_CACHE libsodium_js.cache)
-	ExternalProject_Add(libsodium
-		GIT_REPOSITORY ${LIBSODIUM_GIT_REPOSITORY}
-		GIT_TAG ${LIBSODIUM_GIT_TAG}
-		BUILD_IN_SOURCE on
-		CONFIGURE_COMMAND
-			emconfigure ./configure
-				--cache-file=${LIBSODIUM_CONFIGURE_CACHE} --disable-shared --prefix=${CMAKE_CURRENT_BINARY_DIR}/libsodium
-				--without-pthreads --disable-ssp --disable-asm --disable-pie "CFLAGS=-flto=full -O3"
-		BUILD_COMMAND emmake $(MAKE)
-		INSTALL_COMMAND emmake $(MAKE) install
-	)
-else()
+if(!EMSCRIPTEN)
 	ExternalProject_Add(libsodium
 		GIT_REPOSITORY ${LIBSODIUM_GIT_REPOSITORY}
 		GIT_TAG ${LIBSODIUM_GIT_TAG}
@@ -52,7 +39,9 @@ ExternalProject_Add(epir
 		-DBUILD_BENCHES=${BUILD_BENCHES}
 		-DEMSCRIPTEN=${EMSCRIPTEN}
 )
-ExternalProject_Add_StepDependencies(epir install libsodium)
+if(!EMSCRIPTEN)
+	ExternalProject_Add_StepDependencies(epir install libsodium)
+endif()
 if(BUILD_TESTING)
 	ExternalProject_Add_StepDependencies(epir install googletest)
 endif()
