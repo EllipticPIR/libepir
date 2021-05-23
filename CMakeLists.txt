@@ -13,7 +13,7 @@ option(EMSCRIPTEN "Build for Emscripten." OFF)
 # Build libsodium.
 set(LIBSODIUM_GIT_REPOSITORY "https://github.com/EllipticPIR/libsodium.git")
 set(LIBSODIUM_GIT_TAG ci-master)
-if(!EMSCRIPTEN)
+if(NOT EMSCRIPTEN)
 	ExternalProject_Add(libsodium
 		GIT_REPOSITORY ${LIBSODIUM_GIT_REPOSITORY}
 		GIT_TAG ${LIBSODIUM_GIT_TAG}
@@ -39,7 +39,7 @@ ExternalProject_Add(epir
 		-DBUILD_BENCHES=${BUILD_BENCHES}
 		-DEMSCRIPTEN=${EMSCRIPTEN}
 )
-if(!EMSCRIPTEN)
+if(NOT EMSCRIPTEN)
 	ExternalProject_Add_StepDependencies(epir install libsodium)
 endif()
 if(BUILD_TESTING)
