@@ -8,7 +8,7 @@
 import Vue from 'vue';
 export default Vue.extend({
 	props: {
-		value: String | Number,
+		value: [String, Number],
 		label: String,
 		type: {
 			type: String,
