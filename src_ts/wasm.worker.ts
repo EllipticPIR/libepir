@@ -1,78 +1,72 @@
 
-import { LibEpir } from './wasm.libepir';
+import { LibEpir, LibEpirHelper } from './wasm.libepir';
 
 const worker: Worker = self as any;
 
 interface KeyValue {
-	[key: string]: Function;
+	[key: string]: (helper: LibEpirHelper, params: any) => Promise<void>;
 }
 const funcs: KeyValue = {
 	// For mG.bin generation.
-	mg_generate_compute: async (wasm: LibEpir, params: { nThreads: number, mmax: number, ctx: Uint8Array, mG_p3: Uint8Array, threadId: number }) => {
-		const CTX_SIZE = 124;
+	mg_generate_compute: async (helper: LibEpirHelper, params: { nThreads: number, mmax: number, ctx: Uint8Array, mG_p3: Uint8Array, threadId: number }) => {
 		const MG_SIZE = 36;
-		const MG_P3_SIZE = 4 * 40;
 		const mG_count = Math.ceil(params.mmax / params.nThreads) - 1;
-		const ctx_ = wasm._malloc(CTX_SIZE);
-		wasm.HEAPU8.set(params.ctx, ctx_);
-		const mG_ = wasm._malloc(mG_count * MG_SIZE);
-		const mG_p3_ = wasm._malloc(MG_P3_SIZE);
-		wasm.HEAPU8.set(params.mG_p3, mG_p3_);
-		const cb = wasm.addFunction((data: any) => {
+		const ctx_ = helper.malloc(params.ctx);
+		const mG_ = helper.malloc(mG_count * MG_SIZE);
+		const mG_p3_ = helper.malloc(params.mG_p3);
+		const cb = helper.addFunction((data: any) => {
 			worker.postMessage({ method: 'mg_generate_cb' });
 		}, 'vi');
-		wasm._epir_mG_generate_compute(
+		helper.call('mG_generate_compute',
 			ctx_, mG_, mG_count, mG_p3_, params.nThreads + params.threadId, params.nThreads, cb, null);
-		wasm.removeFunction(cb);
-		const mG = new Uint8Array(wasm.HEAPU8.subarray(mG_, mG_ + mG_count * MG_SIZE));
+		helper.removeFunction(cb);
+		const mG = helper.slice(mG_, mG_count * MG_SIZE);
 		worker.postMessage({
 			method: 'mg_generate_compute', mG: mG,
 		}, [mG.buffer]);
-		wasm._free(ctx_);
-		wasm._free(mG_);
-		wasm._free(mG_p3_);
+		helper.free(ctx_);
+		helper.free(mG_);
+		helper.free(mG_p3_);
 	},
 	// For selector creation.
-	selector_create: async (wasm: LibEpir, params: { choice: Uint8Array, key: Uint8Array, random: Uint8Array, isFast: boolean }) => {
-		const key_ = wasm._malloc(32);
-		wasm.HEAPU8.set(params.key, key_);
-		const cipher_ = wasm._malloc(64);
-		const random_ = wasm._malloc(32);
-		const encrypt = (params.isFast ? wasm._epir_ecelgamal_encrypt_fast : wasm._epir_ecelgamal_encrypt);
+	selector_create: async (helper: LibEpirHelper, params: { choice: Uint8Array, key: Uint8Array, random: Uint8Array, isFast: boolean }) => {
+		const key_ = helper.malloc(params.key);
+		const cipher_ = helper.malloc(64);
+		const random_ = helper.malloc(32);
+		const encryptFn = (params.isFast ? 'ecelgamal_encrypt_fast' : 'ecelgamal_encrypt');
 		for(let i=0; i*64<params.choice.length; i++) {
-			wasm.HEAPU8.set(params.choice.subarray(i * 64, (i + 1) * 64), cipher_);
-			wasm.HEAPU8.set(params.random.subarray(i * 32, (i + 1) * 32), random_);
-			encrypt(cipher_, key_, params.choice[i * 64], 0, random_);
-			params.choice.set(wasm.HEAPU8.subarray(cipher_, cipher_ + 64), i * 64);
+			helper.set(params.choice.subarray(i * 64, (i + 1) * 64), cipher_);
+			helper.set(params.random.subarray(i * 32, (i + 1) * 32), random_);
+			helper.call(encryptFn, cipher_, key_, params.choice[i * 64], 0, random_);
+			params.choice.set(helper.subarray(cipher_, 64), i * 64);
 		}
 		worker.postMessage({
 			method: 'selector_create', selector: params.choice,
 		}, [params.choice.buffer]);
-		wasm._free(key_);
-		wasm._free(cipher_);
-		wasm._free(random_);
+		helper.free(key_);
+		helper.free(cipher_);
+		helper.free(random_);
 	},
 	// For reply decryption.
-	decrypt_mG_many: async (wasm: LibEpir, params: { ciphers: Uint8Array, privkey: Uint8Array }) => {
-		const privkey_ = wasm._malloc(32);
-		wasm.HEAPU8.set(params.privkey, privkey_);
-		const cipher_ = wasm._malloc(64);
+	decrypt_mG_many: async (helper: LibEpirHelper, params: { ciphers: Uint8Array, privkey: Uint8Array }) => {
+		const privkey_ = helper.malloc(params.privkey);
+		const cipher_ = helper.malloc(64);
 		const mG = new Uint8Array(32 * (params.ciphers.length / 64));
 		for(let i=0; 64*i<params.ciphers.length; i++) {
-			wasm.HEAPU8.set(params.ciphers.subarray(i * 64, (i + 1) * 64), cipher_);
-			wasm._epir_ecelgamal_decrypt_to_mG(privkey_, cipher_);
-			mG.set(wasm.HEAPU8.subarray(cipher_, cipher_ + 32), i * 32);
+			helper.set(params.ciphers.subarray(i * 64, (i + 1) * 64), cipher_);
+			helper.call('ecelgamal_decrypt_to_mG', privkey_, cipher_);
+			mG.set(helper.subarray(cipher_, 32), i * 32);
 		}
 		worker.postMessage({
 			method: 'decrypt_mG_many', mG: mG,
 		}, [mG.buffer]);
-		wasm._free(privkey_);
-		wasm._free(cipher_);
+		helper.free(privkey_);
+		helper.free(cipher_);
 	},
 };
 
-const wasm_ = import('./wasm.libepir').then(({ libEpirModule }) => libEpirModule());
+const libEpirPromise = import('./wasm.libepir').then(({ libEpirModule }) => libEpirModule());
 worker.onmessage = async (ev) => {
-	funcs[ev.data.method](await wasm_, ev.data);
+	funcs[ev.data.method](new LibEpirHelper(await libEpirPromise), ev.data);
 };
 

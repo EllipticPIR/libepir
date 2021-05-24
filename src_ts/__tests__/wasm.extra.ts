@@ -5,6 +5,10 @@ import { createEpir, isCanonical } from '../wasm'
 
 let getRandomValues = (buf: Uint8Array) => {};
 
+// For WebAssembly tests, we have tests which uses max CPU cores (x2 for main threads and worker threads).
+const testsWithWorkersCount = 2;
+process.setMaxListeners(testsWithWorkersCount * 2 * navigator.hardwareConcurrency);
+
 Object.defineProperty(global.self, 'crypto', {
 	value: {
 		getRandomValues: (buf: Uint8Array) => getRandomValues(buf),

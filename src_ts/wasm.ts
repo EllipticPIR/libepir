@@ -19,7 +19,7 @@ export const time = () => new Date().getTime();
 export const MG_SIZE = 36;
 export const MG_P3_SIZE = 4 * 40;
 
-import { LibEpir as Wasm } from './wasm.libepir';
+import { LibEpir, LibEpirHelper } from './wasm.libepir';
 
 export const uint8ArrayConcat = (arr: Uint8Array[]) => {
 	const len = arr.reduce((acc, v) => acc + v.length, 0);
@@ -81,69 +81,11 @@ export const getRandomScalars = (cnt: number) => {
 	return ret;
 }
 
-export class WasmHelper {
-	
-	wasm: Wasm;
-	
-	constructor(wasm: Wasm) {
-		this.wasm = wasm;
-	}
-	
-	store_uint32_t(offset: number, n: number) {
-		for(let i=0; i<4; i++) {
-			this.wasm.HEAPU8[offset + i] = n & 0xff;
-			n >>= 8;
-		}
-	}
-	
-	store_uint64_t(offset: number, n: number) {
-		for(let i=0; i<8; i++) {
-			this.wasm.HEAPU8[offset + i] = n & 0xff;
-			n >>= 8;
-		}
-	}
-	
-	set(buf: Uint8Array, offset: number) {
-		this.wasm.HEAPU8.set(buf, offset);
-	}
-	
-	malloc(param: Uint8Array | number): number {
-		if(typeof param == 'number') {
-			return this.wasm._malloc(param);
-		} else {
-			const buf_ = this.wasm._malloc(param.length);
-			this.wasm.HEAPU8.set(param, buf_);
-			return buf_;
-		}
-	}
-	
-	free(buf_: number) {
-		this.wasm._free(buf_);
-	}
-	
-	call(func: string, ...params: any[]) {
-		return this.wasm[`_epir_${func}`].apply(null, params);
-	}
-	
-	slice(begin: number, len: number) {
-		return this.wasm.HEAPU8.slice(begin, begin + len);
-	}
-	
-	subarray(begin: number, len: number) {
-		return this.wasm.HEAPU8.subarray(begin, begin + len);
-	}
-	
-}
-
 export class DecryptionContext implements DecryptionContextBase {
 	
-	helper: WasmHelper;
-	mG: Uint8Array;
 	workers: EPIRWorker[] = [];
 	
-	constructor(helper: WasmHelper, mG: Uint8Array, nThreads: number = navigator.hardwareConcurrency) {
-		this.helper = helper;
-		this.mG = mG;
+	constructor(public helper: LibEpirHelper, public mG: Uint8Array, nThreads: number = navigator.hardwareConcurrency) {
 		for(let t=0; t<nThreads; t++) this.workers.push(new EPIRWorker());
 	}
 	
@@ -253,21 +195,21 @@ export class DecryptionContext implements DecryptionContextBase {
 	
 }
 
-const mGGeneratePrepare = (helper: WasmHelper, nThreads: number, mmax: number, cb: undefined | DecryptionContextCallback) => {
+const mGGeneratePrepare = (helper: LibEpirHelper, nThreads: number, mmax: number, cb: undefined | DecryptionContextCallback) => {
 	const CTX_SIZE = 124;
 	const ctx_ = helper.malloc(CTX_SIZE);
-	helper.store_uint32_t(ctx_, mmax);
+	helper.store32(ctx_, mmax);
 	const mG_ = helper.malloc(nThreads * MG_SIZE);
 	const mG_p3_ = helper.malloc(nThreads * MG_P3_SIZE);
 	if(cb) {
 		let pointsComputed = 0;
-		const cb_ = helper.wasm.addFunction((data: any) => {
+		const cb_ = helper.addFunction((data: any) => {
 			pointsComputed++;
 			if(pointsComputed % cb.interval != 0) return;
 			cb.cb(pointsComputed);
 		}, 'vi');
 		helper.call('mG_generate_prepare', ctx_, mG_, mG_p3_, nThreads, cb_, null);
-		helper.wasm.removeFunction(cb_);
+		helper.removeFunction(cb_);
 	} else {
 		helper.call('mG_generate_prepare', ctx_, mG_, mG_p3_, nThreads, null, null);
 	}
@@ -280,7 +222,7 @@ const mGGeneratePrepare = (helper: WasmHelper, nThreads: number, mmax: number, c
 	return { ctx: ctx, mG: mG, mG_p3: mG_p3 };
 };
 
-const mGGenerate = async (helper: WasmHelper, mG_: number, cb: undefined | DecryptionContextCallback, mmax: number): Promise<void> => {
+const mGGenerate = async (helper: LibEpirHelper, mG_: number, cb: undefined | DecryptionContextCallback, mmax: number): Promise<void> => {
 	// XXX: not working for navigator.hardwareConcurrency.
 	const nThreads = navigator.hardwareConcurrency / 2;
 	const workers: EPIRWorker[] = [];
@@ -333,7 +275,7 @@ const mGGenerate = async (helper: WasmHelper, mG_: number, cb: undefined | Decry
 	}
 }
 
-const getMG = async (helper: WasmHelper, param: undefined | string | DecryptionContextCallback, mmax: number): Promise<Uint8Array> => {
+const getMG = async (helper: LibEpirHelper, param: undefined | string | DecryptionContextCallback, mmax: number): Promise<Uint8Array> => {
 	if(typeof param == 'string') {
 		return new Uint8Array(await require('fs').promises.readFile(param));
 	} else {
@@ -349,17 +291,16 @@ export const createDecryptionContext: DecryptionContextCreateFunction = async (
 	param?: DecryptionContextParameter, mmax: number = DEFAULT_MMAX) => {
 	const { libEpirModule } = await import('./wasm.libepir');
 	const wasm = await libEpirModule();
-	const helper = new WasmHelper(wasm);
+	const helper = new LibEpirHelper(wasm);
 	const mG = (param instanceof Uint8Array ? param : await getMG(helper, param, mmax));
 	return new DecryptionContext(helper, mG);
 };
 
 export class Epir implements EpirBase {
 	
-	helper: WasmHelper;
 	workers: EPIRWorker[] = [];
 	
-	constructor(helper: WasmHelper, nThreads: number = navigator.hardwareConcurrency) {
+	constructor(public helper: LibEpirHelper, nThreads: number = navigator.hardwareConcurrency) {
 		this.helper = helper;
 		for(let t=0; t<nThreads; t++) this.workers.push(new EPIRWorker());
 	}
@@ -403,7 +344,7 @@ export class Epir implements EpirBase {
 	ciphers_or_elements_count(index_counts: number[], count: string): number {
 		const ic_ = this.helper.malloc(8 * index_counts.length);
 		for(let i=0; i<index_counts.length; i++) {
-			this.helper.store_uint64_t(ic_ + 8 * i, index_counts[i]);
+			this.helper.store64(ic_ + 8 * i, index_counts[i]);
 		}
 		const c = this.helper.call(count, ic_, index_counts.length);
 		this.helper.free(ic_);
@@ -421,7 +362,7 @@ export class Epir implements EpirBase {
 	create_choice(index_counts: number[], idx: number): Uint8Array {
 		const ic_ = this.helper.malloc(8 * index_counts.length);
 		for(let i=0; i<index_counts.length; i++) {
-			this.helper.store_uint64_t(ic_ + 8 * i, index_counts[i]);
+			this.helper.store64(ic_ + 8 * i, index_counts[i]);
 		}
 		const ciphers = this.helper.call('selector_ciphers_count', ic_, index_counts.length);
 		const selector_ = this.helper.malloc(CIPHER_SIZE * ciphers);
@@ -501,8 +442,8 @@ export class Epir implements EpirBase {
 
 export const createEpir: EpirCreateFunction = async () => {
 	const { libEpirModule } = await import('./wasm.libepir');
-	const wasm = await libEpirModule();
-	const helper = new WasmHelper(wasm);
+	const libepir = await libEpirModule();
+	const helper = new LibEpirHelper(libepir);
 	return new Epir(helper);
 };
 
