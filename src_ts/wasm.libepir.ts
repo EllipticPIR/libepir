@@ -50,7 +50,19 @@ export class LibEpirHelper {
 	removeFunction = this.libepir.removeFunction;
 	
 	call(func: string, ...params: any[]) {
-		return this.libepir[`_epir_${func}`].apply(null, params);
+		const bufs: number[] = [];
+		params = params.map((param) => {
+			if(param instanceof Uint8Array) {
+				const buf_ = this.malloc(param);
+				bufs.push(buf_);
+				return buf_;
+			} else {
+				return param;
+			}
+		});
+		const ret = this.libepir[`_epir_${func}`].apply(null, params);
+		bufs.forEach((buf_) => this.free(buf_));
+		return ret;
 	}
 	
 	slice(begin: number, len: number) {

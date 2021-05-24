@@ -39,7 +39,7 @@ export const uint8ArrayCompare = (a: Uint8Array, b: Uint8Array, len: number = Ma
 	return 0;
 }
 
-export const getRandomBytes = (len: number) => {
+export const getRandomBytes = (len: number): Uint8Array => {
 	if(typeof window !== 'undefined' && typeof window.crypto !== 'undefined' && typeof window.crypto.getRandomValues !== 'undefined') {
 		const MAX_ENTROPY = 65536;
 		const ret = new Uint8Array(len);
@@ -49,7 +49,7 @@ export const getRandomBytes = (len: number) => {
 		return ret;
 	} else {
 		const crypto = require('crypto');
-		return crypto.randomBytes(len);
+		return new Uint8Array(crypto.randomBytes(len));
 	}
 };
 
@@ -94,14 +94,10 @@ export class DecryptionContext implements DecryptionContextBase {
 	}
 	
 	decryptCipher(privkey: Uint8Array, cipher: Uint8Array): number {
-		const privkey_ = this.helper.malloc(SCALAR_SIZE);
-		this.helper.set(privkey, privkey_);
-		const cipher_ = this.helper.malloc(CIPHER_SIZE);
-		this.helper.set(cipher, cipher_);
-		this.helper.call('ecelgamal_decrypt_to_mG', privkey_, cipher_);
+		const cipher_ = this.helper.malloc(cipher);
+		this.helper.call('ecelgamal_decrypt_to_mG', privkey, cipher_);
 		const mG = this.helper.subarray(cipher_, POINT_SIZE);
 		const decrypted = this.interpolationSearch(mG);
-		this.helper.free(privkey_);
 		this.helper.free(cipher_);
 		if(decrypted < 0) throw new Error('Failed to decrypt.');
 		return decrypted;
@@ -310,25 +306,19 @@ export class Epir implements EpirBase {
 	}
 	
 	createPubkey(privkey: Uint8Array): Uint8Array {
-		const privkey_ = this.helper.malloc(privkey);
 		const pubkey_ = this.helper.malloc(POINT_SIZE);
-		this.helper.call('pubkey_from_privkey', pubkey_, privkey_);
+		this.helper.call('pubkey_from_privkey', pubkey_, privkey);
 		const pubkey = this.helper.slice(pubkey_, POINT_SIZE);
 		this.helper.free(pubkey_);
-		this.helper.free(privkey_);
 		return pubkey;
 	}
 	
 	encrypt_(
 		key: Uint8Array, msg: number, r: Uint8Array | undefined,
 		encrypt: string): Uint8Array {
-		const key_ = this.helper.malloc(key);
 		const cipher_ = this.helper.malloc(CIPHER_SIZE);
-		const rr_ = this.helper.malloc(r ? r : getRandomScalar());
-		this.helper.call(encrypt, cipher_, key_, msg&0xffffffff, Math.floor(msg/0x100000000), rr_);
-		this.helper.free(rr_);
+		this.helper.call(encrypt, cipher_, key, msg&0xffffffff, Math.floor(msg/0x100000000), r ? r : getRandomScalar());
 		const cipher = this.helper.slice(cipher_, CIPHER_SIZE);
-		this.helper.free(key_);
 		this.helper.free(cipher_);
 		return cipher;
 	}
@@ -423,17 +413,11 @@ export class Epir implements EpirBase {
 	}
 	
 	computeReplyMock(pubkey: Uint8Array, dimension: number, packing: number, elem: Uint8Array, r?: Uint8Array): Uint8Array {
-		const pubkey_ = this.helper.malloc(pubkey);
-		const elem_ = this.helper.malloc(elem);
 		const rrc = this.computeReplyRCount(dimension, packing, elem.length);
-		const rr_ = this.helper.malloc(r ? r : uint8ArrayConcat(getRandomScalars(rrc)));
 		const rs = this.computeReplySize(dimension, packing, elem.length);
 		const reply_ = this.helper.malloc(rs);
-		this.helper.call('reply_mock', reply_, pubkey_, dimension, packing, elem_, elem.length, rr_);
+		this.helper.call('reply_mock', reply_, pubkey, dimension, packing, elem, elem.length, r ? r : uint8ArrayConcat(getRandomScalars(rrc)));
 		const reply = this.helper.slice(reply_, rs);
-		this.helper.free(pubkey_);
-		this.helper.free(elem_);
-		this.helper.free(rr_);
 		this.helper.free(reply_);
 		return reply;
 	}
