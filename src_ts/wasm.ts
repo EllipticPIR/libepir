@@ -165,12 +165,7 @@ const mGGenerate = async (helper: LibEpirHelper, cb: undefined | DecryptionConte
 	for(let i=0; i<nThreads; i++) {
 		workers.push(new EPIRWorker());
 	}
-	const mG: Uint8Array[] = [];
-	const beginCompute = time();
 	const prepare = mGGeneratePrepare(helper, nThreads, mmax, cb);
-	for(let t=0; t<nThreads; t++) {
-		mG.push(new Uint8Array(prepare.mG, t * MG_SIZE, MG_SIZE));
-	}
 	const pointsComputed: number[] = [];
 	for(let t=0; t<nThreads; t++) {
 		pointsComputed[t] = 0;
@@ -192,7 +187,6 @@ const mGGenerate = async (helper: LibEpirHelper, cb: undefined | DecryptionConte
 						}
 						break;
 					case 'mg_generate_compute':
-						//console.log(`mg_generate_compute (workerId = ${workerId}) DONE.`);
 						resolve(ev.data.mG);
 						break;
 				}
@@ -204,29 +198,18 @@ const mGGenerate = async (helper: LibEpirHelper, cb: undefined | DecryptionConte
 			});
 		});
 	});
-	(await Promise.all(promises)).map((mGResult) => {
-		for(let i=0; i*MG_SIZE<mGResult.byteLength; i++) {
-			mG.push(new Uint8Array(mGResult, i * MG_SIZE, MG_SIZE));
-		}
+	const mGConcat = new Uint8Array(mmax * MG_SIZE);
+	mGConcat.set(new Uint8Array(prepare.mG));
+	let offset = prepare.mG.byteLength;
+	(await Promise.all(promises)).map((mGResult, i) => {
+		mGConcat.set(new Uint8Array(mGResult), offset);
+		offset += mGResult.byteLength;
 	});
-	for(let t=0; t<nThreads; t++) {
-		delete promises[t];
-	}
-	//console.log(`Computation done in ${(time() - beginCompute).toLocaleString()}ms.`);
-	//console.log('Sorting...');
-	const beginSort = time();
-	mG.sort((a, b) => {
-		for(let i=0; i<POINT_SIZE; i++) {
-			if(a[i] != b[i]) return a[i] - b[i];
-		}
-		return 0;
-	});
-	//console.log(`Sorting done in ${(time() - beginSort).toLocaleString()}ms.`);
-	const ret = new Uint8Array(mG.length * MG_SIZE);
-	for(let i=0; i<mG.length; i++) {
-		ret.set(mG[i], i * MG_SIZE);
-	}
-	return ret.buffer;
+	const mGConcat_ = helper.malloc(mGConcat.buffer);
+	helper.call('mG_sort', mGConcat_, mmax);
+	const ret = helper.slice(mGConcat_, mmax * MG_SIZE);
+	helper.free(mGConcat_);
+	return ret;
 }
 
 const getMG = async (helper: LibEpirHelper, param: undefined | string | DecryptionContextCallback, mmax: number): Promise<ArrayBuffer> => {

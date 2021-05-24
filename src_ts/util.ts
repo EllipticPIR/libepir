@@ -37,6 +37,15 @@ export const hexToArrayBuffer = (hex: string): ArrayBuffer => {
 	return new Uint8Array(hex.match(/.{2}/g)!.map((h) => parseInt(h, 16))).buffer;
 };
 
+export const checkIsHex = (hex: string, expectedSize: number = -1): boolean => {
+	const pattern = /^[0-9a-fA-F]+$/;
+	if(expectedSize >= 0) {
+		return ((hex.length === 2 * expectedSize) && (hex.match(pattern) !== null));
+	} else {
+		return ((hex.length % 2 === 0) && (hex.match(pattern) !== null));
+	}
+};
+
 export const getRandomBytes = (len: number): ArrayBuffer => {
 	if(typeof window !== 'undefined' && typeof window.crypto !== 'undefined' && typeof window.crypto.getRandomValues !== 'undefined') {
 		const MAX_ENTROPY = 65536;

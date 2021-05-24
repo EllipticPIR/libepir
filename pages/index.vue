@@ -100,17 +100,9 @@
 import Vue from 'vue';
 import Dexie from 'dexie';
 
-import { time, arrayBufferToHex, hexToArrayBuffer, getRandomBytes } from '../src_ts/util';
+import { time, arrayBufferToHex, hexToArrayBuffer, getRandomBytes, checkIsHex } from '../src_ts/util';
 import { EpirBase, DecryptionContextBase, DEFAULT_MMAX, SCALAR_SIZE, POINT_SIZE } from '../src_ts/EpirBase';
 import { createEpir, createDecryptionContext } from '../src_ts/wasm';
-
-const checkIsHex = (hex: string, expectedSize: number = -1): boolean => {
-	if(expectedSize >= 0) {
-		return ((hex.length == 2 * expectedSize) && (hex.match(/^[0-9a-f]+$/) !== null));
-	} else {
-		return ((hex.length % 2 == 0) && (hex.match(/^[0-9a-f]+$/) !== null));
-	}
-};
 
 interface MGDatabaseElement {
 	key: number;

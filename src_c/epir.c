@@ -201,9 +201,13 @@ int mG_compare(const void *a, const void *b) {
 	return memcmp(x->point, y->point, EPIR_POINT_SIZE);
 }
 
+void epir_mG_sort(epir_mG_t *mG, const size_t mmax) {
+	qsort(mG, mmax, sizeof(epir_mG_t), mG_compare);
+}
+
 void epir_mG_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data) {
 	epir_mG_generate_no_sort(mG, mmax, cb, cb_data);
-	qsort(mG, mmax, sizeof(epir_mG_t), mG_compare);
+	epir_mG_sort(mG, mmax);
 }
 
 static inline uint32_t load_uint32_t(const unsigned char *n) {
