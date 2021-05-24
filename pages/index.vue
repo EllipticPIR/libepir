@@ -20,7 +20,9 @@
 				</template>
 			</b-progress-bar>
 		</b-progress>
-		<p>Computation time: {{ generateMGTime.toLocaleString() }} ms</p>
+		<p>Load time: {{ mGLoadTime.toLocaleString() }} ms</p>
+		<p>Compute time: {{ mGComputeTime.toLocaleString() }} ms</p>
+		<p>Sort time: {{ mGSortTime.toLocaleString() }} ms</p>
 		
 		<h2>Generate a key pair</h2>
 		
@@ -131,7 +133,9 @@ export type DataType = {
 	epir: EpirBase | null,
 	decCtx: DecryptionContextBase | null,
 	pointsComputed: number,
-	generateMGTime: number,
+	mGLoadTime: number,
+	mGComputeTime: number,
+	mGSortTime: number,
 	mmax: number;
 	privkeyStr: string,
 	pubkeyStr: string,
@@ -157,7 +161,9 @@ export default Vue.extend({
 			epir: null,
 			decCtx: null,
 			pointsComputed: 0,
-			generateMGTime: -1,
+			mGLoadTime: -1,
+			mGComputeTime: -1,
+			mGSortTime: -1,
 			mmax: DEFAULT_MMAX,
 			privkeyStr: '',
 			pubkeyStr: '(failed to decode privkey)',
@@ -231,21 +237,25 @@ export default Vue.extend({
 			if(mCount != DEFAULT_MMAX) return null;
 			const decCtx = await createDecryptionContext(mGDB.value);
 			this.pointsComputed = mCount;
-			this.generateMGTime = time() - beginMG;
+			this.mGLoadTime = time() - beginMG;
 			return decCtx;
 		},
 		async generateMG() {
 			const beginMG = time();
 			this.log('Generating mG..');
+			const beginCompute = time();
 			this.decCtx = await createDecryptionContext({ cb: (pointsComputed: number) => {
 				this.pointsComputed = pointsComputed;
 				const progress = 100 * pointsComputed / DEFAULT_MMAX;
 				this.log(`Generated ${pointsComputed.toLocaleString()} of ${DEFAULT_MMAX.toLocaleString()} points (${progress.toFixed(2)}%)..`);
-			//}, interval: 100 * 1000 }, DEFAULT_MMAX);
-			}, interval: 100 * 1000 }, 1 << 24);
+				if(pointsComputed === DEFAULT_MMAX) {
+					this.mGComputeTime = time() - beginCompute;
+				}
+			}, interval: 100 * 1000 }, DEFAULT_MMAX);
+			this.mGSortTime = time() - beginCompute - this.mGComputeTime;
 			const db = new MGDatabase();
 			await db.mG.put({ key: 0, value: this.decCtx.getMG() });
-			this.generateMGTime = time() - beginMG;
+			this.mGLoadTime = time() - beginMG;
 		},
 		generatePrivkey() {
 			this.privkeyStr = arrayBufferToHex(this.epir!.createPrivkey());
