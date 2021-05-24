@@ -159,68 +159,78 @@ const mGGeneratePrepare = (helper: LibEpirHelper, nThreads: number, mmax: number
 	return { ctx: ctx, mG: mG, mG_p3: mG_p3 };
 };
 
-const mGGenerate = async (helper: LibEpirHelper, mG_: number, cb: undefined | DecryptionContextCallback, mmax: number): Promise<void> => {
-	// XXX: not working for navigator.hardwareConcurrency.
-	const nThreads = navigator.hardwareConcurrency / 2;
+const mGGenerate = async (helper: LibEpirHelper, cb: undefined | DecryptionContextCallback, mmax: number): Promise<ArrayBuffer> => {
+	const nThreads = navigator.hardwareConcurrency;
 	const workers: EPIRWorker[] = [];
 	for(let i=0; i<nThreads; i++) {
 		workers.push(new EPIRWorker());
 	}
-	const mG: ArrayBuffer[] = [];
+	const mG: Uint8Array[] = [];
 	const beginCompute = time();
 	const prepare = mGGeneratePrepare(helper, nThreads, mmax, cb);
 	for(let t=0; t<nThreads; t++) {
-		mG.push(prepare.mG.slice(t * MG_SIZE, (t + 1) * MG_SIZE));
+		mG.push(new Uint8Array(prepare.mG, t * MG_SIZE, MG_SIZE));
 	}
-	let pointsComputed = nThreads;
+	const pointsComputed: number[] = [];
+	for(let t=0; t<nThreads; t++) {
+		pointsComputed[t] = 0;
+	}
+	let pcLastReported = cb ? Math.floor(nThreads / cb.interval) : 0;
 	const promises = workers.map(async (worker, workerId) => {
-		return new Promise<void>((resolve, reject) => {
+		return new Promise<ArrayBuffer>((resolve, reject) => {
 			worker.onmessage = (ev) => {
 				switch(ev.data.method) {
 					case 'mg_generate_cb':
-						pointsComputed++;
 						if(!cb) break;
-						if(pointsComputed % cb.interval != 0 && pointsComputed != mmax) break;
-						cb.cb(pointsComputed);
+						pointsComputed[workerId] = ev.data.pointsComputed;
+						const pcAll = pointsComputed.reduce((acc, v) => acc + v, 0) + nThreads;
+						for(; pcLastReported+cb.interval<=pcAll; pcLastReported+=cb.interval) {
+							cb.cb(pcLastReported+cb.interval);
+						}
 						break;
 					case 'mg_generate_compute':
 						//console.log(`mg_generate_compute (workerId = ${workerId}) DONE.`);
-						for(let i=0; i*MG_SIZE<ev.data.mG.byteLength; i++) {
-							mG.push(ev.data.mG.slice(i * MG_SIZE, (i + 1) * MG_SIZE));
-						}
-						resolve();
+						resolve(ev.data.mG);
 						break;
 				}
 			};
 			workers[workerId].postMessage({
 				method: 'mg_generate_compute', nThreads: nThreads, mmax: mmax,
 				ctx: prepare.ctx, mG_p3: prepare.mG_p3.slice(MG_P3_SIZE * workerId, MG_P3_SIZE * (workerId + 1)),
-				threadId: workerId,
+				threadId: workerId, cbInterval: cb ? Math.max(1, Math.floor(cb.interval / nThreads)) : Number.MAX_SAFE_INTEGER,
 			});
 		});
 	});
-	await Promise.all(promises);
+	(await Promise.all(promises)).map((mGResult) => {
+		for(let i=0; i*MG_SIZE<mGResult.byteLength; i++) {
+			mG.push(new Uint8Array(mGResult, i * MG_SIZE, MG_SIZE));
+		}
+	});
+	for(let t=0; t<nThreads; t++) {
+		delete promises[t];
+	}
 	//console.log(`Computation done in ${(time() - beginCompute).toLocaleString()}ms.`);
 	//console.log('Sorting...');
 	const beginSort = time();
 	mG.sort((a, b) => {
-		return arrayBufferCompare(a, 0, b, 0, POINT_SIZE);
+		for(let i=0; i<POINT_SIZE; i++) {
+			if(a[i] != b[i]) return a[i] - b[i];
+		}
+		return 0;
 	});
 	//console.log(`Sorting done in ${(time() - beginSort).toLocaleString()}ms.`);
-	for(let i=0; i<mmax; i++) {
-		helper.set(mG[i], 0, MG_SIZE, mG_ + i * MG_SIZE);
+	const ret = new Uint8Array(mG.length * MG_SIZE);
+	for(let i=0; i<mG.length; i++) {
+		ret.set(mG[i], i * MG_SIZE);
 	}
+	return ret.buffer;
 }
 
 const getMG = async (helper: LibEpirHelper, param: undefined | string | DecryptionContextCallback, mmax: number): Promise<ArrayBuffer> => {
 	if(typeof param == 'string') {
 		return new Uint8Array(await require('fs').promises.readFile(param)).buffer;
 	} else {
-		const mG_ = helper.malloc(MG_SIZE * mmax);
-		await mGGenerate(helper, mG_, param, mmax);
-		const mG = helper.slice(mG_, MG_SIZE * mmax);
-		helper.free(mG_);
-		return mG;
+		return mGGenerate(helper, param, mmax);
 	}
 }
 

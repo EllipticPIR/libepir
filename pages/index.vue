@@ -98,22 +98,9 @@
 import Vue from 'vue';
 import Dexie from 'dexie';
 
+import { time, arrayBufferToHex, hexToArrayBuffer, getRandomBytes } from '../src_ts/util';
 import { EpirBase, DecryptionContextBase, DEFAULT_MMAX, SCALAR_SIZE, POINT_SIZE } from '../src_ts/EpirBase';
-import { createEpir, createDecryptionContext, getRandomBytes } from '../src_ts/wasm';
-
-const time = () => new Date().getTime();
-
-const uint8ArrayToHex = (arr: Uint8Array): string => {
-	let ret = '';
-	for(const n of arr) {
-		ret += Number(n).toString(16).padStart(2, '0');
-	}
-	return ret;
-};
-
-const hexToUint8Array = (hex: string): Uint8Array => {
-	return new Uint8Array(hex.match(/.{2}/g)!.map((h) => parseInt(h, 16)));
-};
+import { createEpir, createDecryptionContext } from '../src_ts/wasm';
 
 const checkIsHex = (hex: string, expectedSize: number = -1): boolean => {
 	if(expectedSize >= 0) {
@@ -125,7 +112,7 @@ const checkIsHex = (hex: string, expectedSize: number = -1): boolean => {
 
 interface MGDatabaseElement {
 	key: number;
-	value: Uint8Array;
+	value: ArrayBuffer;
 }
 
 class MGDatabase extends Dexie {
@@ -182,7 +169,7 @@ export default Vue.extend({
 			dimension: '3',
 			packing: '3',
 			elemSize: 32,
-			elemStr: uint8ArrayToHex(getRandomBytes(32)),
+			elemStr: arrayBufferToHex(getRandomBytes(32)),
 			replyStr: '',
 			computeReplyMockTime: -1,
 			decryptedStr: '',
@@ -192,7 +179,7 @@ export default Vue.extend({
 	watch: {
 		privkeyStr(newPrivkeyStr) {
 			if(checkIsHex(newPrivkeyStr, SCALAR_SIZE)) {
-				this.pubkeyStr = uint8ArrayToHex(this.epir!.createPubkey(this.getPrivkey()));
+				this.pubkeyStr = arrayBufferToHex(this.epir!.createPubkey(this.getPrivkey()));
 			} else {
 				this.pubkeyStr = '(failed to decode privkey)';
 			}
@@ -222,25 +209,25 @@ export default Vue.extend({
 		},
 		getPrivkey() {
 			if(!checkIsHex(this.privkeyStr, SCALAR_SIZE)) throw new Error('Invalid private key.');
-			return hexToUint8Array(this.privkeyStr);
+			return hexToArrayBuffer(this.privkeyStr);
 		},
 		getPubkey() {
 			if(!checkIsHex(this.pubkeyStr, POINT_SIZE)) throw new Error('Invalid public key.');
-			return hexToUint8Array(this.pubkeyStr);
+			return hexToArrayBuffer(this.pubkeyStr);
 		},
 		getIndexCounts() {
 			return this.indexCountsStr.split(',').map((str) => parseInt(str));
 		},
 		getElem() {
 			if(!checkIsHex(this.elemStr)) throw new Error('Invalid database element.');
-			return hexToUint8Array(this.elemStr);
+			return hexToArrayBuffer(this.elemStr);
 		},
 		async loadMGIfExists() {
 			const beginMG = time();
 			const db = new MGDatabase();
 			const mGDB = await db.mG.get(0);
 			if(!mGDB) return null;
-			const mCount = mGDB.value.length / 36;
+			const mCount = mGDB.value.byteLength / 36;
 			if(mCount != DEFAULT_MMAX) return null;
 			const decCtx = await createDecryptionContext(mGDB.value);
 			this.pointsComputed = mCount;
@@ -250,24 +237,24 @@ export default Vue.extend({
 		async generateMG() {
 			const beginMG = time();
 			this.log('Generating mG..');
-			const decCtx = await createDecryptionContext({ cb: (pointsComputed: number) => {
+			this.decCtx = await createDecryptionContext({ cb: (pointsComputed: number) => {
 				this.pointsComputed = pointsComputed;
 				const progress = 100 * pointsComputed / DEFAULT_MMAX;
 				this.log(`Generated ${pointsComputed.toLocaleString()} of ${DEFAULT_MMAX.toLocaleString()} points (${progress.toFixed(2)}%)..`);
-			}, interval: 10 * 1000 }, DEFAULT_MMAX);
+			//}, interval: 100 * 1000 }, DEFAULT_MMAX);
+			}, interval: 100 * 1000 }, 1 << 24);
 			const db = new MGDatabase();
-			await db.mG.put({ key: 0, value: decCtx.getMG() });
+			await db.mG.put({ key: 0, value: this.decCtx.getMG() });
 			this.generateMGTime = time() - beginMG;
-			return decCtx;
 		},
 		generatePrivkey() {
-			this.privkeyStr = uint8ArrayToHex(this.epir!.createPrivkey());
+			this.privkeyStr = arrayBufferToHex(this.epir!.createPrivkey());
 		},
 		async createSelector() {
 			try {
 				const beginSelectorsCreate = time();
 				const selector = await this.epir!.createSelector(this.getPubkey(), this.getIndexCounts(), 1024);
-				this.selectorStr = uint8ArrayToHex(selector);
+				this.selectorStr = arrayBufferToHex(selector);
 				this.createSelectorTime = time() - beginSelectorsCreate;
 			} catch(e) {
 				alert(e);
@@ -278,7 +265,7 @@ export default Vue.extend({
 			try {
 				const beginSelectorsCreate = time();
 				const selector = await this.epir!.createSelectorFast(this.getPrivkey(), this.getIndexCounts(), 1024);
-				this.selectorStrFast = uint8ArrayToHex(selector);
+				this.selectorStrFast = arrayBufferToHex(selector);
 				this.createSelectorTimeFast = time() - beginSelectorsCreate;
 			} catch(e) {
 				alert(e);
@@ -286,13 +273,13 @@ export default Vue.extend({
 			}
 		},
 		generateElement() {
-			this.elemStr = uint8ArrayToHex(getRandomBytes(this.elemSize));
+			this.elemStr = arrayBufferToHex(getRandomBytes(this.elemSize));
 		},
 		async computeReplyMock() {
 			try {
 				const beginReplyMock = time();
 				const reply = this.epir!.computeReplyMock(this.getPubkey(), parseInt(this.dimension), parseInt(this.packing), this.getElem());
-				this.replyStr = uint8ArrayToHex(reply);
+				this.replyStr = arrayBufferToHex(reply);
 				this.computeReplyMockTime = time() - beginReplyMock;
 			} catch(e) {
 				alert(e);
@@ -307,12 +294,14 @@ export default Vue.extend({
 			try {
 				const beginDecrypt = time();
 				const decrypted = await this.decCtx.decryptReply(
-					this.getPrivkey(), parseInt(this.dimension), parseInt(this.packing), hexToUint8Array(this.replyStr));
-				this.decryptedStr = uint8ArrayToHex(decrypted);
+					this.getPrivkey(), parseInt(this.dimension), parseInt(this.packing), hexToArrayBuffer(this.replyStr));
+				this.decryptedStr = arrayBufferToHex(decrypted);
 				this.decryptReplyTime = time() - beginDecrypt;
-				const elem = hexToUint8Array(this.elemStr);
-				for(let i=0; i<elem.length; i++) {
-					if(decrypted[i] != elem[i]) {
+				const elem = hexToArrayBuffer(this.elemStr);
+				const decryptedView = new Uint8Array(decrypted);
+				const elemView = new Uint8Array(elem);
+				for(let i=0; i<elemView.length; i++) {
+					if(decryptedView[i] != elemView[i]) {
 						alert('Decrypted is not correct.');
 						return;
 					}

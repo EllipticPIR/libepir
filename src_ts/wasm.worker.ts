@@ -1,5 +1,6 @@
 
 import { LibEpir, LibEpirHelper } from './wasm.libepir';
+import { getRandomBytes } from './util';
 
 const worker: Worker = self as any;
 
@@ -8,25 +9,29 @@ interface KeyValue {
 }
 const funcs: KeyValue = {
 	// For mG.bin generation.
-	mg_generate_compute: async (helper: LibEpirHelper, params: { nThreads: number, mmax: number, ctx: ArrayBuffer, mG_p3: ArrayBuffer, threadId: number }) => {
+	mg_generate_compute: async (helper: LibEpirHelper, params: { nThreads: number, mmax: number, ctx: ArrayBuffer, mG_p3: ArrayBuffer, threadId: number, cbInterval: number }) => {
 		const MG_SIZE = 36;
 		const mG_count = Math.ceil(params.mmax / params.nThreads) - 1;
 		const ctx_ = helper.malloc(params.ctx);
 		const mG_ = helper.malloc(mG_count * MG_SIZE);
 		const mG_p3_ = helper.malloc(params.mG_p3);
+		let pointsComputed = 0;
 		const cb = helper.addFunction((data: any) => {
-			worker.postMessage({ method: 'mg_generate_cb' });
+			pointsComputed++;
+			if(pointsComputed % params.cbInterval == 0 || pointsComputed === mG_count) {
+				worker.postMessage({ method: 'mg_generate_cb', pointsComputed: pointsComputed });
+			}
 		}, 'vi');
 		helper.call('mG_generate_compute',
 			ctx_, mG_, mG_count, mG_p3_, params.nThreads + params.threadId, params.nThreads, cb, null);
 		helper.removeFunction(cb);
 		const mG = helper.slice(mG_, mG_count * MG_SIZE);
-		worker.postMessage({
-			method: 'mg_generate_compute', mG: mG,
-		}, [mG]);
 		helper.free(ctx_);
 		helper.free(mG_);
 		helper.free(mG_p3_);
+		worker.postMessage({
+			method: 'mg_generate_compute', mG: mG,
+		}, [mG]);
 	},
 	// For selector creation.
 	selector_create: async (helper: LibEpirHelper, params: { choice: ArrayBuffer, key: ArrayBuffer, random: ArrayBuffer, isFast: boolean }) => {

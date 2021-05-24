@@ -24,6 +24,19 @@ export const arrayBufferCompare = (
 	return 0;
 }
 
+export const arrayBufferToHex = (buf: ArrayBuffer): string => {
+	const arr = new Uint8Array(buf);
+	let ret = '';
+	for(const n of arr) {
+		ret += Number(n).toString(16).padStart(2, '0');
+	}
+	return ret;
+};
+
+export const hexToArrayBuffer = (hex: string): ArrayBuffer => {
+	return new Uint8Array(hex.match(/.{2}/g)!.map((h) => parseInt(h, 16))).buffer;
+};
+
 export const getRandomBytes = (len: number): ArrayBuffer => {
 	if(typeof window !== 'undefined' && typeof window.crypto !== 'undefined' && typeof window.crypto.getRandomValues !== 'undefined') {
 		const MAX_ENTROPY = 65536;
