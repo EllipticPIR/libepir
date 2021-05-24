@@ -17,8 +17,7 @@
     "em:mkdir": "mkdir -p build_em",
     "em:cmake": "cd build_em && EM_NODE_JS=$(which node) emcmake cmake -DCMAKE_INSTALL_PREFIX=../dist ..",
     "em:make": "cd build_em && EM_NODE_JS=$(which node) emmake make -j$(node -e 'console.log(require(\"os\").cpus().length)') all install",
-    "browser:build": "webpack",
-    "serve": "webpack-cli serve --mode development",
+    "serve": "nuxt dev",
     "epir_genm": "./build_c/epir-prefix/src/epir-build/epir_genm",
     "test": "npm run epir_genm && jest --coverage --verbose"
   },
