@@ -12,78 +12,13 @@ import {
 	POINT_SIZE,
 	CIPHER_SIZE
 } from './EpirBase';
+import { time, arrayBufferConcat, arrayBufferCompare, getRandomScalar, getRandomScalarsConcat } from './util';
 import EPIRWorker from './wasm.worker.ts';
-
-export const time = () => new Date().getTime();
 
 export const MG_SIZE = 36;
 export const MG_P3_SIZE = 4 * 40;
 
 import { LibEpir, LibEpirHelper } from './wasm.libepir';
-
-export const arrayBufferConcat = (arr: ArrayBuffer[]) => {
-	const len = arr.reduce((acc, v) => acc + v.byteLength, 0);
-	const ret = new Uint8Array(len);
-	for(let i=0, offset=0; i<arr.length; i++) {
-		ret.set(new Uint8Array(arr[i]), offset);
-		offset += arr[i].byteLength;
-	}
-	return ret.buffer;
-}
-
-export const arrayBufferCompare = (
-	a: ArrayBuffer, aOffset: number, b: ArrayBuffer, bOffset: number, len: number): number => {
-	const aa = new Uint8Array(a, aOffset, len);
-	const bb = new Uint8Array(b, bOffset, len);
-	for(let i=0; i<len; i++) {
-		if(aa[i] == bb[i]) continue;
-		return aa[i] - bb[i];
-	}
-	return 0;
-}
-
-export const getRandomBytes = (len: number): ArrayBuffer => {
-	if(typeof window !== 'undefined' && typeof window.crypto !== 'undefined' && typeof window.crypto.getRandomValues !== 'undefined') {
-		const MAX_ENTROPY = 65536;
-		const ret = new Uint8Array(len);
-		for(let offset=0; offset<len; offset+=MAX_ENTROPY) {
-			window.crypto.getRandomValues(ret.subarray(offset, Math.min(len, offset + MAX_ENTROPY)));
-		}
-		return ret.buffer;
-	} else {
-		const crypto = require('crypto');
-		return new Uint8Array(crypto.randomBytes(len)).buffer;
-	}
-};
-
-export const isCanonical = (buf: ArrayBuffer): boolean => {
-	const bufView = new Uint8Array(buf);
-	let c = (bufView[31] & 0x7f) ^ 0x7f;
-	for(let i=30; i>0; i--) {
-		c |= bufView[i] ^ 0xff;
-	}
-	const d = (0xed - 1 - bufView[0]) >> 8;
-	return !((c == 0) && d)
-};
-
-export const isZero = (buf: ArrayBuffer): boolean => {
-	return new Uint8Array(buf).reduce<boolean>((acc, v) => acc && (v == 0), true);
-};
-
-export const getRandomScalar = (): ArrayBuffer => {
-	for(;;) {
-		const scalar = getRandomBytes(SCALAR_SIZE);
-		new Uint8Array(scalar)[31] &= 0x1f;
-		if(!isCanonical(scalar) || isZero(scalar)) continue;
-		return scalar;
-	}
-};
-
-export const getRandomScalars = (cnt: number): ArrayBuffer => {
-	const ret: ArrayBuffer[] = [];
-	for(let i=0; i<cnt; i++) ret.push(getRandomScalar());
-	return arrayBufferConcat(ret);
-}
 
 export class DecryptionContext implements DecryptionContextBase {
 	
@@ -375,7 +310,7 @@ export class Epir implements EpirBase {
 		return new Promise(async (resolve, reject) => {
 			const nThreads = this.workers.length;
 			const promises: Promise<ArrayBuffer>[] = [];
-			const random = new Uint8Array(r ? r : getRandomScalars(this.ciphersCount(index_counts)));
+			const random = new Uint8Array(r ? r : getRandomScalarsConcat(this.ciphersCount(index_counts)));
 			const choice = this.create_choice(index_counts, idx);
 			for(let t=0; t<nThreads; t++) {
 				promises.push(new Promise((resolve, reject) => {
@@ -423,7 +358,7 @@ export class Epir implements EpirBase {
 		const rrc = this.computeReplyRCount(dimension, packing, elem.byteLength);
 		const rs = this.computeReplySize(dimension, packing, elem.byteLength);
 		const reply_ = this.helper.malloc(rs);
-		this.helper.call('reply_mock', reply_, pubkey, dimension, packing, elem, elem.byteLength, r ? r : getRandomScalars(rrc));
+		this.helper.call('reply_mock', reply_, pubkey, dimension, packing, elem, elem.byteLength, r ? r : getRandomScalarsConcat(rrc));
 		const reply = this.helper.slice(reply_, rs);
 		this.helper.free(reply_);
 		return reply;

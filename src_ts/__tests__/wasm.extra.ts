@@ -1,7 +1,8 @@
 
 import crypto from 'crypto';
 
-import { createEpir, isCanonical } from '../wasm'
+import { isCanonical } from '../util';
+import { createEpir } from '../wasm';
 
 let getRandomValues = (buf: Uint8Array) => {};
 
