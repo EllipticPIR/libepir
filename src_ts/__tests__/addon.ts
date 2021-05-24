@@ -34,9 +34,9 @@ export const xorshift = () => {
 	return w;
 };
 
-export const sha256sum = (buf: Uint8Array): Uint8Array => {
+export const sha256sum = (buf: ArrayBuffer): ArrayBuffer => {
 	const hash = crypto.createHash('sha256');
-	hash.update(buf);
+	hash.update(new Uint8Array(buf));
 	return new Uint8Array(Buffer.from(hash.digest('hex'), 'hex'));
 };
 
@@ -49,7 +49,7 @@ export const generateRandomScalars = (cnt: number) => {
 		}
 		r[(i + 1) * SCALAR_SIZE - 1] &= 0x1f;
 	}
-	return r;
+	return r.buffer;
 };
 
 export const privkey = new Uint8Array([
@@ -118,25 +118,25 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 	describe('ECElGamal', () => {
 		test('create private key', () => {
 			const privkey = epir.createPrivkey();
-			expect(privkey).toHaveLength(SCALAR_SIZE);
+			expect(privkey.byteLength).toBe(SCALAR_SIZE);
 		});
 		
 		test('create public key', () => {
-			const pubkeyTest = epir.createPubkey(privkey);
+			const pubkeyTest = epir.createPubkey(privkey.buffer);
 			expect(new Uint8Array(pubkeyTest)).toEqual(pubkey);
 		});
 		
 		test('encrypt (normal)', () => {
-			const cipherTest = epir.encrypt(pubkey, msg, r);
+			const cipherTest = epir.encrypt(pubkey.buffer, msg, r.buffer);
 			expect(new Uint8Array(cipherTest)).toEqual(cipher);
 		});
 		
 		test('encrypt (fast)', () => {
-			const cipherTest = epir.encryptFast(privkey, msg, r);
+			const cipherTest = epir.encryptFast(privkey.buffer, msg, r.buffer);
 			expect(new Uint8Array(cipherTest)).toEqual(cipher);
 		});
 		
-		test('create DecryptionContext from Uint8Array', async () => {
+		test('create DecryptionContext from ArrayBuffer', async () => {
 			const decCtx2 = await createDecryptionContext(decCtx.getMG());
 			const mG = decCtx2.getMG();
 			expect(sha256sum(mG)).toEqual(mGHash);
@@ -146,21 +146,21 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 		//});
 		
 		test('decrypt (success)', () => {
-			expect(decCtx.decryptCipher(privkey, cipher)).toBe(msg);
+			expect(decCtx.decryptCipher(privkey.buffer, cipher.buffer)).toBe(msg);
 		});
 		
 		test('decrypt (fail)', () => {
-			expect(() => decCtx.decryptCipher(pubkey, cipher)).toThrow(/^Failed to decrypt\.$/);
+			expect(() => decCtx.decryptCipher(pubkey.buffer, cipher.buffer)).toThrow(/^Failed to decrypt\.$/);
 		});
 		
 		test('random encrypt (normal)', () => {
-			const cipherTest = epir.encrypt(pubkey, msg);
-			expect(decCtx.decryptCipher(privkey, cipherTest)).toBe(msg);
+			const cipherTest = epir.encrypt(pubkey.buffer, msg);
+			expect(decCtx.decryptCipher(privkey.buffer, cipherTest)).toBe(msg);
 		});
 		
 		test('random encrypt (fast)', () => {
-			const cipherTest = epir.encryptFast(privkey, msg);
-			expect(decCtx.decryptCipher(privkey, cipherTest)).toBe(msg);
+			const cipherTest = epir.encryptFast(privkey.buffer, msg);
+			expect(decCtx.decryptCipher(privkey.buffer, cipherTest)).toBe(msg);
 		});
 	});
 	
@@ -177,23 +177,23 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 		//});
 		
 		test('create selector (deterministic, normal)', async () => {
-			const selector = await epir.createSelector(pubkey, index_counts, idx, generateRandomScalars(ciphers_count));
+			const selector = await epir.createSelector(pubkey.buffer, index_counts, idx, generateRandomScalars(ciphers_count));
 			expect(sha256sum(selector)).toEqual(selectorHash);
 		});
 		
 		test('create selector (deterministic, fast)', async () => {
-			const selector = await epir.createSelectorFast(privkey, index_counts, idx, generateRandomScalars(ciphers_count));
+			const selector = await epir.createSelectorFast(privkey.buffer, index_counts, idx, generateRandomScalars(ciphers_count));
 			expect(sha256sum(selector)).toEqual(selectorHash);
 		});
 		
 		test('create selector (random, normal)', async () => {
-			const selector = await epir.createSelector(pubkey, index_counts, idx);
-			expect(selector).toHaveLength(ciphers_count * CIPHER_SIZE);
+			const selector = await epir.createSelector(pubkey.buffer, index_counts, idx);
+			expect(selector.byteLength).toBe(ciphers_count * CIPHER_SIZE);
 		});
 		
 		test('create selector (random, fast)', async () => {
-			const selector = await epir.createSelectorFast(privkey, index_counts, idx);
-			expect(selector).toHaveLength(ciphers_count * CIPHER_SIZE);
+			const selector = await epir.createSelectorFast(privkey.buffer, index_counts, idx);
+			expect(selector.byteLength).toBe(ciphers_count * CIPHER_SIZE);
 		});
 	});
 	

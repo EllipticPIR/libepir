@@ -30,16 +30,16 @@ export class LibEpirHelper {
 		this.store(offset, n, 8);
 	}
 	
-	set(buf: Uint8Array, offset: number) {
-		this.libepir.HEAPU8.set(buf, offset);
+	set(buf: ArrayBuffer, offset: number, len: number, buf_: number) {
+		this.libepir.HEAPU8.set(new Uint8Array(buf, offset, len), buf_);
 	}
 	
-	malloc(param: Uint8Array | number): number {
+	malloc(param: ArrayBuffer | number): number {
 		if(typeof param == 'number') {
 			return this.libepir._malloc(param);
 		} else {
-			const buf_ = this.libepir._malloc(param.length);
-			this.libepir.HEAPU8.set(param, buf_);
+			const buf_ = this.libepir._malloc(param.byteLength);
+			this.set(param, 0, param.byteLength, buf_);
 			return buf_;
 		}
 	}
@@ -49,15 +49,15 @@ export class LibEpirHelper {
 	addFunction = this.libepir.addFunction;
 	removeFunction = this.libepir.removeFunction;
 	
-	call(func: string, ...params: any[]) {
+	call(func: string, ...params: (ArrayBuffer | number | null)[]) {
 		const bufs: number[] = [];
 		params = params.map((param) => {
-			if(param instanceof Uint8Array) {
+			if(typeof param === 'number' || param === null) {
+				return param;
+			} else {
 				const buf_ = this.malloc(param);
 				bufs.push(buf_);
 				return buf_;
-			} else {
-				return param;
 			}
 		});
 		const ret = this.libepir[`_epir_${func}`].apply(null, params);
@@ -66,10 +66,10 @@ export class LibEpirHelper {
 	}
 	
 	slice(begin: number, len: number) {
-		return this.libepir.HEAPU8.slice(begin, begin + len);
+		return this.libepir.HEAPU8.slice(begin, begin + len).buffer;
 	}
 	
-	subarray(begin: number, len: number) {
+	subarray(begin: number, len: number): Uint8Array {
 		return this.libepir.HEAPU8.subarray(begin, begin + len);
 	}
 	

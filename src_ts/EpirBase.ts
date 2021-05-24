@@ -8,31 +8,31 @@ export const DEFAULT_MMAX = 1 << DEFAULT_MMAX_MOD;
 
 export type DecryptionContextCallbackFunction = ((points_computed: number) => void);
 export type DecryptionContextCallback = { cb: DecryptionContextCallbackFunction, interval: number };
-export type DecryptionContextParameter = string | Uint8Array | DecryptionContextCallback;
+export type DecryptionContextParameter = string | ArrayBuffer | DecryptionContextCallback;
 
 export type DecryptionContextCreateFunction =
 	(param?: DecryptionContextParameter, mmax?: number) => Promise<DecryptionContextBase>;
 
 export interface DecryptionContextBase {
-	getMG(): Uint8Array;
-	decryptCipher(privkey: Uint8Array, cipher: Uint8Array): number;
-	decryptReply(privkey: Uint8Array, dimension: number, packing: number, reply: Uint8Array): Promise<Uint8Array>;
+	getMG(): ArrayBuffer;
+	decryptCipher(privkey: ArrayBuffer, cipher: ArrayBuffer): number;
+	decryptReply(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer>;
 }
 
 export type EpirCreateFunction = () => Promise<EpirBase>;
 
 export interface EpirBase {
-	createPrivkey(): Uint8Array;
-	createPubkey(privkey: Uint8Array): Uint8Array;
-	encrypt(pubkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array;
-	encryptFast(privkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array;
+	createPrivkey(): ArrayBuffer;
+	createPubkey(privkey: ArrayBuffer): ArrayBuffer;
+	encrypt(pubkey: ArrayBuffer, msg: number, r?: ArrayBuffer): ArrayBuffer;
+	encryptFast(privkey: ArrayBuffer, msg: number, r?: ArrayBuffer): ArrayBuffer;
 	ciphersCount(index_counts: number[]): number;
 	elementsCount(index_counts: number[]): number;
-	createSelector(pubkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array>;
-	createSelectorFast(privkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array>;
+	createSelector(pubkey: ArrayBuffer, index_counts: number[], idx: number, r?: ArrayBuffer): Promise<ArrayBuffer>;
+	createSelectorFast(privkey: ArrayBuffer, index_counts: number[], idx: number, r?: ArrayBuffer): Promise<ArrayBuffer>;
 	// For testing.
 	computeReplySize(dimension: number, packing: number, elem_size: number): number;
 	computeReplyRCount(dimension: number, packing: number, elem_size: number): number;
-	computeReplyMock(pubkey: Uint8Array, dimension: number, packing: number, elem: Uint8Array, r?: Uint8Array): Uint8Array;
+	computeReplyMock(pubkey: ArrayBuffer, dimension: number, packing: number, elem: ArrayBuffer, r?: ArrayBuffer): ArrayBuffer;
 }
 

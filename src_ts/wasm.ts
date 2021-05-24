@@ -21,115 +21,120 @@ export const MG_P3_SIZE = 4 * 40;
 
 import { LibEpir, LibEpirHelper } from './wasm.libepir';
 
-export const uint8ArrayConcat = (arr: Uint8Array[]) => {
-	const len = arr.reduce((acc, v) => acc + v.length, 0);
+export const arrayBufferConcat = (arr: ArrayBuffer[]) => {
+	const len = arr.reduce((acc, v) => acc + v.byteLength, 0);
 	const ret = new Uint8Array(len);
 	for(let i=0, offset=0; i<arr.length; i++) {
-		ret.set(arr[i], offset);
-		offset += arr[i].length;
+		ret.set(new Uint8Array(arr[i]), offset);
+		offset += arr[i].byteLength;
 	}
-	return ret;
+	return ret.buffer;
 }
 
-export const uint8ArrayCompare = (a: Uint8Array, b: Uint8Array, len: number = Math.min(a.length, b.length)): number => {
+export const arrayBufferCompare = (
+	a: ArrayBuffer, aOffset: number, b: ArrayBuffer, bOffset: number, len: number): number => {
+	const aa = new Uint8Array(a, aOffset, len);
+	const bb = new Uint8Array(b, bOffset, len);
 	for(let i=0; i<len; i++) {
-		if(a[i] == b[i]) continue;
-		return a[i] - b[i];
+		if(aa[i] == bb[i]) continue;
+		return aa[i] - bb[i];
 	}
 	return 0;
 }
 
-export const getRandomBytes = (len: number): Uint8Array => {
+export const getRandomBytes = (len: number): ArrayBuffer => {
 	if(typeof window !== 'undefined' && typeof window.crypto !== 'undefined' && typeof window.crypto.getRandomValues !== 'undefined') {
 		const MAX_ENTROPY = 65536;
 		const ret = new Uint8Array(len);
 		for(let offset=0; offset<len; offset+=MAX_ENTROPY) {
 			window.crypto.getRandomValues(ret.subarray(offset, Math.min(len, offset + MAX_ENTROPY)));
 		}
-		return ret;
+		return ret.buffer;
 	} else {
 		const crypto = require('crypto');
-		return new Uint8Array(crypto.randomBytes(len));
+		return new Uint8Array(crypto.randomBytes(len)).buffer;
 	}
 };
 
-export const isCanonical = (buf: Uint8Array): boolean => {
-	let c = (buf[31] & 0x7f) ^ 0x7f;
+export const isCanonical = (buf: ArrayBuffer): boolean => {
+	const bufView = new Uint8Array(buf);
+	let c = (bufView[31] & 0x7f) ^ 0x7f;
 	for(let i=30; i>0; i--) {
-		c |= buf[i] ^ 0xff;
+		c |= bufView[i] ^ 0xff;
 	}
-	const d = (0xed - 1 - buf[0]) >> 8;
+	const d = (0xed - 1 - bufView[0]) >> 8;
 	return !((c == 0) && d)
 };
 
-export const isZero = (buf: Uint8Array): boolean => {
-	return buf.reduce<boolean>((acc, v) => acc && (v == 0), true);
+export const isZero = (buf: ArrayBuffer): boolean => {
+	return new Uint8Array(buf).reduce<boolean>((acc, v) => acc && (v == 0), true);
 };
 
-export const getRandomScalar = () => {
+export const getRandomScalar = (): ArrayBuffer => {
 	for(;;) {
 		const scalar = getRandomBytes(SCALAR_SIZE);
-		scalar[31] &= 0x1f;
+		new Uint8Array(scalar)[31] &= 0x1f;
 		if(!isCanonical(scalar) || isZero(scalar)) continue;
 		return scalar;
 	}
 };
 
-export const getRandomScalars = (cnt: number) => {
-	const ret: Uint8Array[] = [];
+export const getRandomScalars = (cnt: number): ArrayBuffer => {
+	const ret: ArrayBuffer[] = [];
 	for(let i=0; i<cnt; i++) ret.push(getRandomScalar());
-	return ret;
+	return arrayBufferConcat(ret);
 }
 
 export class DecryptionContext implements DecryptionContextBase {
 	
 	workers: EPIRWorker[] = [];
 	
-	constructor(public helper: LibEpirHelper, public mG: Uint8Array, nThreads: number = navigator.hardwareConcurrency) {
+	constructor(public helper: LibEpirHelper, public mG: ArrayBuffer, nThreads: number = navigator.hardwareConcurrency) {
 		for(let t=0; t<nThreads; t++) this.workers.push(new EPIRWorker());
 	}
 	
-	getMG(): Uint8Array {
+	getMG(): ArrayBuffer {
 		return this.mG;
 	}
 	
-	decryptCipher(privkey: Uint8Array, cipher: Uint8Array): number {
+	decryptCipher(privkey: ArrayBuffer, cipher: ArrayBuffer): number {
 		const cipher_ = this.helper.malloc(cipher);
 		this.helper.call('ecelgamal_decrypt_to_mG', privkey, cipher_);
-		const mG = this.helper.subarray(cipher_, POINT_SIZE);
+		const mG = this.helper.slice(cipher_, POINT_SIZE);
 		const decrypted = this.interpolationSearch(mG);
 		this.helper.free(cipher_);
 		if(decrypted < 0) throw new Error('Failed to decrypt.');
 		return decrypted;
 	}
 	
-	async decryptReply(privkey: Uint8Array, dimension: number, packing: number, reply: Uint8Array): Promise<Uint8Array> {
+	async decryptReply(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer> {
 		let midstate = reply;
 		for(let phase=0; phase<dimension; phase++) {
 			const decrypted = await this.decryptMany(midstate, privkey, packing);
 			if(phase == dimension - 1) {
 				midstate = decrypted;
 			} else {
-				midstate = decrypted.subarray(0, decrypted.length - (decrypted.length % CIPHER_SIZE));
+				midstate = decrypted.slice(0, decrypted.byteLength - (decrypted.byteLength % CIPHER_SIZE));
 			}
 		}
 		return midstate;
 	}
 	
-	static load_uint32_t(buf: Uint8Array, le: boolean = false): number {
+	static load_uint32_t(buf: ArrayBuffer, offset: number = 0, le: boolean = false): number {
+		const bufView = new Uint8Array(buf, offset, 4);
 		if(le) {
-			return (buf[3] * (1 << 24)) + (buf[2] << 16) + (buf[1] << 8) + buf[0];
+			return (bufView[3] * (1 << 24)) + (bufView[2] << 16) + (bufView[1] << 8) + bufView[0];
 		} else {
-			return (buf[0] * (1 << 24)) + (buf[1] << 16) + (buf[2] << 8) + buf[3];
+			return (bufView[0] * (1 << 24)) + (bufView[1] << 16) + (bufView[2] << 8) + bufView[3];
 		}
 	}
 	
 	load_uint32_t_from_mG(idx: number): number {
-		return DecryptionContext.load_uint32_t(this.mG.subarray(MG_SIZE * idx, MG_SIZE * idx + 4));
+		return DecryptionContext.load_uint32_t(this.mG, MG_SIZE * idx);
 	}
 	
-	interpolationSearch(mG: Uint8Array): number {
-		const mmax = this.mG.length / MG_SIZE;
+	interpolationSearch(mG: ArrayBuffer): number {
+		const mmax = this.mG.byteLength / MG_SIZE;
 		let imin = 0;
 		let imax = mmax - 1;
 		let left = this.load_uint32_t_from_mG(0);
@@ -137,7 +142,7 @@ export class DecryptionContext implements DecryptionContextBase {
 		const my = DecryptionContext.load_uint32_t(mG);
 		for(; imin<=imax; ) {
 			const imid = imin + Math.floor((imax - imin) * (my - left) / (right - left));
-			const cmp = uint8ArrayCompare(this.mG.subarray(MG_SIZE * imid, MG_SIZE * imid + POINT_SIZE), mG);
+			const cmp = arrayBufferCompare(this.mG, MG_SIZE * imid, mG, 0, POINT_SIZE);
 			if(cmp < 0) {
 				imin = imid + 1;
 				left = this.load_uint32_t_from_mG(imid);
@@ -145,16 +150,16 @@ export class DecryptionContext implements DecryptionContextBase {
 				imax = imid - 1;
 				right = this.load_uint32_t_from_mG(imid);
 			} else {
-				return DecryptionContext.load_uint32_t(this.mG.subarray(MG_SIZE * imid + POINT_SIZE, MG_SIZE * imid + MG_SIZE), true);
+				return DecryptionContext.load_uint32_t(this.mG, MG_SIZE * imid + POINT_SIZE, true);
 			}
 		}
 		return -1;
 	}
 	
-	async decryptMany(ciphers: Uint8Array, privkey: Uint8Array, packing: number): Promise<Uint8Array> {
+	async decryptMany(ciphers: ArrayBuffer, privkey: ArrayBuffer, packing: number): Promise<ArrayBuffer> {
 		const nThreads = this.workers.length;
-		const ciphersCount = ciphers.length / CIPHER_SIZE;
-		const mGs = await Promise.all(this.workers.map((worker, i): Promise<Uint8Array> => {
+		const ciphersCount = ciphers.byteLength / CIPHER_SIZE;
+		const mGs = await Promise.all(this.workers.map((worker, i): Promise<ArrayBuffer> => {
 			return new Promise((resolve, reject) => {
 				worker.onmessage = (ev) => {
 					switch(ev.data.method) {
@@ -166,16 +171,17 @@ export class DecryptionContext implements DecryptionContextBase {
 				const ciphersPerThread = Math.ceil(ciphersCount / nThreads);
 				const begin = i * ciphersPerThread;
 				const end = Math.min(ciphersCount + 1, (i + 1) * ciphersPerThread);
-				const ciphersMy = ciphers.subarray(begin * CIPHER_SIZE, end * CIPHER_SIZE);
+				const ciphersMy = ciphers.slice(begin * CIPHER_SIZE, end * CIPHER_SIZE);
 				worker.postMessage({
 					method: 'decrypt_mG_many', ciphers: ciphersMy, privkey: privkey,
-				});
+				}, [ciphersMy]);
 			});
 		}));
 		const ms: number[] = [];
 		for(const mG of mGs) {
-			for(let i=0; POINT_SIZE*i<mG.length; i++) {
-				ms.push(this.interpolationSearch(mG.subarray(i * POINT_SIZE, (i + 1) * POINT_SIZE)));
+			const mGView = new Uint8Array(mG);
+			for(let i=0; POINT_SIZE*i<mGView.length; i++) {
+				ms.push(this.interpolationSearch(mGView.slice(i * POINT_SIZE, (i + 1) * POINT_SIZE).buffer));
 			}
 		}
 		const decrypted = new Uint8Array(packing * ciphersCount);
@@ -186,7 +192,7 @@ export class DecryptionContext implements DecryptionContextBase {
 				decrypted[i * packing + p] = (m >> (8 * p)) & 0xff;
 			}
 		}
-		return decrypted;
+		return decrypted.buffer;
 	}
 	
 }
@@ -225,11 +231,11 @@ const mGGenerate = async (helper: LibEpirHelper, mG_: number, cb: undefined | De
 	for(let i=0; i<nThreads; i++) {
 		workers.push(new EPIRWorker());
 	}
-	const mG: Uint8Array[] = [];
+	const mG: ArrayBuffer[] = [];
 	const beginCompute = time();
 	const prepare = mGGeneratePrepare(helper, nThreads, mmax, cb);
 	for(let t=0; t<nThreads; t++) {
-		mG.push(prepare.mG.subarray(t * MG_SIZE, (t + 1) * MG_SIZE));
+		mG.push(prepare.mG.slice(t * MG_SIZE, (t + 1) * MG_SIZE));
 	}
 	let pointsComputed = nThreads;
 	const promises = workers.map(async (worker, workerId) => {
@@ -244,8 +250,8 @@ const mGGenerate = async (helper: LibEpirHelper, mG_: number, cb: undefined | De
 						break;
 					case 'mg_generate_compute':
 						//console.log(`mg_generate_compute (workerId = ${workerId}) DONE.`);
-						for(let i=0; i*MG_SIZE<ev.data.mG.length; i++) {
-							mG.push(ev.data.mG.subarray(i * MG_SIZE, (i + 1) * MG_SIZE));
+						for(let i=0; i*MG_SIZE<ev.data.mG.byteLength; i++) {
+							mG.push(ev.data.mG.slice(i * MG_SIZE, (i + 1) * MG_SIZE));
 						}
 						resolve();
 						break;
@@ -263,17 +269,17 @@ const mGGenerate = async (helper: LibEpirHelper, mG_: number, cb: undefined | De
 	//console.log('Sorting...');
 	const beginSort = time();
 	mG.sort((a, b) => {
-		return uint8ArrayCompare(a, b, POINT_SIZE);
+		return arrayBufferCompare(a, 0, b, 0, POINT_SIZE);
 	});
 	//console.log(`Sorting done in ${(time() - beginSort).toLocaleString()}ms.`);
 	for(let i=0; i<mmax; i++) {
-		helper.set(mG[i], mG_ + i * MG_SIZE);
+		helper.set(mG[i], 0, MG_SIZE, mG_ + i * MG_SIZE);
 	}
 }
 
-const getMG = async (helper: LibEpirHelper, param: undefined | string | DecryptionContextCallback, mmax: number): Promise<Uint8Array> => {
+const getMG = async (helper: LibEpirHelper, param: undefined | string | DecryptionContextCallback, mmax: number): Promise<ArrayBuffer> => {
 	if(typeof param == 'string') {
-		return new Uint8Array(await require('fs').promises.readFile(param));
+		return new Uint8Array(await require('fs').promises.readFile(param)).buffer;
 	} else {
 		const mG_ = helper.malloc(MG_SIZE * mmax);
 		await mGGenerate(helper, mG_, param, mmax);
@@ -288,7 +294,7 @@ export const createDecryptionContext: DecryptionContextCreateFunction = async (
 	const { libEpirModule } = await import('./wasm.libepir');
 	const wasm = await libEpirModule();
 	const helper = new LibEpirHelper(wasm);
-	const mG = (param instanceof Uint8Array ? param : await getMG(helper, param, mmax));
+	const mG = (param instanceof ArrayBuffer ? param : await getMG(helper, param, mmax));
 	return new DecryptionContext(helper, mG);
 };
 
@@ -301,11 +307,11 @@ export class Epir implements EpirBase {
 		for(let t=0; t<nThreads; t++) this.workers.push(new EPIRWorker());
 	}
 	
-	createPrivkey(): Uint8Array {
+	createPrivkey(): ArrayBuffer {
 		return getRandomScalar();
 	}
 	
-	createPubkey(privkey: Uint8Array): Uint8Array {
+	createPubkey(privkey: ArrayBuffer): ArrayBuffer {
 		const pubkey_ = this.helper.malloc(POINT_SIZE);
 		this.helper.call('pubkey_from_privkey', pubkey_, privkey);
 		const pubkey = this.helper.slice(pubkey_, POINT_SIZE);
@@ -314,8 +320,8 @@ export class Epir implements EpirBase {
 	}
 	
 	encrypt_(
-		key: Uint8Array, msg: number, r: Uint8Array | undefined,
-		encrypt: string): Uint8Array {
+		key: ArrayBuffer, msg: number, r: ArrayBuffer | undefined,
+		encrypt: string): ArrayBuffer {
 		const cipher_ = this.helper.malloc(CIPHER_SIZE);
 		this.helper.call(encrypt, cipher_, key, msg&0xffffffff, Math.floor(msg/0x100000000), r ? r : getRandomScalar());
 		const cipher = this.helper.slice(cipher_, CIPHER_SIZE);
@@ -323,11 +329,11 @@ export class Epir implements EpirBase {
 		return cipher;
 	}
 	
-	encrypt(pubkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array {
+	encrypt(pubkey: ArrayBuffer, msg: number, r?: ArrayBuffer): ArrayBuffer {
 		return this.encrypt_(pubkey, msg, r, 'ecelgamal_encrypt');
 	}
 	
-	encryptFast(privkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array {
+	encryptFast(privkey: ArrayBuffer, msg: number, r?: ArrayBuffer): ArrayBuffer {
 		return this.encrypt_(privkey, msg, r, 'ecelgamal_encrypt_fast');
 	}
 	
@@ -349,7 +355,7 @@ export class Epir implements EpirBase {
 		return this.ciphers_or_elements_count(index_counts, 'selector_elements_count');
 	}
 	
-	create_choice(index_counts: number[], idx: number): Uint8Array {
+	create_choice(index_counts: number[], idx: number): ArrayBuffer {
 		const ic_ = this.helper.malloc(8 * index_counts.length);
 		for(let i=0; i<index_counts.length; i++) {
 			this.helper.store64(ic_ + 8 * i, index_counts[i]);
@@ -365,11 +371,11 @@ export class Epir implements EpirBase {
 	}
 	
 	async selector_create_(
-		key: Uint8Array, index_counts: number[], idx: number, r: Uint8Array | undefined, isFast: boolean): Promise<Uint8Array> {
+		key: ArrayBuffer, index_counts: number[], idx: number, r: ArrayBuffer | undefined, isFast: boolean): Promise<ArrayBuffer> {
 		return new Promise(async (resolve, reject) => {
 			const nThreads = this.workers.length;
-			const promises: Promise<Uint8Array>[] = [];
-			const random = r ? r : uint8ArrayConcat(getRandomScalars(this.ciphersCount(index_counts)));
+			const promises: Promise<ArrayBuffer>[] = [];
+			const random = new Uint8Array(r ? r : getRandomScalars(this.ciphersCount(index_counts)));
 			const choice = this.create_choice(index_counts, idx);
 			for(let t=0; t<nThreads; t++) {
 				promises.push(new Promise((resolve, reject) => {
@@ -381,25 +387,26 @@ export class Epir implements EpirBase {
 						}
 					};
 				}));
-				const ciphersPerThread = Math.ceil((choice.length / CIPHER_SIZE) / nThreads);
+				const ciphersPerThread = Math.ceil((choice.byteLength / CIPHER_SIZE) / nThreads);
 				const begin = t * ciphersPerThread;
-				const end = Math.min((choice.length / CIPHER_SIZE) + 1, (t + 1) * ciphersPerThread);
-				const choice_t = choice.subarray(begin * CIPHER_SIZE, end * CIPHER_SIZE);
+				const end = Math.min((choice.byteLength / CIPHER_SIZE) + 1, (t + 1) * ciphersPerThread);
+				const choice_t = choice.slice(begin * CIPHER_SIZE, end * CIPHER_SIZE);
+				const random_t = random.slice(begin * SCALAR_SIZE, end * SCALAR_SIZE).buffer;
 				this.workers[t].postMessage({
 					method: 'selector_create',
-					choice: choice_t, key: key, random: random.subarray(begin * SCALAR_SIZE, end * SCALAR_SIZE), isFast: isFast
-				});
+					choice: choice_t, key: key, random: random_t, isFast: isFast
+				}, [choice_t, random_t]);
 			}
 			const selectors = await Promise.all(promises);
-			resolve(uint8ArrayConcat(selectors));
+			resolve(arrayBufferConcat(selectors));
 		});
 	}
 	
-	async createSelector(pubkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array> {
+	async createSelector(pubkey: ArrayBuffer, index_counts: number[], idx: number, r?: ArrayBuffer): Promise<ArrayBuffer> {
 		return this.selector_create_(pubkey, index_counts, idx, r, false);
 	}
 	
-	async createSelectorFast(privkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array> {
+	async createSelectorFast(privkey: ArrayBuffer, index_counts: number[], idx: number, r?: ArrayBuffer): Promise<ArrayBuffer> {
 		return this.selector_create_(privkey, index_counts, idx, r, true);
 	}
 	
@@ -412,11 +419,11 @@ export class Epir implements EpirBase {
 		return this.helper.call('reply_r_count', dimension, packing, elem_size);
 	}
 	
-	computeReplyMock(pubkey: Uint8Array, dimension: number, packing: number, elem: Uint8Array, r?: Uint8Array): Uint8Array {
-		const rrc = this.computeReplyRCount(dimension, packing, elem.length);
-		const rs = this.computeReplySize(dimension, packing, elem.length);
+	computeReplyMock(pubkey: ArrayBuffer, dimension: number, packing: number, elem: ArrayBuffer, r?: ArrayBuffer): ArrayBuffer {
+		const rrc = this.computeReplyRCount(dimension, packing, elem.byteLength);
+		const rs = this.computeReplySize(dimension, packing, elem.byteLength);
 		const reply_ = this.helper.malloc(rs);
-		this.helper.call('reply_mock', reply_, pubkey, dimension, packing, elem, elem.length, r ? r : uint8ArrayConcat(getRandomScalars(rrc)));
+		this.helper.call('reply_mock', reply_, pubkey, dimension, packing, elem, elem.byteLength, r ? r : getRandomScalars(rrc));
 		const reply = this.helper.slice(reply_, rs);
 		this.helper.free(reply_);
 		return reply;

@@ -15,37 +15,35 @@ const epir_napi = require('bindings')('epir');
 
 export interface DecryptionContextNapi {
 	constructor(path: string): DecryptionContextNapi;
-	getMG: () => Uint8Array;
-	decrypt: (privkey: Uint8Array, cipher: Uint8Array) => number;
-	replyDecrypt: (reply: Uint8Array, privkey: Uint8Array, dimension: number, packing: number) => Uint8Array;
+	getMG: () => ArrayBuffer;
+	decrypt: (privkey: ArrayBuffer, cipher: ArrayBuffer) => number;
+	replyDecrypt: (privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer) => ArrayBuffer;
 }
 
 export class DecryptionContext implements DecryptionContextBase {
 	
-	napi: DecryptionContextNapi;
-	
-	constructor(napi: DecryptionContextNapi) {
-		this.napi = napi;
+	constructor(public napi: DecryptionContextNapi) {
 	}
 	
-	getMG(): Uint8Array {
-		return new Uint8Array(this.napi.getMG().buffer);
+	getMG(): ArrayBuffer {
+		return this.napi.getMG();
 	}
 	
-	decryptCipher(privkey: Uint8Array, cipher: Uint8Array): number {
+	decryptCipher(privkey: ArrayBuffer, cipher: ArrayBuffer): number {
 		return this.napi.decrypt(privkey, cipher);
 	}
 	
-	async decryptReply(privkey: Uint8Array, dimension: number, packing: number, reply: Uint8Array): Promise<Uint8Array> {
-		return this.napi.replyDecrypt(reply, privkey, dimension, packing);
+	async decryptReply(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer> {
+		return this.napi.replyDecrypt(privkey, dimension, packing, reply);
 	}
+	
 	
 }
 
 export const createDecryptionContext: DecryptionContextCreateFunction = async (
 	param?: DecryptionContextParameter, mmax: number = DEFAULT_MMAX) => {
 	const napi = await new Promise<DecryptionContextNapi>((resolve, reject) => {
-		if((typeof param === 'undefined') || (typeof param === 'string') || (param instanceof Uint8Array)) {
+		if((typeof param === 'undefined') || (typeof param === 'string') || (param instanceof ArrayBuffer)) {
 			resolve(new epir_napi.DecryptionContext(param, mmax));
 		} else {
 			// We ensure that all the JS callbacks are called.
@@ -62,19 +60,19 @@ export const createDecryptionContext: DecryptionContextCreateFunction = async (
 
 export class Epir implements EpirBase {
 	
-	createPrivkey(): Uint8Array {
+	createPrivkey(): ArrayBuffer {
 		return epir_napi.create_privkey();
 	}
 	
-	createPubkey(privkey: Uint8Array): Uint8Array {
+	createPubkey(privkey: ArrayBuffer): ArrayBuffer {
 		return epir_napi.pubkey_from_privkey(privkey);
 	}
 	
-	encrypt(pubkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array {
+	encrypt(pubkey: ArrayBuffer, msg: number, r?: ArrayBuffer): ArrayBuffer {
 		return r ? epir_napi.encrypt(pubkey, msg, r) : epir_napi.encrypt(pubkey, msg);
 	}
 	
-	encryptFast(privkey: Uint8Array, msg: number, r?: Uint8Array): Uint8Array {
+	encryptFast(privkey: ArrayBuffer, msg: number, r?: ArrayBuffer): ArrayBuffer {
 		return r ? epir_napi.encrypt_fast(privkey, msg, r) : epir_napi.encrypt_fast(privkey, msg);
 	}
 	
@@ -86,13 +84,13 @@ export class Epir implements EpirBase {
 		return epir_napi.elements_count(index_counts);
 	}
 	
-	async createSelector(pubkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array> {
+	async createSelector(pubkey: ArrayBuffer, index_counts: number[], idx: number, r?: ArrayBuffer): Promise<ArrayBuffer> {
 		return (r ?
 			epir_napi.selector_create(pubkey, index_counts, idx, r) :
 			epir_napi.selector_create(pubkey, index_counts, idx));
 	}
 	
-	async createSelectorFast(privkey: Uint8Array, index_counts: number[], idx: number, r?: Uint8Array): Promise<Uint8Array> {
+	async createSelectorFast(privkey: ArrayBuffer, index_counts: number[], idx: number, r?: ArrayBuffer): Promise<ArrayBuffer> {
 		return (r ?
 			epir_napi.selector_create_fast(privkey, index_counts, idx, r) :
 			epir_napi.selector_create_fast(privkey, index_counts, idx));
@@ -107,7 +105,7 @@ export class Epir implements EpirBase {
 		return epir_napi.reply_r_count(dimension, packing, elem_size);
 	}
 	
-	computeReplyMock(pubkey: Uint8Array, dimension: number, packing: number, elem: Uint8Array, r?: Uint8Array): Uint8Array {
+	computeReplyMock(pubkey: ArrayBuffer, dimension: number, packing: number, elem: ArrayBuffer, r?: ArrayBuffer): ArrayBuffer {
 		return (r ?
 			epir_napi.reply_mock(pubkey, dimension, packing, elem, r) :
 			epir_napi.reply_mock(pubkey, dimension, packing, elem));

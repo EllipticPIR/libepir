@@ -20,7 +20,7 @@ describe('Browser', () => {
 		getRandomValues = (buf: Uint8Array) => buf.set(crypto.randomBytes(buf.length));
 		const epir = await createEpir();
 		const privkey = epir.createPrivkey();
-		expect(privkey).toHaveLength(32);
+		expect(privkey.byteLength).toBe(32);
 	});
 });
 
@@ -55,7 +55,7 @@ describe('WebAssembly', () => {
 		getRandomValues = (buf: Uint8Array) => buf.set(randoms[offset++]);
 		const epir = await createEpir();
 		const privkey = epir.createPrivkey();
-		expect(privkey).toEqual(one);
+		expect(privkey).toEqual(one.buffer);
 	});
 });
 

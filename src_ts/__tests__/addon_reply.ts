@@ -29,7 +29,7 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 			for(let i=0; i<ELEM_SIZE; i++) {
 				elem[i] = xorshift() & 0xff;
 			}
-			return elem;
+			return elem.buffer;
 		};
 		
 		test('get a reply size', () => {
@@ -43,22 +43,22 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 		test('decrypt a reply (deterministic, success)', async () => {
 			const elem = generateElem();
 			const reply_r_count = epir.computeReplyRCount(DIMENSION, PACKING, ELEM_SIZE);
-			const reply = epir.computeReplyMock(pubkey, DIMENSION, PACKING, elem, generateRandomScalars(reply_r_count));
-			const decrypted = await decCtx.decryptReply(privkey, DIMENSION, PACKING, reply);
-			expect(new Uint8Array(decrypted.subarray(0, ELEM_SIZE))).toEqual(elem);
+			const reply = epir.computeReplyMock(pubkey.buffer, DIMENSION, PACKING, elem, generateRandomScalars(reply_r_count));
+			const decrypted = await decCtx.decryptReply(privkey.buffer, DIMENSION, PACKING, reply);
+			expect(decrypted.slice(0, ELEM_SIZE)).toEqual(elem);
 		});
 		
 		test('decrypt a reply (random, success)', async () => {
 			const elem = generateElem();
-			const reply = epir.computeReplyMock(pubkey, DIMENSION, PACKING, elem);
-			const decrypted = await decCtx.decryptReply(privkey, DIMENSION, PACKING, reply);
-			expect(new Uint8Array(decrypted.subarray(0, ELEM_SIZE))).toEqual(elem);
+			const reply = epir.computeReplyMock(pubkey.buffer, DIMENSION, PACKING, elem);
+			const decrypted = await decCtx.decryptReply(privkey.buffer, DIMENSION, PACKING, reply);
+			expect(decrypted.slice(0, ELEM_SIZE)).toEqual(elem);
 		});
 		
 		test('decrypt a reply (random, fail)', async () => {
 			const elem = generateElem();
-			const reply = epir.computeReplyMock(pubkey, DIMENSION, PACKING, elem);
-			await expect(decCtx.decryptReply(pubkey, DIMENSION, PACKING, reply)).rejects.toThrow(/^Failed to decrypt\.$/);
+			const reply = epir.computeReplyMock(pubkey.buffer, DIMENSION, PACKING, elem);
+			await expect(decCtx.decryptReply(pubkey.buffer, DIMENSION, PACKING, reply)).rejects.toThrow(/^Failed to decrypt\.$/);
 		});
 	});
 	
