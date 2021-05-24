@@ -26,6 +26,7 @@ export const runTests = (createDecryptionContext: DecryptionContextCreateFunctio
 				pointsComputed = Math.min(MMAX, pointsComputed + INTERVAL);
 				expect(pointsComputedTest).toBe(pointsComputed);
 			}, interval: INTERVAL }, MMAX);
+			expect(pointsComputed).toBe(MMAX);
 			const mG = decCtx.getMG();
 			expect(sha256sum(mG)).toEqual(mGHashSmall);
 		}, 30 * 1000);
@@ -35,6 +36,7 @@ export const runTests = (createDecryptionContext: DecryptionContextCreateFunctio
 				pointsComputed++;
 				expect(pointsComputedTest).toBe(pointsComputed);
 			}, interval: 1 }, MMAX);
+			expect(pointsComputed).toBe(MMAX);
 			const mG = decCtx.getMG();
 			expect(sha256sum(mG)).toEqual(mGHashSmall);
 		}, 30 * 1000);

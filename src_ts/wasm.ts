@@ -187,6 +187,9 @@ const mGGenerate = async (helper: LibEpirHelper, cb: undefined | DecryptionConte
 						for(; pcLastReported+cb.interval<=pcAll; pcLastReported+=cb.interval) {
 							cb.cb(pcLastReported+cb.interval);
 						}
+						if(pcAll === mmax && pcLastReported !== mmax) {
+							cb.cb(mmax);
+						}
 						break;
 					case 'mg_generate_compute':
 						//console.log(`mg_generate_compute (workerId = ${workerId}) DONE.`);
