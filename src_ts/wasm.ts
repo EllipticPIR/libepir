@@ -22,22 +22,28 @@ import { LibEpir, LibEpirHelper } from './wasm.libepir';
 
 export class DecryptionContext implements DecryptionContextBase {
 	
+	mG_: number;
+	mmax: number;
 	workers: EPIRWorker[] = [];
 	
-	constructor(public helper: LibEpirHelper, public mG: ArrayBuffer, nThreads: number = navigator.hardwareConcurrency) {
+	constructor(public helper: LibEpirHelper, mG: ArrayBuffer, nThreads: number = navigator.hardwareConcurrency) {
+		this.mG_ = helper.malloc(mG);
+		this.mmax = mG.byteLength / MG_SIZE;
 		for(let t=0; t<nThreads; t++) this.workers.push(new EPIRWorker());
 	}
 	
+	finalize() {
+		this.helper.free(this.mG_);
+	}
+	
 	getMG(): ArrayBuffer {
-		return this.mG;
+		const ret = new ArrayBuffer(this.mmax * MG_SIZE);
+		new Uint8Array(ret).set(this.helper.subarray(this.mG_, this.mmax * MG_SIZE));
+		return ret;
 	}
 	
 	decryptCipher(privkey: ArrayBuffer, cipher: ArrayBuffer): number {
-		const cipher_ = this.helper.malloc(cipher);
-		this.helper.call('ecelgamal_decrypt_to_mG', privkey, cipher_);
-		const mG = this.helper.slice(cipher_, POINT_SIZE);
-		const decrypted = this.interpolationSearch(mG);
-		this.helper.free(cipher_);
+		const decrypted = this.helper.call('ecelgamal_decrypt', privkey, cipher, this.mG_, this.mmax);
 		if(decrypted < 0) throw new Error('Failed to decrypt.');
 		return decrypted;
 	}
@@ -55,40 +61,8 @@ export class DecryptionContext implements DecryptionContextBase {
 		return midstate;
 	}
 	
-	static load_uint32_t(buf: ArrayBuffer, offset: number = 0, le: boolean = false): number {
-		const bufView = new Uint8Array(buf, offset, 4);
-		if(le) {
-			return (bufView[3] * (1 << 24)) + (bufView[2] << 16) + (bufView[1] << 8) + bufView[0];
-		} else {
-			return (bufView[0] * (1 << 24)) + (bufView[1] << 16) + (bufView[2] << 8) + bufView[3];
-		}
-	}
-	
-	load_uint32_t_from_mG(idx: number): number {
-		return DecryptionContext.load_uint32_t(this.mG, MG_SIZE * idx);
-	}
-	
-	interpolationSearch(mG: ArrayBuffer): number {
-		const mmax = this.mG.byteLength / MG_SIZE;
-		let imin = 0;
-		let imax = mmax - 1;
-		let left = this.load_uint32_t_from_mG(0);
-		let right = this.load_uint32_t_from_mG(mmax - 1);
-		const my = DecryptionContext.load_uint32_t(mG);
-		for(; imin<=imax; ) {
-			const imid = imin + Math.floor((imax - imin) * (my - left) / (right - left));
-			const cmp = arrayBufferCompare(this.mG, MG_SIZE * imid, mG, 0, POINT_SIZE);
-			if(cmp < 0) {
-				imin = imid + 1;
-				left = this.load_uint32_t_from_mG(imid);
-			} else if(cmp > 0) {
-				imax = imid - 1;
-				right = this.load_uint32_t_from_mG(imid);
-			} else {
-				return DecryptionContext.load_uint32_t(this.mG, MG_SIZE * imid + POINT_SIZE, true);
-			}
-		}
-		return -1;
+	interpolationSearch(find: ArrayBuffer): number {
+		return this.helper.call('mG_interpolation_search', find, this.mG_, this.mmax);
 	}
 	
 	async decryptMany(ciphers: ArrayBuffer, privkey: ArrayBuffer, packing: number): Promise<ArrayBuffer> {

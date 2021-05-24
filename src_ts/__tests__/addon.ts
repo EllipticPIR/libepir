@@ -196,7 +196,6 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 			expect(selector.byteLength).toBe(ciphers_count * CIPHER_SIZE);
 		});
 	});
-	
 };
 
 if(require.main === null) {
