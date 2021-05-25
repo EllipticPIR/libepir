@@ -58,7 +58,7 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 		test('decrypt a reply (random, fail)', async () => {
 			const elem = generateElem();
 			const reply = epir.computeReplyMock(pubkey.buffer, DIMENSION, PACKING, elem);
-			await expect(decCtx.decryptReply(pubkey.buffer, DIMENSION, PACKING, reply)).rejects.toThrow(/^Failed to decrypt\.$/);
+			await expect(decCtx.decryptReply(pubkey.buffer, DIMENSION, PACKING, reply)).rejects.toMatch(/^Failed to decrypt\.$/);
 		});
 	});
 	

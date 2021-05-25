@@ -260,7 +260,44 @@ Napi::Value DecryptionContext::Decrypt(const Napi::CallbackInfo &info) {
 	return Napi::Number::New(env, decrypted);
 }
 
-// DecryptionContext.replyDecrypt(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): ArrayBuffer;
+class ReplyDecryptWorker : public Napi::AsyncWorker {
+	private:
+		const EllipticPIR::DecryptionContext decCtx;
+		const unsigned char *privkey;
+		const unsigned char *reply;
+		const size_t reply_size;
+		const uint8_t dimension;
+		const uint8_t packing;
+		std::vector<unsigned char> decrypted;
+	public:
+		Napi::Promise::Deferred _deferred;
+		ReplyDecryptWorker(napi_env env,
+			const EllipticPIR::DecryptionContext decCtx, const unsigned char *privkey,
+			const unsigned char *reply, const size_t reply_size,
+			const uint8_t dimension, const uint8_t packing) :
+			Napi::AsyncWorker(env),
+			decCtx(decCtx), privkey(privkey), reply(reply), reply_size(reply_size), dimension(dimension), packing(packing),
+			_deferred(Napi::Promise::Deferred::New(env)) {
+		}
+		void Execute() override {
+			try {
+				this->decrypted = this->decCtx.decryptReply(this->privkey, this->reply, this->reply_size, this->dimension, this->packing);
+			} catch(const char *err) {
+				this->SetError(std::string(err));
+			}
+		}
+		void OnOK() override {
+			Napi::HandleScope scope(this->Env());
+			Napi::TypedArrayOf<uint8_t> decrypted = Napi::TypedArrayOf<uint8_t>::New(this->Env(), this->decrypted.size());
+			memcpy(decrypted.Data(), this->decrypted.data(), this->decrypted.size());
+			this->_deferred.Resolve(decrypted.ArrayBuffer());
+		}
+		void OnError(const Napi::Error &err) override {
+			this->_deferred.Reject(Napi::String::New(this->Env(), err.Message()));
+		}
+};
+
+// DecryptionContext.replyDecrypt(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer>;
 Napi::Value DecryptionContext::ReplyDecrypt(const Napi::CallbackInfo& info) {
 	Napi::Env env = info.Env();
 	if(info.Length() < 4) {
@@ -290,15 +327,9 @@ Napi::Value DecryptionContext::ReplyDecrypt(const Napi::CallbackInfo& info) {
 	const uint8_t *reply = static_cast<const uint8_t*>(info[3].As<Napi::ArrayBuffer>().Data());
 	const size_t reply_size = info[3].As<Napi::ArrayBuffer>().ByteLength();
 	// Decrypt.
-	try {
-		const std::vector<unsigned char> decrypted = this->decCtx.decryptReply(privkey, reply, reply_size, dimension, packing);
-		auto decrypted_ = Napi::TypedArrayOf<uint8_t>::New(env, decrypted.size());
-		memcpy(decrypted_.Data(), decrypted.data(), decrypted.size());
-		return decrypted_.ArrayBuffer();
-	} catch(const char *err) {
-		Napi::Error::New(env, err).ThrowAsJavaScriptException();
-		return env.Null();
-	}
+	ReplyDecryptWorker *wk = new ReplyDecryptWorker(env, this->decCtx, privkey, reply, reply_size, dimension, packing);
+	wk->Queue();
+	return wk->_deferred.Promise();
 }
 
 std::vector<uint64_t> readIndexCounts(const Napi::Env env, const Napi::Value &val) {
@@ -385,7 +416,7 @@ class SelectorCreateWorker : public Napi::AsyncWorker {
 			this->_deferred.Resolve(ciphers.ArrayBuffer());
 		}
 		void OnError(const Napi::Error &err) override {
-			this->_deferred.Reject(this->Env().Null());
+			this->_deferred.Reject(Napi::String::New(this->Env(), err.Message()));
 		}
 };
 

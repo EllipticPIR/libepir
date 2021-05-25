@@ -48,17 +48,23 @@ export class DecryptionContext implements DecryptionContextBase {
 		return decrypted;
 	}
 	
-	async decryptReply(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer> {
-		let midstate = reply;
-		for(let phase=0; phase<dimension; phase++) {
-			const decrypted = await this.decryptMany(midstate, privkey, packing);
-			if(phase == dimension - 1) {
-				midstate = decrypted;
-			} else {
-				midstate = decrypted.slice(0, decrypted.byteLength - (decrypted.byteLength % CIPHER_SIZE));
+	decryptReply(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer> {
+		return new Promise(async (resolve, reject) => {
+			try {
+				let midstate = reply;
+				for(let phase=0; phase<dimension; phase++) {
+					const decrypted = await this.decryptMany(midstate, privkey, packing);
+					if(phase == dimension - 1) {
+						midstate = decrypted;
+					} else {
+						midstate = decrypted.slice(0, decrypted.byteLength - (decrypted.byteLength % CIPHER_SIZE));
+					}
+				}
+				resolve(midstate);
+			} catch(err) {
+				reject(err);
 			}
-		}
-		return midstate;
+		});
 	}
 	
 	interpolationSearch(find: ArrayBuffer): number {
@@ -96,7 +102,7 @@ export class DecryptionContext implements DecryptionContextBase {
 		const decrypted = new Uint8Array(packing * ciphersCount);
 		for(let i=0; i<ms.length; i++) {
 			const m = ms[i];
-			if(m == -1) throw new Error('Failed to decrypt.');
+			if(m == -1) throw 'Failed to decrypt.';
 			for(let p=0; p<packing; p++) {
 				decrypted[i * packing + p] = (m >> (8 * p)) & 0xff;
 			}

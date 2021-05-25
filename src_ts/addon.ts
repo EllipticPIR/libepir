@@ -17,7 +17,7 @@ export interface DecryptionContextNapi {
 	constructor(path: string): DecryptionContextNapi;
 	getMG: () => ArrayBuffer;
 	decrypt: (privkey: ArrayBuffer, cipher: ArrayBuffer) => number;
-	replyDecrypt: (privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer) => ArrayBuffer;
+	replyDecrypt: (privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer) => Promise<ArrayBuffer>;
 }
 
 export class DecryptionContext implements DecryptionContextBase {
@@ -33,7 +33,7 @@ export class DecryptionContext implements DecryptionContextBase {
 		return this.napi.decrypt(privkey, cipher);
 	}
 	
-	async decryptReply(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer> {
+	decryptReply(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer> {
 		return this.napi.replyDecrypt(privkey, dimension, packing, reply);
 	}
 	
