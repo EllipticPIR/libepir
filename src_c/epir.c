@@ -201,8 +201,51 @@ int mG_compare(const void *a, const void *b) {
 	return memcmp(x->point, y->point, EPIR_POINT_SIZE);
 }
 
+void epir_mG_merge(epir_mG_t *scratch, epir_mG_t *mG, const size_t a_count, const size_t b_count) {
+	size_t a_idx = 0;
+	size_t b_idx = 0;
+	for(size_t i=0; i<a_count+b_count; i++) {
+		const int cmp = a_idx == a_count ? 1 : b_idx == b_count ? -1 : mG_compare(&mG[a_idx], &mG[b_idx + a_count]);
+		if(cmp <= 0) {
+			scratch[i] = mG[a_idx];
+			a_idx++;
+		} else {
+			scratch[i] = mG[b_idx + a_count];
+			b_idx++;
+		}
+	}
+	memcpy(mG, scratch, sizeof(epir_mG_t) * (a_count + b_count));
+}
+
 void epir_mG_sort(epir_mG_t *mG, const size_t mmax) {
-	qsort(mG, mmax, sizeof(epir_mG_t), mG_compare);
+	const uint32_t omp_threads = get_omp_threads();
+	epir_mG_t *scratch = malloc(sizeof(epir_mG_t) * mmax);
+	#pragma omp parallel
+	{
+		#ifdef __EMSCRIPTEN__
+		const uint32_t omp_id = 0;
+		#else
+		const uint32_t omp_id = omp_get_thread_num();
+		#endif
+		#define divide_up(a, b) (((a) / (b)) + (((a) % (b)) == 0 ? 0 : 1))
+		{
+			const size_t mG_per_thread = divide_up(mmax, omp_threads);
+			const size_t mG_count = (omp_id == omp_threads - 1) ? mmax - (omp_threads - 1) * mG_per_thread : mG_per_thread;
+			const size_t mG_offset = omp_id * mG_per_thread;
+			qsort(&mG[mG_offset], mG_count, sizeof(epir_mG_t), mG_compare);
+		}
+		size_t mG_per_thread = divide_up(mmax, omp_threads);
+		for(uint32_t mG_count=omp_threads; mG_count>1; mG_count=divide_up(mG_count, 2)) {
+			#pragma omp barrier
+			if(2 * omp_id >= mG_count) continue;
+			const size_t offset = 2 * mG_per_thread * omp_id;
+			const size_t b_count = 2 * omp_id + 1 >= mG_count ? mmax - mG_per_thread * (mG_count - 1) : mG_per_thread;
+			printf("%d %8zd %8zd %8zd %8zd\n", omp_id, offset, mG_per_thread, b_count, offset + mG_per_thread + b_count);
+			epir_mG_merge(&scratch[offset], &mG[offset], mG_per_thread, b_count);
+			mG_per_thread <<= 1;
+		}
+	}
+	free(scratch);
 }
 
 void epir_mG_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data) {

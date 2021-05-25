@@ -105,6 +105,9 @@ EMSCRIPTEN_KEEPALIVE
 void epir_mG_generate_no_sort(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data);
 
 EMSCRIPTEN_KEEPALIVE
+void epir_mG_merge(epir_mG_t *scratch, epir_mG_t *mG, const size_t a_count, const size_t b_count);
+
+EMSCRIPTEN_KEEPALIVE
 void epir_mG_sort(epir_mG_t *mG, const size_t mmax);
 
 EMSCRIPTEN_KEEPALIVE

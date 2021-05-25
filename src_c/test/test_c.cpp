@@ -118,13 +118,17 @@ TEST(ECElGamalTest, encrypt_fast) {
 #ifdef TEST_USING_MG
 static std::vector<epir_mG_t> mG_test(EPIR_DEFAULT_MG_MAX);
 
-TEST(ECElGamalTest, mG_generate) {
+TEST(ECElGamalTest, mG_generate_no_sort) {
 	size_t points_computed = 0;
-	epir_mG_generate(mG_test.data(), EPIR_DEFAULT_MG_MAX, [](const size_t points_computed_test, void *data) {
+	epir_mG_generate_no_sort(mG_test.data(), EPIR_DEFAULT_MG_MAX, [](const size_t points_computed_test, void *data) {
 		size_t *points_computed = (size_t*)data;
 		(*points_computed)++;
 		EXPECT_EQ(points_computed_test, *points_computed);
 	}, &points_computed);
+}
+
+TEST(ECElGamalTest, mG_generate_sort) {
+	epir_mG_sort(mG_test.data(), EPIR_DEFAULT_MG_MAX);
 	ASSERT_PRED2(SameHash<epir_mG_t>, mG_test, mG_hash);
 }
 
