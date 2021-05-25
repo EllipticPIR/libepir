@@ -66,3 +66,13 @@ jobs:
       with:
         name: node-${{ matrix.node-version }}
 
+    - name: Build Nuxt
+      run: npm run generate
+
+    - name: Deploy to GitHub pages
+      uses: peaceiris/actions-gh-pages@v3
+      if: ${{ (github.ref == 'refs/heads/master') && (matrix.node-version == '16.x') }}
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./build_nuxt
+
