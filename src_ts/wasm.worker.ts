@@ -1,7 +1,6 @@
 
 import { MG_SIZE } from './EpirBase';
-import { LibEpir, LibEpirHelper } from './wasm.libepir';
-import { getRandomBytes } from './util';
+import { LibEpir, LibEpirHelper, libEpirModule } from './wasm.libepir';
 
 const worker: Worker = self as any;
 
@@ -74,8 +73,7 @@ const funcs: KeyValue = {
 	},
 };
 
-const libEpirPromise = import('./wasm.libepir').then(({ libEpirModule }) => libEpirModule());
 worker.onmessage = async (ev) => {
-	funcs[ev.data.method](new LibEpirHelper(await libEpirPromise), ev.data);
+	funcs[ev.data.method](new LibEpirHelper(await libEpirModule()), ev.data);
 };
 
