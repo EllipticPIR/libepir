@@ -240,7 +240,6 @@ void epir_mG_sort(epir_mG_t *mG, const size_t mmax) {
 			if(2 * omp_id >= mG_count) continue;
 			const size_t offset = 2 * mG_per_thread * omp_id;
 			const size_t b_count = 2 * omp_id + 1 >= mG_count ? mmax - mG_per_thread * (mG_count - 1) : mG_per_thread;
-			printf("%d %8zd %8zd %8zd %8zd\n", omp_id, offset, mG_per_thread, b_count, offset + mG_per_thread + b_count);
 			epir_mG_merge(&scratch[offset], &mG[offset], mG_per_thread, b_count);
 			mG_per_thread <<= 1;
 		}
