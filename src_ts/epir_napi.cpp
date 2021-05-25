@@ -1,7 +1,7 @@
 
 #include <napi.h>
 
-#include "../src_c/epir.h"
+#include "../src_c/epir.hpp"
 #include "../src_c/epir_reply_mock.h"
 
 static void checkIsArrayBuffer(const Napi::Value val, const size_t expectedLength) {
@@ -104,7 +104,7 @@ private:
 	
 	static Napi::FunctionReference constructor;
 	
-	std::vector<epir_mG_t> mG;
+	EllipticPIR::DecryptionContext *decCtx;
 	
 	Napi::Value GetMG(const Napi::CallbackInfo& info);
 	Napi::Value Decrypt(const Napi::CallbackInfo& info);
@@ -114,6 +114,7 @@ public:
 	
 	static Napi::Object Init(Napi::Env env, Napi::Object exports);
 	DecryptionContext(const Napi::CallbackInfo &info);
+	~DecryptionContext();
 	
 };
 
@@ -124,7 +125,6 @@ Napi::Object DecryptionContext::Init(Napi::Env env, Napi::Object exports) {
 		InstanceMethod("replyDecrypt", &DecryptionContext::ReplyDecrypt),
 	});
 	constructor = Napi::Persistent(func);
-	constructor.SuppressDestruct();
 	exports.Set("DecryptionContext", func);
 	return exports;
 }
@@ -146,8 +146,7 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 	Napi::Env env = info.Env();
 	if(info.Length() == 0) {
 		// Generate mG.bin.
-		this->mG.resize(EPIR_DEFAULT_MG_MAX);
-		epir_mG_generate(this->mG.data(), EPIR_DEFAULT_MG_MAX, NULL, NULL);
+		this->decCtx = new EllipticPIR::DecryptionContext();
 		return;
 	}
 	const Napi::Value param = info[0];
@@ -156,29 +155,28 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 		return;
 	}
 	const size_t mmax = (info.Length() > 1 ? info[1].As<Napi::Number>().Uint32Value() : EPIR_DEFAULT_MG_MAX);
-	this->mG.resize(mmax);
 	if(param.IsUndefined()) {
 		// Generate mG.bin WITHOUT using the specified callback.
-		epir_mG_generate(this->mG.data(), this->mG.size(), NULL, NULL);
+		this->decCtx = new EllipticPIR::DecryptionContext(NULL, NULL, mmax);
 	} else if(param.IsString()) {
 		// Load mG.bin from the path.
 		const std::string path = std::string(param.As<Napi::String>());
-		const int elemsRead = epir_mG_load(this->mG.data(), this->mG.size(), path.c_str());
-		if(elemsRead != (int)this->mG.size()) {
-			std::string msg = "Failed to load mG: (read: " + std::to_string(elemsRead) + ", expect: " + std::to_string(this->mG.size()) + ").";
-			Napi::Error::New(env, msg).ThrowAsJavaScriptException();
+		try {
+			this->decCtx = new EllipticPIR::DecryptionContext(path, mmax);
+		} catch(const char *err) {
+			Napi::Error::New(env, err).ThrowAsJavaScriptException();
 			return;
 		}
 	} else if(param.IsArrayBuffer()) {
 		// Load from ArrayBuffer.
 		try {
-			checkIsArrayBuffer(param, sizeof(epir_mG_t) * this->mG.size());
+			checkIsArrayBuffer(param, sizeof(epir_mG_t) * mmax);
 		} catch(const char *err) {
 			Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
 			return;
 		}
 		const uint8_t *mG = static_cast<const uint8_t*>(param.As<Napi::ArrayBuffer>().Data());
-		memcpy(this->mG.data(), mG, sizeof(epir_mG_t) * this->mG.size());
+		this->decCtx = new EllipticPIR::DecryptionContext(mG, mmax);
 	} else if(param.IsObject()) {
 		const Napi::Object cbObj = param.As<Napi::Object>();
 		if(!cbObj.Has("cb") || !cbObj.Has("interval")) {
@@ -211,14 +209,15 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 			uint64_t interval;
 		} mG_cb_data;
 		mG_cb_data data = { env, tsfn, mmax, (uint64_t)interval };
-		epir_mG_generate(this->mG.data(), this->mG.size(), [](const size_t points_computed, void *cb_data) {
+		auto cb_ = [](const size_t points_computed, void *cb_data) {
 			mG_cb_data *data = (mG_cb_data*)cb_data;
 			if((points_computed % data->interval) != 0 && points_computed != data->mmax) return;
 			size_t *pc = new size_t(points_computed);
 			if(data->tsfn.BlockingCall(pc) != napi_ok) {
 				return;
 			}
-		}, &data);
+		};
+		this->decCtx = new EllipticPIR::DecryptionContext(cb_, &data, mmax);
 		tsfn.Release();
 	} else {
 		Napi::TypeError::New(env, "The parameter has an invalid type.").ThrowAsJavaScriptException();
@@ -228,10 +227,16 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 
 Napi::FunctionReference DecryptionContext::constructor;
 
+DecryptionContext::~DecryptionContext() {
+	if(this->decCtx) {
+		delete this->decCtx;
+	}
+}
+
 // DecryptionContext.getMG(): ArrayBuffer.
 Napi::Value DecryptionContext::GetMG(const Napi::CallbackInfo &info) {
 	Napi::Env env = info.Env();
-	return Napi::ArrayBuffer::New(env, this->mG.data(), sizeof(epir_mG_t) * this->mG.size());
+	return Napi::ArrayBuffer::New(env, this->decCtx->mG.data(), sizeof(epir_mG_t) * this->decCtx->mG.size());
 }
 
 // DecryptionContext.decrypt(privkey: ArrayBuffer(32), cipher: ArrayBuffer(64)): number.
@@ -257,7 +262,7 @@ Napi::Value DecryptionContext::Decrypt(const Napi::CallbackInfo &info) {
 	const uint8_t *privkey = static_cast<const uint8_t*>(info[0].As<Napi::ArrayBuffer>().Data());
 	const uint8_t *cipher = static_cast<const uint8_t*>(info[1].As<Napi::ArrayBuffer>().Data());
 	// Decrypt.
-	const int32_t decrypted = epir_ecelgamal_decrypt(privkey, cipher, this->mG.data(), this->mG.size());
+	const int32_t decrypted = this->decCtx->decryptCipher(privkey, cipher);
 	if(decrypted < 0) {
 		Napi::Error::New(env, "Failed to decrypt.").ThrowAsJavaScriptException();
 		return env.Null();
@@ -295,16 +300,15 @@ Napi::Value DecryptionContext::ReplyDecrypt(const Napi::CallbackInfo& info) {
 	const uint8_t *reply = static_cast<const uint8_t*>(info[3].As<Napi::ArrayBuffer>().Data());
 	const size_t reply_size = info[3].As<Napi::ArrayBuffer>().ByteLength();
 	// Decrypt.
-	std::vector<uint8_t> reply_v(reply_size);
-	memcpy(reply_v.data(), reply, reply_size);
-	const int decrypted_size = epir_reply_decrypt(reply_v.data(), reply_size, privkey, dimension, packing, this->mG.data(), this->mG.size());
-	if(decrypted_size < 0) {
-		Napi::Error::New(env, "Failed to decrypt.").ThrowAsJavaScriptException();
+	try {
+		const std::vector<unsigned char> decrypted = this->decCtx->decryptReply(privkey, reply, reply_size, dimension, packing);
+		auto decrypted_ = Napi::TypedArrayOf<uint8_t>::New(env, decrypted.size());
+		memcpy(decrypted_.Data(), decrypted.data(), decrypted.size());
+		return decrypted_.ArrayBuffer();
+	} catch(const char *err) {
+		Napi::Error::New(env, err).ThrowAsJavaScriptException();
 		return env.Null();
 	}
-	auto decrypted = Napi::TypedArrayOf<uint8_t>::New(env, decrypted_size);
-	memcpy(decrypted.Data(), reply_v.data(), decrypted_size);
-	return decrypted.ArrayBuffer();
 }
 
 std::vector<uint64_t> readIndexCounts(const Napi::Env env, const Napi::Value &val) {
@@ -516,5 +520,5 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
 	return exports;
 }
 
-NODE_API_MODULE(epir_lib, Init);
+NODE_API_MODULE(libepir, Init);
 

@@ -154,14 +154,13 @@ namespace EllipticPIR {
 		
 	public:
 		
-		const size_t mmax;
 		std::vector<epir_mG_t> mG;
 		
 		/**
 		 * Load mG.bin to create a new DecryptionContext instanct.
 		 */
-		DecryptionContext(const std::string path = "", const size_t mmax = EPIR_DEFAULT_MG_MAX):
-			mmax(mmax), mG(mmax) {
+		DecryptionContext(const std::string path, const size_t mmax = EPIR_DEFAULT_MG_MAX):
+			mG(mmax) {
 			size_t elemsRead = epir_mG_load(this->mG.data(), mmax, (path == "" ? NULL : path.c_str()));
 			if(elemsRead != mmax) throw "Failed to load mG.bin.";
 		}
@@ -170,32 +169,65 @@ namespace EllipticPIR {
 		 * Generate mG.bin.
 		 */
 		DecryptionContext(
-			void (*cb)(const size_t, void*) = NULL, void *cbData = NULL, const size_t mmax = EPIR_DEFAULT_MG_MAX): mmax(mmax), mG(mmax) {
-			epir_mG_generate_no_sort(this->mG.data(), this->mmax, cb, cbData);
+			void (*cb)(const size_t, void*) = NULL, void *cbData = NULL, const size_t mmax = EPIR_DEFAULT_MG_MAX): mG(mmax) {
+			epir_mG_generate_no_sort(this->mG.data(), mmax, cb, cbData);
 			std::sort(mG.begin(), mG.end(), [](const epir_mG_t &a, const epir_mG_t &b) {
 				return memcmp(a.point, b.point, EPIR_POINT_SIZE) < 0;
 			});
 		}
 		
+		/**
+		 * Load from raw binary.
+		 */
+		DecryptionContext(const unsigned char *buf, const size_t mmax = EPIR_DEFAULT_MG_MAX): mG(mmax) {
+			memcpy(this->mG.data(), buf, sizeof(epir_mG_t) * mmax);
+		}
+		
+		int32_t decryptCipher(const unsigned char *privkey, const unsigned char *cipher) const {
+			return epir_ecelgamal_decrypt(privkey, cipher, this->mG.data(), this->mG.size());
+		}
+		
+		int32_t decryptCipher(const unsigned char *privkey, const Cipher &cipher) const {
+			return this->decryptCipher(privkey, cipher.data());
+		}
+		
 		int32_t decryptCipher(const PrivateKey &privkey, const unsigned char *cipher) const {
-			return epir_ecelgamal_decrypt(privkey.bytes, cipher, this->mG.data(), this->mmax);
+			return this->decryptCipher(privkey.bytes, cipher);
 		}
 		
 		int32_t decryptCipher(const PrivateKey &privkey, const Cipher &cipher) const {
-			return this->decryptCipher(privkey, cipher.data());
+			return this->decryptCipher(privkey.bytes, cipher.data());
+		}
+		
+		std::vector<unsigned char> decryptReply(
+			const unsigned char *privkey, const unsigned char *reply, const size_t reply_size,
+			const uint8_t dimension, const uint8_t packing) const {
+			std::vector<unsigned char> buf(reply_size);
+			memcpy(buf.data(), reply, reply_size);
+			int decryptedCount = epir_reply_decrypt(
+				buf.data(), reply_size, privkey, dimension, packing, this->mG.data(), this->mG.size());
+			if(decryptedCount < 0) throw "Failed to decrypt.";
+			std::vector<unsigned char> ret(decryptedCount);
+			memcpy(ret.data(), buf.data(), decryptedCount);
+			return ret;
+		}
+		
+		std::vector<unsigned char> decryptReply(
+			const unsigned char *privkey, const std::vector<unsigned char> &reply,
+			const uint8_t dimension, const uint8_t packing) const {
+			return this->decryptReply(privkey, reply.data(), reply.size(), dimension, packing);
+		}
+		
+		std::vector<unsigned char> decryptReply(
+			const PrivateKey &privkey, const unsigned char *reply, const size_t reply_size,
+			const uint8_t dimension, const uint8_t packing) const {
+			return this->decryptReply(privkey.bytes, reply, reply_size, dimension, packing);
 		}
 		
 		std::vector<unsigned char> decryptReply(
 			const PrivateKey &privkey, const std::vector<unsigned char> &reply,
 			const uint8_t dimension, const uint8_t packing) const {
-			std::vector<unsigned char> buf(reply.size());
-			memcpy(buf.data(), reply.data(), reply.size());
-			int decryptedCount = epir_reply_decrypt(
-				buf.data(), reply.size(), privkey.bytes, dimension, packing, this->mG.data(), this->mmax);
-			if(decryptedCount < 0) throw "Failed to decrypt.";
-			std::vector<unsigned char> ret(decryptedCount);
-			memcpy(ret.data(), buf.data(), decryptedCount);
-			return ret;
+			return this->decryptReply(privkey.bytes, reply.data(), reply.size(), dimension, packing);
 		}
 		
 	};
