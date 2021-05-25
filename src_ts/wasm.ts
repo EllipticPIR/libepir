@@ -12,13 +12,12 @@ import {
 	DEFAULT_MMAX,
 	SCALAR_SIZE,
 	POINT_SIZE,
-	CIPHER_SIZE
+	CIPHER_SIZE,
+	MG_SIZE,
+	GE25519_P3_SIZE
 } from './EpirBase';
 import { time, arrayBufferConcat, arrayBufferCompare, getRandomScalar, getRandomScalarsConcat } from './util';
 import EPIRWorker from './wasm.worker.ts';
-
-export const MG_SIZE = 36;
-export const MG_P3_SIZE = 4 * 40;
 
 import { LibEpir, LibEpirHelper } from './wasm.libepir';
 
@@ -119,7 +118,7 @@ const mGGeneratePrepare = (helper: LibEpirHelper, nThreads: number, mmax: number
 	const ctx_ = helper.malloc(CTX_SIZE);
 	helper.store32(ctx_, mmax);
 	const mG_ = helper.malloc(nThreads * MG_SIZE);
-	const mG_p3_ = helper.malloc(nThreads * MG_P3_SIZE);
+	const mG_p3_ = helper.malloc(nThreads * GE25519_P3_SIZE);
 	if(cb) {
 		let pointsComputed = 0;
 		const cb_ = helper.addFunction((data: any) => {
@@ -136,7 +135,7 @@ const mGGeneratePrepare = (helper: LibEpirHelper, nThreads: number, mmax: number
 	helper.call('mG_sort', mG_, nThreads);
 	const ctx = helper.slice(ctx_, CTX_SIZE);
 	const mG = helper.slice(mG_, nThreads * MG_SIZE);
-	const mG_p3 = helper.slice(mG_p3_, nThreads * MG_P3_SIZE);
+	const mG_p3 = helper.slice(mG_p3_, nThreads * GE25519_P3_SIZE);
 	helper.free(ctx_);
 	helper.free(mG_);
 	helper.free(mG_p3_);
@@ -177,7 +176,7 @@ const mGGenerate = async (helper: LibEpirHelper, cb: undefined | DecryptionConte
 			};
 			workers[workerId].postMessage({
 				method: 'mg_generate_compute', nThreads: nThreads, mmax: mmax,
-				ctx: prepare.ctx, mG_p3: prepare.mG_p3.slice(MG_P3_SIZE * workerId, MG_P3_SIZE * (workerId + 1)),
+				ctx: prepare.ctx, mG_p3: prepare.mG_p3.slice(GE25519_P3_SIZE * workerId, GE25519_P3_SIZE * (workerId + 1)),
 				threadId: workerId, cbInterval: cb ? Math.max(1, Math.floor(cb.interval / nThreads)) : Number.MAX_SAFE_INTEGER,
 			});
 		});

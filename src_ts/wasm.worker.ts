@@ -1,4 +1,5 @@
 
+import { MG_SIZE } from './EpirBase';
 import { LibEpir, LibEpirHelper } from './wasm.libepir';
 import { getRandomBytes } from './util';
 
@@ -10,7 +11,6 @@ interface KeyValue {
 const funcs: KeyValue = {
 	// For mG.bin generation.
 	mg_generate_compute: async (helper: LibEpirHelper, params: { nThreads: number, mmax: number, ctx: ArrayBuffer, mG_p3: ArrayBuffer, threadId: number, cbInterval: number }) => {
-		const MG_SIZE = 36;
 		const mG_count = Math.ceil(params.mmax / params.nThreads) - 1;
 		const ctx_ = helper.malloc(params.ctx);
 		const mG_ = helper.malloc(mG_count * MG_SIZE);
