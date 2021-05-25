@@ -51,6 +51,7 @@ export default {
 			config.node = {
 				fs: 'empty',
 			};
+			config.cache = true;
 			if(isDev) {
 				config.mode = 'development';
 			}
