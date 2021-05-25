@@ -79,9 +79,6 @@
 			<p>Computation time: {{ decryptReplyTime.toLocaleString() }} ms</p>
 		</div>
 		
-		<h2>Debug Console</h2>
-		<textarea id="console" :value="console.join('\n')" rows="20" class="w-100" disabled />
-		
 		<hr />
 		
 		<footer class="mb-4">
@@ -121,7 +118,6 @@ class MGDatabase extends Dexie {
 }
 
 export type DataType = {
-	console: string[],
 	epir: EpirBase | null,
 	decCtx: DecryptionContextBase | null,
 	pointsComputed: number,
@@ -149,7 +145,6 @@ export type DataType = {
 export default Vue.extend({
 	data(): DataType {
 		return {
-			console: [],
 			epir: null,
 			decCtx: null,
 			pointsComputed: 0,
@@ -195,16 +190,7 @@ export default Vue.extend({
 		this.generatePrivkey();
 		this.decCtx = await this.loadMGIfExists();
 	},
-	updated() {
-		const elem = this.$el.querySelector('#console');
-		if(elem) {
-			elem.scrollTop = elem.scrollHeight;
-		}
-	},
 	methods: {
-		log(str: string) {
-			this.console.push(str);
-		},
 		getPrivkey() {
 			if(!checkIsHex(this.privkeyStr, SCALAR_SIZE)) throw new Error('Invalid private key.');
 			return hexToArrayBuffer(this.privkeyStr);
@@ -234,12 +220,10 @@ export default Vue.extend({
 		},
 		async generateMG() {
 			const beginMG = time();
-			this.log('Generating mG..');
 			const beginCompute = time();
 			this.decCtx = await createDecryptionContext({ cb: (pointsComputed: number) => {
 				this.pointsComputed = pointsComputed;
 				const progress = 100 * pointsComputed / DEFAULT_MMAX;
-				this.log(`Generated ${pointsComputed.toLocaleString()} of ${DEFAULT_MMAX.toLocaleString()} points (${progress.toFixed(2)}%)..`);
 				if(pointsComputed === DEFAULT_MMAX) {
 					this.mGComputeTime = time() - beginCompute;
 				}
@@ -260,7 +244,7 @@ export default Vue.extend({
 				this.createSelectorTime = time() - beginSelectorsCreate;
 			} catch(e) {
 				alert(e);
-				this.log(e.stack);
+				console.log(e.stack);
 			}
 		},
 		async createSelectorFast() {
@@ -271,7 +255,7 @@ export default Vue.extend({
 				this.createSelectorTimeFast = time() - beginSelectorsCreate;
 			} catch(e) {
 				alert(e);
-				this.log(e.stack);
+				console.log(e.stack);
 			}
 		},
 		generateElement() {
@@ -285,7 +269,7 @@ export default Vue.extend({
 				this.computeReplyMockTime = time() - beginReplyMock;
 			} catch(e) {
 				alert(e);
-				this.log(e.stack);
+				console.log(e.stack);
 			}
 		},
 		async decryptReply() {
@@ -310,7 +294,7 @@ export default Vue.extend({
 				}
 			} catch(e) {
 				alert(e);
-				this.log(e.stack);
+				console.log(e.stack);
 			}
 		},
 	},
