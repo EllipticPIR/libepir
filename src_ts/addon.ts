@@ -84,16 +84,12 @@ export class Epir implements EpirBase {
 		return epir_napi.elements_count(index_counts);
 	}
 	
-	async createSelector(pubkey: ArrayBuffer, index_counts: number[], idx: number, r?: ArrayBuffer): Promise<ArrayBuffer> {
-		return (r ?
-			epir_napi.selector_create(pubkey, index_counts, idx, r) :
-			epir_napi.selector_create(pubkey, index_counts, idx));
+	createSelector(pubkey: ArrayBuffer, index_counts: number[], idx: number, r?: ArrayBuffer): Promise<ArrayBuffer> {
+		return epir_napi.selector_create(pubkey, index_counts, idx, r);
 	}
 	
-	async createSelectorFast(privkey: ArrayBuffer, index_counts: number[], idx: number, r?: ArrayBuffer): Promise<ArrayBuffer> {
-		return (r ?
-			epir_napi.selector_create_fast(privkey, index_counts, idx, r) :
-			epir_napi.selector_create_fast(privkey, index_counts, idx));
+	createSelectorFast(privkey: ArrayBuffer, index_counts: number[], idx: number, r?: ArrayBuffer): Promise<ArrayBuffer> {
+		return epir_napi.selector_create_fast(privkey, index_counts, idx, r);
 	}
 	
 	// For testing.

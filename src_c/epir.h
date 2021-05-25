@@ -52,6 +52,9 @@ void epir_create_privkey(unsigned char *privkey);
 EMSCRIPTEN_KEEPALIVE
 void epir_pubkey_from_privkey(unsigned char *pubkey, const unsigned char *privkey);
 
+typedef void (*epir_ecelgamal_encrypt_fn)
+	(unsigned char *cipher, const unsigned char *key, const uint64_t message, const unsigned char *r);
+
 /**
  * Create a new EC-ElGamal cipher text (encrypt).
  * @param cipher  Output the ciphertext computed.
@@ -142,8 +145,13 @@ void epir_selector_create_choice(unsigned char *ciphers, const uint64_t *index_c
 void epir_selector_create_(
 	unsigned char *ciphers, const unsigned char *key,
 	const uint64_t *index_counts, const uint8_t n_indexes,
-	const uint64_t idx, void (*encrypt)(unsigned char*, const unsigned char*, const uint64_t, const unsigned char*),
+	const uint64_t idx, epir_ecelgamal_encrypt_fn encrypt,
 	const unsigned char *r);
+
+typedef void (*epir_selector_create_fn)(
+	unsigned char *ciphers, const unsigned char *key,
+	const uint64_t *index_counts, const uint8_t n_indexes,
+	const uint64_t idx, const unsigned char *r);
 
 /**
  * Create a selector.

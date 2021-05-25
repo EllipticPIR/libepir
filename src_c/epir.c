@@ -333,7 +333,7 @@ void epir_selector_create_choice(unsigned char *ciphers, const uint64_t *index_c
 void epir_selector_create_(
 	unsigned char *ciphers, const unsigned char *key,
 	const uint64_t *index_counts, const uint8_t n_indexes,
-	const uint64_t idx, void (*encrypt)(unsigned char*, const unsigned char*, const uint64_t, const unsigned char*),
+	const uint64_t idx, epir_ecelgamal_encrypt_fn encrypt,
 	const unsigned char *r) {
 	const uint64_t n_ciphers = epir_selector_ciphers_count(index_counts, n_indexes);
 	epir_selector_create_choice(ciphers, index_counts, n_indexes, idx);

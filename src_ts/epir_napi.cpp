@@ -357,10 +357,40 @@ Napi::Value ElementsCount(const Napi::CallbackInfo &info) {
 	return CiphersOrElementsCount(info, epir_selector_elements_count);
 }
 
-Napi::Value SelectorCreate_(
-	const Napi::CallbackInfo &info,
-	void (*selector_create)(unsigned char *ciphers, const unsigned char *privkey,
-		const uint64_t *index_counts, const uint8_t n_indexes, const uint64_t idx, const unsigned char *r)) {
+class SelectorCreateWorker : public Napi::AsyncWorker {
+	private:
+		const unsigned char *key;
+		const std::vector<uint64_t> index_counts;
+		const uint64_t idx;
+		const unsigned char *r;
+		const epir_selector_create_fn selector_create;
+		std::vector<uint8_t> ciphers;
+	public:
+		Napi::Promise::Deferred _deferred;
+		SelectorCreateWorker(napi_env env,
+			const unsigned char *key, const std::vector<uint64_t> &index_counts, const uint64_t idx, const unsigned char *r,
+			const epir_selector_create_fn selector_create) :
+			Napi::AsyncWorker(env),
+			key(key), index_counts(index_counts), idx(idx), r(r), selector_create(selector_create),
+			ciphers(epir_selector_ciphers_count(index_counts.data(), index_counts.size()) * EPIR_CIPHER_SIZE),
+			_deferred(Napi::Promise::Deferred::New(env)) {
+		}
+		void Execute() override {
+			this->selector_create(this->ciphers.data(), this->key, this->index_counts.data(), this->index_counts.size(), this->idx, this->r);
+		}
+		void OnOK() override {
+			Napi::HandleScope scope(this->Env());
+			Napi::TypedArrayOf<uint8_t> ciphers = Napi::TypedArrayOf<uint8_t>::New(this->Env(), this->ciphers.size());
+			memcpy(ciphers.Data(), this->ciphers.data(), this->ciphers.size());
+			this->_deferred.Resolve(ciphers.ArrayBuffer());
+		}
+		void OnError(const Napi::Error &err) override {
+			this->_deferred.Reject(this->Env().Null());
+		}
+};
+
+// .selector_create[_fast](pubkey: ArrayBuffer(32), index_counts: number[], idx: number, r?: ArrayBuffer): Promise<ArrayBuffer>.
+Napi::Value SelectorCreate_(const Napi::CallbackInfo &info, epir_selector_create_fn selector_create) {
 	Napi::Env env = info.Env();
 	if(info.Length() < 3) {
 		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
@@ -396,7 +426,7 @@ Napi::Value SelectorCreate_(
 			return env.Null();
 		}
 		uint8_t *r = NULL;
-		if(info.Length() >= 4) {
+		if(info.Length() >= 4 && !info[3].IsUndefined()) {
 			try {
 				const size_t expected_r_size = ciphers_count * EPIR_SCALAR_SIZE;
 				checkIsArrayBuffer(info[3], expected_r_size);
@@ -406,22 +436,20 @@ Napi::Value SelectorCreate_(
 				return env.Null();
 			}
 		}
-		// Generate a selector.
-		auto ciphers = Napi::TypedArrayOf<uint8_t>::New(env, ciphers_count * EPIR_CIPHER_SIZE);
-		selector_create(ciphers.Data(), key, index_counts.data(), index_counts.size(), idx, r);
-		return ciphers.ArrayBuffer();
+		// Create AsyncWorker instance.
+		SelectorCreateWorker *wk = new SelectorCreateWorker(env, key, index_counts, idx, r, selector_create);
+		wk->Queue();
+		return wk->_deferred.Promise();
 	} catch(Napi::Error &err) {
 		err.ThrowAsJavaScriptException();
 		return env.Null();
 	}
 }
 
-// .selector_create(pubkey: ArrayBuffer(32), index_counts: number[], idx: number, r?: ArrayBuffer): ArrayBuffer.
 Napi::Value SelectorCreate(const Napi::CallbackInfo &info) {
 	return SelectorCreate_(info, epir_selector_create);
 }
 
-// .selector_create_fast(privkey: ArrayBuffer(32), index_counts: number[], idx: number, r?: ArrayBuffer): ArrayBuffer.
 Napi::Value SelectorCreateFast(const Napi::CallbackInfo &info) {
 	return SelectorCreate_(info, epir_selector_create_fast);
 }
