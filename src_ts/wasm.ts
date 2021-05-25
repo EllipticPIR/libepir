@@ -1,4 +1,6 @@
 
+import Dexie from 'dexie';
+
 import {
 	EpirBase,
 	EpirCreateFunction,
@@ -217,6 +219,35 @@ export const createDecryptionContext: DecryptionContextCreateFunction = async (
 	const helper = new LibEpirHelper(wasm);
 	const mG = (param instanceof ArrayBuffer ? param : await getMG(helper, param, mmax));
 	return new DecryptionContext(helper, mG);
+};
+
+export interface MGDatabaseElement {
+	key: number;
+	value: ArrayBuffer;
+}
+
+export class MGDatabase extends Dexie {
+	static VERSION = 1;
+	mG: Dexie.Table<MGDatabaseElement, number>;
+	constructor(dbName: string) {
+		super(dbName);
+		this.version(MGDatabase.VERSION).stores({
+			mG: 'key',
+		});
+		this.mG = this.table('mG');
+	}
+}
+
+export const loadDecryptionContextFromIndexedDB = async (dbName: string = 'mG.bin'): Promise<DecryptionContextBase | null> => {
+	const db = new MGDatabase(dbName);
+	const mGDB = await db.mG.get(0);
+	if(!mGDB) return null;
+	return await createDecryptionContext(mGDB.value);
+};
+
+export const saveDecryptionContextToIndexedDB = async (decCtx: DecryptionContextBase, dbName: string = 'mG.bin'): Promise<void> => {
+	const db = new MGDatabase(dbName);
+	await db.mG.put({ key: 0, value: decCtx.getMG() });
 };
 
 export class Epir implements EpirBase {

@@ -96,27 +96,13 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import Dexie from 'dexie';
 
 import { time, arrayBufferToHex, hexToArrayBuffer, getRandomBytes, checkIsHex } from '../src_ts/util';
 import { EpirBase, DecryptionContextBase, DEFAULT_MMAX, SCALAR_SIZE, POINT_SIZE } from '../src_ts/EpirBase';
-import { createEpir, createDecryptionContext } from '../src_ts/wasm';
-
-interface MGDatabaseElement {
-	key: number;
-	value: ArrayBuffer;
-}
-
-class MGDatabase extends Dexie {
-	mG: Dexie.Table<MGDatabaseElement, number>;
-	constructor() {
-		super('mG.bin');
-		this.version(1).stores({
-			mG: 'key',
-		});
-		this.mG = this.table('mG');
-	}
-}
+import {
+	createEpir, createDecryptionContext,
+	loadDecryptionContextFromIndexedDB, saveDecryptionContextToIndexedDB
+} from '../src_ts/wasm';
 
 export type DataType = {
 	epir: EpirBase | null,
@@ -211,13 +197,9 @@ export default Vue.extend({
 		},
 		async loadMGIfExists() {
 			const beginMG = time();
-			const db = new MGDatabase();
-			const mGDB = await db.mG.get(0);
-			if(!mGDB) return null;
-			const mCount = mGDB.value.byteLength / 36;
-			if(mCount != DEFAULT_MMAX) return null;
-			const decCtx = await createDecryptionContext(mGDB.value);
-			this.pointsComputed = mCount;
+			const decCtx = await loadDecryptionContextFromIndexedDB();
+			if(!decCtx) return;
+			this.pointsComputed = DEFAULT_MMAX;
 			this.mGLoadTime = time() - beginMG;
 			return decCtx;
 		},
@@ -233,8 +215,7 @@ export default Vue.extend({
 				}
 			}, interval: 100 * 1000 }, DEFAULT_MMAX);
 			this.mGSortTime = time() - beginCompute - this.mGComputeTime;
-			const db = new MGDatabase();
-			await db.mG.put({ key: 0, value: this.decCtx.getMG() });
+			saveDecryptionContextToIndexedDB(this.decCtx);
 			this.mGLoadTime = time() - beginCompute;
 			this.pointsComputing = false;
 		},

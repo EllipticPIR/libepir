@@ -53,7 +53,7 @@
     "@types/jest": "^26.0.23",
     "@types/node": "^14.14.37",
     "bootstrap-vue": "^2.21.2",
-    "dexie": "^3.0.3",
+    "fake-indexeddb": "^3.1.2",
     "jest": "^26.6.3",
     "libepir-sodium-wasm": "^0.0.2",
     "node-gyp": "^8.0.0",
@@ -65,6 +65,7 @@
   },
   "dependencies": {
     "bindings": "^1.5.0",
+    "dexie": "^3.0.3",
     "node-addon-api": "^3.1.0"
   }
 }
