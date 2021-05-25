@@ -177,7 +177,7 @@ export default Vue.extend({
 	async mounted() {
 		this.epir = await createEpir();
 		this.generatePrivkey();
-		this.decCtx = await this.loadMGIfExists();
+		await this.loadMGIfExists();
 	},
 	methods: {
 		getPrivkey() {
@@ -199,9 +199,9 @@ export default Vue.extend({
 			const beginMG = time();
 			const decCtx = await loadDecryptionContextFromIndexedDB();
 			if(!decCtx) return;
+			this.decCtx = decCtx;
 			this.pointsComputed = DEFAULT_MMAX;
 			this.mGLoadTime = time() - beginMG;
-			return decCtx;
 		},
 		async generateMG() {
 			const beginCompute = time();
