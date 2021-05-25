@@ -99,32 +99,31 @@ Napi::Value EncryptFast(const Napi::CallbackInfo &info) {
 }
 
 class DecryptionContext : public Napi::ObjectWrap<DecryptionContext> {
-	
-private:
-	
-	static Napi::FunctionReference constructor;
-	
-	EllipticPIR::DecryptionContext decCtx = EllipticPIR::DecryptionContext("", 0);
-	
-	Napi::Value GetMG(const Napi::CallbackInfo& info);
-	Napi::Value Decrypt(const Napi::CallbackInfo& info);
-	Napi::Value ReplyDecrypt(const Napi::CallbackInfo& info);
-	
-public:
-	
-	static Napi::Object Init(Napi::Env env, Napi::Object exports);
-	DecryptionContext(const Napi::CallbackInfo &info);
-	
+	private:
+		
+		EllipticPIR::DecryptionContext decCtx = EllipticPIR::DecryptionContext("", 0);
+		
+		Napi::Value GetMG(const Napi::CallbackInfo& info);
+		Napi::Value Decrypt(const Napi::CallbackInfo& info);
+		Napi::Value ReplyDecrypt(const Napi::CallbackInfo& info);
+		
+	public:
+		
+		static Napi::Object Init(Napi::Env env, Napi::Object exports);
+		DecryptionContext(const Napi::CallbackInfo &info);
+		
 };
 
 Napi::Object DecryptionContext::Init(Napi::Env env, Napi::Object exports) {
 	Napi::Function func = DefineClass(env, "DecryptionContext", {
-		InstanceMethod("getMG", &DecryptionContext::GetMG),
-		InstanceMethod("decrypt", &DecryptionContext::Decrypt),
-		InstanceMethod("replyDecrypt", &DecryptionContext::ReplyDecrypt),
+		InstanceMethod<&DecryptionContext::GetMG       >("getMG"),
+		InstanceMethod<&DecryptionContext::Decrypt     >("decrypt"),
+		InstanceMethod<&DecryptionContext::ReplyDecrypt>("replyDecrypt"),
 	});
-	constructor = Napi::Persistent(func);
+	Napi::FunctionReference *constructor = new Napi::FunctionReference();
+	*constructor = Napi::Persistent(func);
 	exports.Set("DecryptionContext", func);
+	env.SetInstanceData<Napi::FunctionReference>(constructor);
 	return exports;
 }
 
@@ -223,8 +222,6 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 		return;
 	}
 }
-
-Napi::FunctionReference DecryptionContext::constructor;
 
 // DecryptionContext.getMG(): ArrayBuffer.
 Napi::Value DecryptionContext::GetMG(const Napi::CallbackInfo &info) {
@@ -513,5 +510,5 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
 	return exports;
 }
 
-NODE_API_MODULE(libepir, Init);
+NODE_API_MODULE(NODE_GYP_MODULE_NAME, Init);
 
