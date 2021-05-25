@@ -273,6 +273,10 @@ export default Vue.extend({
 				alert('Please generate mG first.');
 				return;
 			}
+			if(!this.replyStr) {
+				alert('Please run "Compute reply (mock)" first.');
+				return;
+			}
 			try {
 				const beginDecrypt = time();
 				const decrypted = await this.decCtx.decryptReply(
