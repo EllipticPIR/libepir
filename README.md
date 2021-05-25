@@ -5,46 +5,94 @@ libepir - EllipticPIR client library
 ![Node.js CI](https://github.com/EllipticPIR/libepir/actions/workflows/node.js.yml/badge.svg)
 [![codecov](https://codecov.io/gh/EllipticPIR/libepir/branch/master/graph/badge.svg?token=SUZFQ09J2O)](https://codecov.io/gh/EllipticPIR/libepir)
 
+EllipticPIR is a private information retrieval (PIR) implementation backed by the EC-ElGamal encryption.
+
+Try online WebAssembly demo: https://demo.ellipticpir.com/
+
 This library contains cryptographic functions which are required
 to encrypt a query (a selector) to the EllipticPIR server
 and to decrypt a reply from the EllipticPIR server.
 
 This repository provides native C library and bindings for C++, JavaScript and TypeScript programming languages.
 
-Install
+C / C++
 -------
 
-### For Ubuntu users (PPA)
+The C implementation has no runtime heap memory allocation.
+The C++ bindings is a header-only library.
 
-If you are running Ubuntu, you can install a pre-built binary from the PPA repo.
+### Install
 
-```
-$ sudo apt-add-repository ppa:visvirial/epir
-$ sudo apt update
-$ sudo apt install libepir-dev
-```
-
-### Build your own
-
-```
+```bash
 $ git clone https://github.com/EllipticPIR/libepir.git
 $ cd libepir
-$ mkdir build
-$ cd build
-$ cmake -DCMAKE_BUILD_TYPE=Release ../
+$ mkdir build_c
+$ cd build_c
+$ cmake -DCMAKE_BUILD_TYPE=Release ..
 $ make -j4  # (change the number "4" to your physical CPU cores to parallelize the build).
 $ sudo make install
 ```
 
-Generate mG.bin
----------------
+### Generate mG.bin
+
+```bash
+$ epir_genm
+```
+
+### Usage
+
+Include [epir.h](./src_c/epir.h) (C) or [epir.hpp](./src_c/epir.hpp) (C++) in your source code.
+
+For general usage, see [./src\_c/bench\_\*.(c|cpp)](./src_c) files.
+
+Node.js / TypeScript
+--------------------
+
+This library both includes Node.js native addons (faster, no browser support) and
+WebAssembly builds (slower, browser support).
+
+### Install
+
+#### npm
+
+```bash
+$ npm install epir
+```
+
+#### Build your own
+
+```bash
+$ git clone https://github.com/EllipticPIR/libepir.git
+$ cd libepir
+$ npm ci
+```
+
+### Usage
+
+See [./src\_ts/epir\_t.ts](./src_ts/epir_t.ts) for Node.js binding definitions.
+
+For general usage, see files under the [./src\_ts/\_\_tests\_\_](./src_ts/__tests__) directory and
+[./pages/index.ts](./pages/index.ts).
+
+FAQs
+----
+
+### What is mG.bin?
 
 To decrypt a server's reply, you need to generate the *mG.bin* file.
 This file contains the pre-computation values of (G, 2\*G, .., (0xFFFFFF)\*G),
 where G is the generater of the Ed25519 curve.
 
-```
+To generate mG.bin, run
+
+```bash
 $ epir_genm
+```
+
+or
+
+```bash
+$ npm run epir_genm
 ```
 
 The computation may take tens of seconds to finish.
@@ -55,29 +103,4 @@ The generated file will be located in *$HOME/.EllipticPIR/mG.bin*.
 The file size will be ~576MiB.
 
 If you will not decrypt a server's reply, you can skip this step.
-
-Usage
------
-
-### C
-
-See [epir.h](./src_c/epir.h) for function definitions.
-
-For general usage, see bench_\*.c files.
-
-The C implementation has no runtime heap memory allocation.
-
-### C++
-
-See [epir.hpp](./src_c/epir.hpp) for class definitions.
-
-For general usage, see bench_\*.cpp files.
-
-### JavaScript / TypeScript
-
-See [epir_t.ts](./src_ts/epir_t.ts) for Node.js binding definitions.
-
-For general usage, see [test_common.ts](./src_ts/test_common.ts).
-
-
 
