@@ -130,6 +130,8 @@ const mGGeneratePrepare = (helper: LibEpirHelper, nThreads: number, mmax: number
 	} else {
 		helper.call('mG_generate_prepare', ctx_, mG_, mG_p3_, nThreads, null, null);
 	}
+	// Sort.
+	helper.call('mG_sort', mG_, nThreads);
 	const ctx = helper.slice(ctx_, CTX_SIZE);
 	const mG = helper.slice(mG_, nThreads * MG_SIZE);
 	const mG_p3 = helper.slice(mG_p3_, nThreads * MG_P3_SIZE);
@@ -178,15 +180,23 @@ const mGGenerate = async (helper: LibEpirHelper, cb: undefined | DecryptionConte
 			});
 		});
 	});
+	const mGCounts: number[] = [];
 	const mGConcat = new Uint8Array(mmax * MG_SIZE);
 	mGConcat.set(new Uint8Array(prepare.mG));
 	let offset = prepare.mG.byteLength;
 	(await Promise.all(promises)).map((mGResult, i) => {
+		mGCounts[i] = mGResult.byteLength / MG_SIZE;
 		mGConcat.set(new Uint8Array(mGResult), offset);
 		offset += mGResult.byteLength;
 	});
 	const mGConcat_ = helper.malloc(mGConcat.buffer);
-	helper.call('mG_sort', mGConcat_, mmax);
+	let aCount = nThreads;
+	const scratch_ = helper.malloc(mGConcat.length);
+	for(let i=0; i<mGCounts.length; i++) {
+		helper.call('mG_merge', scratch_, mGConcat_, aCount, mGCounts[i]);
+		aCount += mGCounts[i];
+	}
+	helper.free(scratch_);
 	const ret = helper.slice(mGConcat_, mmax * MG_SIZE);
 	helper.free(mGConcat_);
 	return ret;

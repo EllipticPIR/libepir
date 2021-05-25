@@ -22,9 +22,12 @@ const funcs: KeyValue = {
 				worker.postMessage({ method: 'mg_generate_cb', pointsComputed: pointsComputed });
 			}
 		}, 'vi');
+		// Run.
 		helper.call('mG_generate_compute',
 			ctx_, mG_, mG_count, mG_p3_, params.nThreads + params.threadId, params.nThreads, cb, null);
 		helper.removeFunction(cb);
+		// Sort.
+		helper.call('mG_sort', mG_, mG_count);
 		const mG = helper.slice(mG_, mG_count * MG_SIZE);
 		helper.free(ctx_);
 		helper.free(mG_);
