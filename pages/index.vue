@@ -13,7 +13,7 @@
 		<b-progress :max="mmax" height="2rem" animated class="my-4">
 			<b-progress-bar :value="pointsComputed" style="font-size:150%;">
 				<template v-if="pointsComputed != mmax">
-					Computed {{ pointsComputed.toLocaleString() }} of {{ mmax.toLocaleString() }} points
+					{{ pointsComputed.toLocaleString() }} of {{ mmax.toLocaleString() }} points computed
 				</template>
 				<template v-else-if="pointsComputing">
 					(Sorting...)
