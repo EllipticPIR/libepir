@@ -4,6 +4,30 @@
 #include "../src_c/epir.hpp"
 #include "../src_c/epir_reply_mock.h"
 
+class PromiseWorker : public Napi::AsyncWorker {
+	public:
+		Napi::Promise::Deferred _deferred;
+		PromiseWorker(napi_env env) : Napi::AsyncWorker(env), _deferred(Napi::Promise::Deferred::New(env)) {
+		}
+		void OnError(const Napi::Error &err) override {
+			this->_deferred.Reject(Napi::String::New(this->Env(), err.Message()));
+		}
+};
+
+class ArrayBufferPromiseWorker : public PromiseWorker {
+	protected:
+		std::vector<uint8_t> data;
+	public:
+		ArrayBufferPromiseWorker(napi_env env) : PromiseWorker(env) {
+		}
+		void OnOK() override {
+			Napi::HandleScope scope(this->Env());
+			Napi::TypedArrayOf<uint8_t> data = Napi::TypedArrayOf<uint8_t>::New(this->Env(), this->data.size());
+			memcpy(data.Data(), this->data.data(), this->data.size());
+			this->_deferred.Resolve(data.ArrayBuffer());
+		}
+};
+
 static void checkIsArrayBuffer(const Napi::Value val, const size_t expectedLength) {
 	if(!val.IsArrayBuffer()) {
 		throw "The type of the parameter is not an ArrayBuffer.";
@@ -260,7 +284,7 @@ Napi::Value DecryptionContext::Decrypt(const Napi::CallbackInfo &info) {
 	return Napi::Number::New(env, decrypted);
 }
 
-class ReplyDecryptWorker : public Napi::AsyncWorker {
+class ReplyDecryptWorker : public ArrayBufferPromiseWorker {
 	private:
 		const EllipticPIR::DecryptionContext decCtx;
 		const unsigned char *privkey;
@@ -268,32 +292,19 @@ class ReplyDecryptWorker : public Napi::AsyncWorker {
 		const size_t reply_size;
 		const uint8_t dimension;
 		const uint8_t packing;
-		std::vector<unsigned char> decrypted;
 	public:
-		Napi::Promise::Deferred _deferred;
 		ReplyDecryptWorker(napi_env env,
 			const EllipticPIR::DecryptionContext decCtx, const unsigned char *privkey,
-			const unsigned char *reply, const size_t reply_size,
-			const uint8_t dimension, const uint8_t packing) :
-			Napi::AsyncWorker(env),
-			decCtx(decCtx), privkey(privkey), reply(reply), reply_size(reply_size), dimension(dimension), packing(packing),
-			_deferred(Napi::Promise::Deferred::New(env)) {
+			const unsigned char *reply, const size_t reply_size, const uint8_t dimension, const uint8_t packing) :
+			ArrayBufferPromiseWorker(env),
+			decCtx(decCtx), privkey(privkey), reply(reply), reply_size(reply_size), dimension(dimension), packing(packing) {
 		}
 		void Execute() override {
 			try {
-				this->decrypted = this->decCtx.decryptReply(this->privkey, this->reply, this->reply_size, this->dimension, this->packing);
+				this->data = this->decCtx.decryptReply(this->privkey, this->reply, this->reply_size, this->dimension, this->packing);
 			} catch(const char *err) {
 				this->SetError(std::string(err));
 			}
-		}
-		void OnOK() override {
-			Napi::HandleScope scope(this->Env());
-			Napi::TypedArrayOf<uint8_t> decrypted = Napi::TypedArrayOf<uint8_t>::New(this->Env(), this->decrypted.size());
-			memcpy(decrypted.Data(), this->decrypted.data(), this->decrypted.size());
-			this->_deferred.Resolve(decrypted.ArrayBuffer());
-		}
-		void OnError(const Napi::Error &err) override {
-			this->_deferred.Reject(Napi::String::New(this->Env(), err.Message()));
 		}
 };
 
@@ -388,35 +399,23 @@ Napi::Value ElementsCount(const Napi::CallbackInfo &info) {
 	return CiphersOrElementsCount(info, epir_selector_elements_count);
 }
 
-class SelectorCreateWorker : public Napi::AsyncWorker {
+class SelectorCreateWorker : public ArrayBufferPromiseWorker {
 	private:
 		const unsigned char *key;
 		const std::vector<uint64_t> index_counts;
 		const uint64_t idx;
 		const unsigned char *r;
 		const epir_selector_create_fn selector_create;
-		std::vector<uint8_t> ciphers;
 	public:
-		Napi::Promise::Deferred _deferred;
 		SelectorCreateWorker(napi_env env,
 			const unsigned char *key, const std::vector<uint64_t> &index_counts, const uint64_t idx, const unsigned char *r,
 			const epir_selector_create_fn selector_create) :
-			Napi::AsyncWorker(env),
-			key(key), index_counts(index_counts), idx(idx), r(r), selector_create(selector_create),
-			ciphers(epir_selector_ciphers_count(index_counts.data(), index_counts.size()) * EPIR_CIPHER_SIZE),
-			_deferred(Napi::Promise::Deferred::New(env)) {
+			ArrayBufferPromiseWorker(env),
+			key(key), index_counts(index_counts), idx(idx), r(r), selector_create(selector_create) {
+			this->data.resize(epir_selector_ciphers_count(index_counts.data(), index_counts.size()) * EPIR_CIPHER_SIZE);
 		}
 		void Execute() override {
-			this->selector_create(this->ciphers.data(), this->key, this->index_counts.data(), this->index_counts.size(), this->idx, this->r);
-		}
-		void OnOK() override {
-			Napi::HandleScope scope(this->Env());
-			Napi::TypedArrayOf<uint8_t> ciphers = Napi::TypedArrayOf<uint8_t>::New(this->Env(), this->ciphers.size());
-			memcpy(ciphers.Data(), this->ciphers.data(), this->ciphers.size());
-			this->_deferred.Resolve(ciphers.ArrayBuffer());
-		}
-		void OnError(const Napi::Error &err) override {
-			this->_deferred.Reject(Napi::String::New(this->Env(), err.Message()));
+			this->selector_create(this->data.data(), this->key, this->index_counts.data(), this->index_counts.size(), this->idx, this->r);
 		}
 };
 
