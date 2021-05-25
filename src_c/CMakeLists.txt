@@ -19,7 +19,7 @@ if(EMSCRIPTEN)
 	include_directories(${CMAKE_SOURCE_DIR}/../node_modules/libepir-sodium-wasm/dist/include)
 	link_directories(${CMAKE_SOURCE_DIR}/../node_modules/libepir-sodium-wasm/dist/lib)
 	# Enable optimizations.
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -flto=full -O3")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -flto=full -O3 -s ENVIRONMENT=web")
 	# ./libepir.js
 	add_executable(libepir.js ${EPIR_SOURCES})
 	target_link_libraries(libepir.js "-lsodium")
