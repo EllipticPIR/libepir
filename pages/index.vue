@@ -35,6 +35,8 @@
 		
 		<InputWithLabel v-model="indexCountsStr" label="Index counts" />
 		
+		<p>Database elements: {{ getIndexCounts().reduce((acc, v) => acc * v, 1).toLocaleString() }}</p>
+		
 		<h2>Generate a selector (normal)</h2>
 		
 		<ClickableButton value="Generate selector (normal)" :click="createSelector" />
