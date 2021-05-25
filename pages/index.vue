@@ -73,11 +73,7 @@
 		
 		<ClickableButton value="Decrypt reply" :click="decryptReply" />
 		
-		<div>
-			<p>Decrypted</p>
-			<textarea :value="decryptedStr" rows="5" class="w-100" disabled />
-			<p>Computation time: {{ decryptReplyTime.toLocaleString() }} ms</p>
-		</div>
+		<HexWindow v-model="decryptedStr" label="Decrypted" :time="decryptReplyTime" rows="5" :show-size="false" />
 		
 		<hr />
 		

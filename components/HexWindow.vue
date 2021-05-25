@@ -1,9 +1,16 @@
 <template>
 	<div>
 		<p>{{ label }}</p>
-		<textarea :value="value" rows="10" class="w-100" disabled />
-		<p>Binary size: {{ (value.length / 2).toLocaleString() }} bytes</p>
-		<p>Computation time: {{ time.toLocaleString() }} ms</p>
+		<textarea :value="value" :rows="rows" class="w-100" disabled />
+		<template v-if="showSize">
+			<p>Binary size: {{ (value.length / 2).toLocaleString() }} bytes</p>
+		</template>
+		<template v-if="time >= 0">
+			<p>Computation time: {{ time.toLocaleString() }} ms</p>
+		</template>
+		<template v-else>
+			<p>Computation time: (not executed)</p>
+		</template>
 	</div>
 </template>
 
@@ -14,6 +21,14 @@ export default Vue.extend({
 		label: String,
 		value: String,
 		time: Number,
+		rows: {
+			type: [String, Number],
+			default: 10,
+		},
+		showSize: {
+			type: Boolean,
+			default: true,
+		}
 	},
 });
 </script>
