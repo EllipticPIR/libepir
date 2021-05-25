@@ -32,9 +32,9 @@ export class DecryptionContext implements DecryptionContextBase {
 		for(let t=0; t<nThreads; t++) this.workers.push(new EPIRWorker());
 	}
 	
-	finalize() {
-		this.helper.free(this.mG_);
-	}
+	//finalize() {
+	//	this.helper.free(this.mG_);
+	//}
 	
 	getMG(): ArrayBuffer {
 		const ret = new ArrayBuffer(this.mmax * MG_SIZE);

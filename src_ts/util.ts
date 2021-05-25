@@ -1,7 +1,7 @@
 
 import { SCALAR_SIZE } from './EpirBase';
 
-export const time = () => new Date().getTime();
+export const time = () => Date.now();
 
 export const arrayBufferConcat = (arr: ArrayBuffer[]) => {
 	const len = arr.reduce((acc, v) => acc + v.byteLength, 0);
