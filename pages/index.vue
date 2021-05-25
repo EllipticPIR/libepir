@@ -15,6 +15,9 @@
 				<template v-if="pointsComputed != mmax">
 					Computed {{ pointsComputed.toLocaleString() }} of {{ mmax.toLocaleString() }} points
 				</template>
+				<template v-else-if="pointsComputing">
+					(Sorting...)
+				</template>
 				<template v-else>
 					(Completed)
 				</template>
@@ -119,6 +122,7 @@ export type DataType = {
 	epir: EpirBase | null,
 	decCtx: DecryptionContextBase | null,
 	pointsComputed: number,
+	pointsComputing: boolean,
 	mGLoadTime: number,
 	mGComputeTime: number,
 	mGSortTime: number,
@@ -146,6 +150,7 @@ export default Vue.extend({
 			epir: null,
 			decCtx: null,
 			pointsComputed: 0,
+			pointsComputing: false,
 			mGLoadTime: -1,
 			mGComputeTime: -1,
 			mGSortTime: -1,
@@ -217,8 +222,9 @@ export default Vue.extend({
 			return decCtx;
 		},
 		async generateMG() {
-			const beginMG = time();
 			const beginCompute = time();
+			this.pointsComputed = 0;
+			this.pointsComputing = true;
 			this.decCtx = await createDecryptionContext({ cb: (pointsComputed: number) => {
 				this.pointsComputed = pointsComputed;
 				const progress = 100 * pointsComputed / DEFAULT_MMAX;
@@ -229,7 +235,8 @@ export default Vue.extend({
 			this.mGSortTime = time() - beginCompute - this.mGComputeTime;
 			const db = new MGDatabase();
 			await db.mG.put({ key: 0, value: this.decCtx.getMG() });
-			this.mGLoadTime = time() - beginMG;
+			this.mGLoadTime = time() - beginCompute;
+			this.pointsComputing = false;
 		},
 		generatePrivkey() {
 			this.privkeyStr = arrayBufferToHex(this.epir!.createPrivkey());
