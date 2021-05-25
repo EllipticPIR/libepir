@@ -18,6 +18,7 @@
     "em:cmake": "cd build_em && EM_NODE_JS=$(which node) emcmake cmake -DCMAKE_INSTALL_PREFIX=../dist ..",
     "em:make": "cd build_em && EM_NODE_JS=$(which node) emmake make -j$(node -e 'console.log(require(\"os\").cpus().length)') all install",
     "serve": "nuxt dev",
+    "generate": "rm -rf ./build_nuxt && nuxt generate",
     "epir_genm": "./build_c/epir-prefix/src/epir-build/epir_genm",
     "test": "npm run epir_genm && jest --coverage --verbose"
   },

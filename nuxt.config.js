@@ -57,5 +57,9 @@ export default {
 		},
 	},
 	
+	generate: {
+		dir: 'build_nuxt',
+	},
+	
 };
 
