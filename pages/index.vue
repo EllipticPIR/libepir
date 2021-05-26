@@ -150,8 +150,8 @@ export default Vue.extend({
 			createSelectorTimeFast: -1,
 			dimension: '3',
 			packing: '3',
-			elemSize: 32,
-			elemStr: arrayBufferToHex(getRandomBytes(32)),
+			elemSize: 0,
+			elemStr: '',
 			replyStr: '',
 			computeReplyMockTime: -1,
 			decryptedStr: '',
@@ -175,6 +175,7 @@ export default Vue.extend({
 		}
 	},
 	async mounted() {
+		this.elemStr = arrayBufferToHex(getRandomBytes(32));
 		this.epir = await createEpir();
 		this.generatePrivkey();
 		await this.loadMGIfExists();
