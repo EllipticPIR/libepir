@@ -1,6 +1,8 @@
 
 export default {
 	
+	ssr: false,
+	
 	// Target: https://go.nuxtjs.dev/config-target
 	target: 'static',
 	
@@ -56,10 +58,18 @@ export default {
 				config.mode = 'development';
 			}
 		},
+		babel: {
+			compact: true,
+		},
 	},
 	
 	generate: {
 		dir: 'build_nuxt',
+	},
+	
+	bootstrapVue: {
+		bootstrapVueCSS: false,
+		componentPlugins: [],
 	},
 	
 };
