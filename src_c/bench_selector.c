@@ -5,8 +5,8 @@
 #include "epir.h"
 #include "common.h"
 
-#define N_INDEXES (2)
-#define ELEMENTS_PER_INDEX (10000)
+#define N_INDEXES (3)
+#define ELEMENTS_PER_INDEX (1000)
 #define INDEX (12345)
 
 int main() {
