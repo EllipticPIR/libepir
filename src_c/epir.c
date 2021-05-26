@@ -324,7 +324,7 @@ void epir_selector_create_choice(unsigned char *ciphers, const uint64_t *index_c
 		const uint64_t rows = idx_ / prod;
 		idx_ -= rows * prod;
 		for(uint64_t r=0; r<index_counts[ic]; r++) {
-			ciphers[offset * EPIR_CIPHER_SIZE] = (r == rows);
+			ciphers[offset * EPIR_CIPHER_SIZE] = (r == rows ? 1 : 0);
 			offset++;
 		}
 	}
