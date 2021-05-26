@@ -286,7 +286,7 @@ Napi::Value DecryptionContext::Decrypt(const Napi::CallbackInfo &info) {
 
 class ReplyDecryptWorker : public ArrayBufferPromiseWorker {
 	private:
-		const EllipticPIR::DecryptionContext decCtx;
+		const EllipticPIR::DecryptionContext *decCtx;
 		const unsigned char *privkey;
 		const unsigned char *reply;
 		const size_t reply_size;
@@ -294,14 +294,14 @@ class ReplyDecryptWorker : public ArrayBufferPromiseWorker {
 		const uint8_t packing;
 	public:
 		ReplyDecryptWorker(napi_env env,
-			const EllipticPIR::DecryptionContext decCtx, const unsigned char *privkey,
+			const EllipticPIR::DecryptionContext *decCtx, const unsigned char *privkey,
 			const unsigned char *reply, const size_t reply_size, const uint8_t dimension, const uint8_t packing) :
 			ArrayBufferPromiseWorker(env),
 			decCtx(decCtx), privkey(privkey), reply(reply), reply_size(reply_size), dimension(dimension), packing(packing) {
 		}
 		void Execute() override {
 			try {
-				this->data = this->decCtx.decryptReply(this->privkey, this->reply, this->reply_size, this->dimension, this->packing);
+				this->data = this->decCtx->decryptReply(this->privkey, this->reply, this->reply_size, this->dimension, this->packing);
 			} catch(const char *err) {
 				this->SetError(std::string(err));
 			}
@@ -338,7 +338,7 @@ Napi::Value DecryptionContext::ReplyDecrypt(const Napi::CallbackInfo& info) {
 	const uint8_t *reply = static_cast<const uint8_t*>(info[3].As<Napi::ArrayBuffer>().Data());
 	const size_t reply_size = info[3].As<Napi::ArrayBuffer>().ByteLength();
 	// Decrypt.
-	ReplyDecryptWorker *wk = new ReplyDecryptWorker(env, this->decCtx, privkey, reply, reply_size, dimension, packing);
+	ReplyDecryptWorker *wk = new ReplyDecryptWorker(env, &this->decCtx, privkey, reply, reply_size, dimension, packing);
 	wk->Queue();
 	return wk->_deferred.Promise();
 }
