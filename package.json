@@ -1,6 +1,6 @@
 {
   "name": "epir",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "EllipticPIR client library (Node.js / TypeScript bindings).",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -27,6 +27,8 @@
     "epir_genm": "./build_c/epir-prefix/src/epir-build/epir_genm"
   },
   "files": [
+    "components/*",
+    "pages/*",
     "src_c/*",
     "src_ts/*",
     "dist/*",
