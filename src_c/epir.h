@@ -41,7 +41,6 @@ extern "C" {
  * Generate a new private key.
  * @param privkey The private key to output. The `EPIR_SCALAR_SIZE` bytes of memory should be allocated.
  */
-EMSCRIPTEN_KEEPALIVE
 void epir_create_privkey(unsigned char *privkey);
 
 /**
@@ -84,7 +83,6 @@ size_t epir_mG_default_path_length();
 
 void epir_mG_default_path(char *path, const size_t len);
 
-EMSCRIPTEN_KEEPALIVE
 size_t epir_mG_load(epir_mG_t *mG, const size_t mmax, const char *path);
 
 typedef struct {
@@ -104,7 +102,6 @@ void epir_mG_generate_compute(
 	epir_mG_t *mG, const size_t mG_count, ge25519_p3 *mG_p3, const uint32_t offset, const uint32_t interval,
 	void (*cb)(void*), void *cb_data);
 
-EMSCRIPTEN_KEEPALIVE
 void epir_mG_generate_no_sort(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data);
 
 EMSCRIPTEN_KEEPALIVE
@@ -113,7 +110,6 @@ void epir_mG_merge(epir_mG_t *scratch, epir_mG_t *mG, const size_t a_count, cons
 EMSCRIPTEN_KEEPALIVE
 void epir_mG_sort(epir_mG_t *mG, const size_t mmax);
 
-EMSCRIPTEN_KEEPALIVE
 void epir_mG_generate(epir_mG_t *mG, const size_t mmax, void (*cb)(const size_t, void*), void *cb_data);
 
 EMSCRIPTEN_KEEPALIVE
@@ -161,7 +157,6 @@ typedef void (*epir_selector_create_fn)(
  * @param n_indexes    The number of elements in the `index_counts`.
  * @param idx          The index to set.
  */
-EMSCRIPTEN_KEEPALIVE
 void epir_selector_create(
 	unsigned char *ciphers, const unsigned char *pubkey,
 	const uint64_t *index_counts, const uint8_t n_indexes,
@@ -175,7 +170,6 @@ void epir_selector_create(
  * @param n_indexes    The number of elements in the `index_counts`.
  * @param idx          The index to set.
  */
-EMSCRIPTEN_KEEPALIVE
 void epir_selector_create_fast(
 	unsigned char *ciphers, const unsigned char *privkey,
 	const uint64_t *index_counts, const uint8_t n_indexes,
@@ -194,7 +188,6 @@ void epir_selector_create_fast(
  * @param mmax       The number of points in `mG`.
  * @return           The number of bytes decrypted will be returned. On the decryption failure, a negative value will be returned.
  */
-EMSCRIPTEN_KEEPALIVE
 int epir_reply_decrypt(
 	unsigned char *reply, const size_t reply_size, const unsigned char *privkey,
 	const uint8_t dimension, const uint8_t packing, const epir_mG_t *mG, const size_t mmax);
