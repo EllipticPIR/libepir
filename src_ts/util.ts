@@ -3,6 +3,25 @@ import { SCALAR_SIZE } from './EpirBase';
 
 export const time = () => Date.now();
 
+export const runMeasurement = async <T>(func: () => (Promise<T> | T)): Promise<{ execTime: number, ret: T }> => {
+	const begin = time();
+	const ret = func();
+	if(ret instanceof Promise) {
+		const ret2 = await ret;
+		const end = time();
+		return { execTime: end - begin, ret: ret2 };
+	} else {
+		const end = time();
+		return { execTime: end - begin, ret: ret };
+	}
+};
+
+export const printMeasurement = async <T>(func: () => (Promise<any> | any), prefix: string, postfix: string = 'ms.'): Promise<T> => {
+	const { execTime, ret } = await runMeasurement(func);
+	console.log(`\u001b[32m${prefix} ${execTime.toLocaleString()} ${postfix}\u001b[0m`);
+	return ret;
+}
+
 export const arrayBufferConcat = (arr: ArrayBuffer[]) => {
 	const len = arr.reduce((acc, v) => acc + v.byteLength, 0);
 	const ret = new Uint8Array(len);
