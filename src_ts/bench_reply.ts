@@ -4,11 +4,11 @@ import crypto from 'crypto';
 import { printMeasurement } from './util';
 import { createEpir, createDecryptionContext } from './addon';
 
-const DIMENSION = 3;
-const PACKING = 3;
-const ELEM_SIZE = 32;
+export const DIMENSION = 3;
+export const PACKING = 3;
+export const ELEM_SIZE = 32;
 
-(async () => {
+export const run = async () => {
 	const epir = await createEpir();
 	const decCtx = await createDecryptionContext(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
 	const privkey = epir.createPrivkey();
@@ -24,8 +24,13 @@ const ELEM_SIZE = 32;
 	for(let i=0; i<ELEM_SIZE; i++) {
 		if(elem[i] != decryptedView[i]) {
 			console.log('Wrong decryption result detected.');
-			return;
+			return false;
 		}
 	}
-})();
+	return true;
+};
+
+if(!module.parent) {
+	run();
+}
 

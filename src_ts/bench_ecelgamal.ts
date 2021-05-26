@@ -5,9 +5,9 @@ import { DEFAULT_MMAX } from './EpirBase';
 import { printMeasurement } from './util';
 import { createEpir, createDecryptionContext } from './addon';
 
-const LOOP = 10 * 1000;
+export const LOOP = 10 * 1000;
 
-(async () => {
+export const run = async () => {
 	const msgs: number[] = [];
 	for(let i=0; i<LOOP; i++) {
 		msgs[i] = Math.floor(Math.random() * DEFAULT_MMAX);
@@ -25,8 +25,13 @@ const LOOP = 10 * 1000;
 	for(let i=0; i<LOOP; i++) {
 		if(msgs[i] !== decrypted[i]) {
 			console.log('Message decrypted to a different data.');
-			return;
+			return false;
 		}
 	}
-})();
+	return true;
+};
+
+if(!module.parent) {
+	run();
+}
 
