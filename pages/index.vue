@@ -126,15 +126,15 @@ import { time, arrayBufferToHex, hexToArrayBuffer, getRandomBytes, checkIsHex } 
 import { EpirBase, DecryptionContextBase, DEFAULT_MMAX, SCALAR_SIZE, POINT_SIZE } from '../src_ts/EpirBase';
 import {
 	createEpir, createDecryptionContext,
-	loadDecryptionContextFromIndexedDB, saveDecryptionContextToIndexedDB
+	loadDecryptionContextFromIndexedDB, saveDecryptionContextToIndexedDB,
+	SelectorFactory
 } from '../src_ts/wasm';
-import { SelectorFactory, SelectorFactoryFast } from '../src_ts/wasm.SelectorFactory';
 
 export type DataType = {
 	epir: EpirBase | null,
 	decCtx: DecryptionContextBase | null,
 	selectorFactory: SelectorFactory | null,
-	selectorFactoryFast: SelectorFactoryFast | null,
+	selectorFactoryFast: SelectorFactory | null,
 	pointsComputed: number,
 	pointsComputing: boolean,
 	mGLoadTime: number,
@@ -188,8 +188,8 @@ export default Vue.extend({
 		privkeyStr(newPrivkeyStr) {
 			if(checkIsHex(newPrivkeyStr, SCALAR_SIZE)) {
 				this.pubkeyStr = arrayBufferToHex(this.epir!.createPubkey(this.getPrivkey()));
-				this.selectorFactory = new SelectorFactory(this.getPubkey());
-				this.selectorFactoryFast = new SelectorFactoryFast(this.getPrivkey());
+				this.selectorFactory = new SelectorFactory(false, this.getPubkey());
+				this.selectorFactoryFast = new SelectorFactory(true, this.getPrivkey());
 				this.selectorFactory.fill();
 				this.selectorFactoryFast.fill();
 			} else {
