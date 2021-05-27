@@ -8,12 +8,6 @@
 
 std::vector<epir_mG_t> mG(EPIR_DEFAULT_MG_MAX);
 
-TEST(SelectorFactoryTest, mG_load_default) {
-	const size_t elems_read = epir_mG_load(mG.data(), EPIR_DEFAULT_MG_MAX, NULL);
-	EXPECT_EQ(elems_read, (size_t)EPIR_DEFAULT_MG_MAX);
-	//ASSERT_PRED2(SameHash<epir_mG_t>, mG, mG_hash);
-}
-
 #define CAPACITY_ZERO (10'000)
 #define CAPACITY_ONE  (100)
 
@@ -66,5 +60,12 @@ TEST(SelectorFactoryTest, async_normal) {
 
 TEST(SelectorFactoryTest, async_fast) {
 	test_selector_factory(true, true);
+}
+
+int main(int argc, char *argv[]) {
+	::testing::InitGoogleTest(&argc, argv);
+	const size_t elems_read = epir_mG_load(mG.data(), EPIR_DEFAULT_MG_MAX, NULL);
+	EXPECT_EQ(elems_read, (size_t)EPIR_DEFAULT_MG_MAX);
+	return RUN_ALL_TESTS();
 }
 
