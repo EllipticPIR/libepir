@@ -66,17 +66,12 @@ export const checkIsHex = (hex: string, expectedSize: number = -1): boolean => {
 };
 
 export const getRandomBytes = (len: number): ArrayBuffer => {
-	if(typeof window !== 'undefined' && typeof window.crypto !== 'undefined' && typeof window.crypto.getRandomValues !== 'undefined') {
-		const MAX_ENTROPY = 65536;
-		const ret = new Uint8Array(len);
-		for(let offset=0; offset<len; offset+=MAX_ENTROPY) {
-			window.crypto.getRandomValues(ret.subarray(offset, Math.min(len, offset + MAX_ENTROPY)));
-		}
-		return ret.buffer;
-	} else {
-		const crypto = require('crypto');
-		return new Uint8Array(crypto.randomBytes(len)).buffer;
+	const MAX_ENTROPY = 65536;
+	const ret = new Uint8Array(len);
+	for(let offset=0; offset<len; offset+=MAX_ENTROPY) {
+		window.crypto.getRandomValues(ret.subarray(offset, Math.min(len, offset + MAX_ENTROPY)));
 	}
+	return ret.buffer;
 };
 
 export const isCanonical = (buf: ArrayBuffer): boolean => {

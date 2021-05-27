@@ -40,21 +40,6 @@ describe('ArrayBuffer', () => {
 	});
 });
 
-describe('getRandomBytes', () => {
-	test('Node.js crypto', () => {
-		expect(getRandomBytes(32).byteLength).toBe(32);
-	});
-	test('window.crypto', () => {
-		Object.defineProperty(global.self, 'crypto', {
-			value: {
-				getRandomValues: (buf: Uint8Array) => getRandomValues(buf),
-			}
-		});
-		getRandomValues = (buf: Uint8Array) => buf.set(crypto.randomBytes(buf.length));
-		expect(getRandomBytes(32).byteLength).toBe(32);
-	});
-});
-
 const zero = new Uint8Array([
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -83,20 +68,32 @@ describe('isCanonical', () => {
 	});
 });
 
-describe('Random scalar', () => {
+describe('Random', () => {
+	test('getRandomBytes', () => {
+		expect(getRandomBytes(256).byteLength).toBe(256);
+	});
 	test('getRandomScalar', async () => {
-		const randoms = [zero, one];
-		let offset = 0;
-		getRandomValues = (buf: Uint8Array) => buf.set(randoms[offset++]);
+		expect(getRandomScalar().byteLength).toBe(SCALAR_SIZE);
+	});
+	test('getRandomScalar (fail for first)', async () => {
+		let i = 0;
+		const randoms: Uint8Array[] = [zero, one];
+		const getRandomValues = global.self.crypto.getRandomValues;
+		Object.defineProperty(global.self.crypto, 'getRandomValues', {
+			value: (buf: Uint8Array) => buf.set(randoms[i++]),
+		});
 		expect(new Uint8Array(getRandomScalar())).toEqual(one);
+		Object.defineProperty(global.self.crypto, 'getRandomValues', {
+			value: getRandomValues,
+		});
 	});
 	test('getRandomScalars', async () => {
 		getRandomValues = (buf: Uint8Array) => buf.set(crypto.randomBytes(buf.length));
-		expect(getRandomScalars(32)).toHaveLength(32);
+		expect(getRandomScalars(256)).toHaveLength(256);
 	});
 	test('getRandomScalarsConcat', async () => {
 		getRandomValues = (buf: Uint8Array) => buf.set(crypto.randomBytes(buf.length));
-		expect(getRandomScalarsConcat(32).byteLength).toBe(32 * SCALAR_SIZE);
+		expect(getRandomScalarsConcat(256).byteLength).toBe(256 * SCALAR_SIZE);
 	});
 });
 
