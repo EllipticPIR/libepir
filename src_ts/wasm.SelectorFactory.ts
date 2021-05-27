@@ -1,11 +1,9 @@
 
 import { arrayBufferConcat, getRandomScalarsConcat } from './util';
-import { EpirBase, CIPHER_SIZE } from './EpirBase';
+import { SelectorFactoryBase, DEFAULT_CAPACITIES, CIPHER_SIZE } from './EpirBase';
 import SelectorFactoryWorker from './wasm.SelectorFactory.worker.ts';
 
-const DEFAULT_CAPACITIES = [10000, 100];
-
-export class SelectorFactoryBase {
+export class SelectorFactory implements SelectorFactoryBase {
 	
 	workers: SelectorFactoryWorker[][] = [[], []];
 	ciphers: ArrayBuffer[][] = [[], []];
@@ -70,17 +68,5 @@ export class SelectorFactoryBase {
 		return concat;
 	}
 	
-}
-
-export class SelectorFactory extends SelectorFactoryBase {
-	constructor(pubkey: ArrayBuffer, capacities?: number[], nThreads?: number) {
-		super(false, pubkey, capacities, nThreads);
-	}
-}
-
-export class SelectorFactoryFast extends SelectorFactoryBase {
-	constructor(privkey: ArrayBuffer, capacities?: number[], nThreads?: number) {
-		super(true, privkey, capacities, nThreads);
-	}
 }
 

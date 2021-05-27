@@ -8,6 +8,8 @@ import {
 	DecryptionContextBase,
 	DecryptionContextParameter,
 	DecryptionContextCreateFunction,
+	SelectorFactoryBase,
+	DEFAULT_CAPACITIES,
 	DEFAULT_MMAX
 } from './EpirBase';
 
@@ -37,7 +39,6 @@ export class DecryptionContext implements DecryptionContextBase {
 		return this.napi.replyDecrypt(privkey, dimension, packing, reply);
 	}
 	
-	
 }
 
 export const createDecryptionContext: DecryptionContextCreateFunction = async (
@@ -57,6 +58,35 @@ export const createDecryptionContext: DecryptionContextCreateFunction = async (
 	});
 	return new DecryptionContext(napi);
 };
+
+export interface SelectorFactoryNapi {
+	constructor(isFast: boolean, key: ArrayBuffer, capacityZero: number, capacityOne: number): SelectorFactoryNapi;
+	fill: () => Promise<void>;
+	create: (indexCounts: number[], idx: number) => ArrayBuffer;
+}
+
+export class SelectorFactory extends SelectorFactoryBase {
+	
+	napi: SelectorFactoryNapi;
+	
+	constructor(
+		public readonly isFast: boolean, public readonly key: ArrayBuffer,
+		public readonly capacities: number[] = DEFAULT_CAPACITIES) {
+		super(isFast, key, capacities);
+		this.napi = new epir_napi.SelectorFactory(isFast, key, capacities[0], capacities[1]);
+	}
+	
+	fill() {
+		return this.napi.fill();
+	}
+	
+	create(indexCounts: number[], idx: number, refill: boolean = true) {
+		const selector = this.napi.create(indexCounts, idx);
+		if(refill) this.fill();
+		return selector;
+	}
+	
+}
 
 export class Epir implements EpirBase {
 	

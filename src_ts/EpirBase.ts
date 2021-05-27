@@ -22,6 +22,14 @@ export interface DecryptionContextBase {
 	decryptReply(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer>;
 }
 
+export const DEFAULT_CAPACITIES = [10000, 100];
+
+export abstract class SelectorFactoryBase {
+	constructor(public readonly isFast: boolean, public readonly key: ArrayBuffer, public readonly capacities: number[]) {}
+	abstract fill(): Promise<any>;
+	abstract create(indexCounts: number[], idx: number, refill?: boolean): ArrayBuffer;
+}
+
 export type EpirCreateFunction = () => Promise<EpirBase>;
 
 export interface EpirBase {

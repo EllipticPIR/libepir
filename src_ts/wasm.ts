@@ -18,8 +18,8 @@ import {
 } from './EpirBase';
 import { time, arrayBufferConcat, arrayBufferCompare, getRandomScalar, getRandomScalarsConcat } from './util';
 import EPIRWorker from './wasm.worker.ts';
-
 import { LibEpir, LibEpirHelper } from './wasm.libepir';
+import { SelectorFactory } from './wasm.SelectorFactory';
 
 export class DecryptionContext implements DecryptionContextBase {
 	
@@ -248,6 +248,8 @@ export const saveDecryptionContextToIndexedDB = async (decCtx: DecryptionContext
 	const db = new MGDatabase(dbName);
 	await db.mG.put({ key: 0, value: decCtx.getMG() });
 };
+
+export { SelectorFactory };
 
 export class Epir implements EpirBase {
 	
