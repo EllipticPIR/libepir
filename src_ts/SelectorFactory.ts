@@ -3,27 +3,23 @@ import { arrayBufferConcat, getRandomScalarsConcat } from './util';
 import { EpirBase, CIPHER_SIZE } from './EpirBase';
 import SelectorFactoryWorker from './SelectorFactory.worker.ts';
 
-export class SelectorFactory {
+const DEFAULT_CAPACITIES = [10000, 100];
+
+export class SelectorFactoryBase {
 	
-	ciphers: ArrayBuffer[][] = [[], []];
-	running: boolean = false;
-	stopped: boolean = false;
 	workers: SelectorFactoryWorker[][] = [[], []];
+	ciphers: ArrayBuffer[][] = [[], []];
 	
 	constructor(
-		public capacities = [10000, 100],
-		nThreads = navigator.hardwareConcurrency, public interval: number = 100) {
+		public readonly isFast: boolean, public readonly key: ArrayBuffer,
+		public readonly capacities: number[] = DEFAULT_CAPACITIES, nThreads = navigator.hardwareConcurrency) {
 		for(let i=0; i<nThreads; i++) {
 			this.workers[0][i] = new SelectorFactoryWorker();
 			this.workers[1][i] = new SelectorFactoryWorker();
 		}
 	}
 	
-	private async mainLoop(isFast: boolean, key: ArrayBuffer) {
-		if(!this.running) {
-			this.stopped = true;
-			return;
-		}
+	fill(): Promise<any> {
 		const promises = this.capacities.map((capacity, msg) => {
 			const needs = capacity - this.ciphers[msg].length;
 			if(needs <= 0) return;
@@ -46,41 +42,15 @@ export class SelectorFactory {
 					const random = getRandomScalarsConcat(nCiphers);
 					worker.postMessage({
 						method: 'generateCiphers',
-						params: { isFast: isFast, key: key, msg: msg, count: nCiphers, random: random },
+						params: { isFast: this.isFast, key: this.key, msg: msg, count: nCiphers, random: random },
 					}, [random]);
 				});
 			}));
 		});
-		await Promise.all(promises);
-		setTimeout(() => { this.mainLoop(isFast, key) }, this.interval);
+		return Promise.all(promises);
 	}
 	
-	start(pubkey: ArrayBuffer) {
-		this.running = true;
-		return this.mainLoop(false, pubkey);
-	}
-	
-	startFast(privkey: ArrayBuffer) {
-		this.running = true;
-		return this.mainLoop(true, privkey);
-	}
-	
-	stop() {
-		this.stopped = false;
-		this.running = false;
-		return new Promise<void>((resolve, reject) => {
-			const checkStopped = () => {
-				if(this.stopped) {
-					resolve();
-				} else {
-					setTimeout(checkStopped, 10);
-				}
-			}
-			checkStopped();
-		});
-	}
-	
-	create(indexCounts: number[], idx: number): ArrayBuffer {
+	create(indexCounts: number[], idx: number, refill: boolean = true): ArrayBuffer {
 		let prod = indexCounts.reduce((acc, v) => acc * v, 1);
 		const ret: ArrayBuffer[] = [];
 		for(let ic=0; ic<indexCounts.length; ic++) {
@@ -91,12 +61,26 @@ export class SelectorFactory {
 			for(let r=0; r<cols; r++) {
 				const msg = (r == rows ? 1 : 0);
 				const cipher = this.ciphers[msg].pop();
-				if(!cipher) throw new Error('Insufficient ciphers buffer.');
+				if(!cipher) throw new Error('Insufficient ciphers cache.');
 				ret.push(cipher);
 			}
 		}
-		return arrayBufferConcat(ret);
+		const concat = arrayBufferConcat(ret);
+		if(refill) this.fill();
+		return concat;
 	}
 	
+}
+
+export class SelectorFactory extends SelectorFactoryBase {
+	constructor(pubkey: ArrayBuffer, capacities?: number[], nThreads?: number) {
+		super(false, pubkey, capacities, nThreads);
+	}
+}
+
+export class SelectorFactoryFast extends SelectorFactoryBase {
+	constructor(privkey: ArrayBuffer, capacities?: number[], nThreads?: number) {
+		super(true, privkey, capacities, nThreads);
+	}
 }
 

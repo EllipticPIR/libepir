@@ -54,8 +54,27 @@
 					<ClickableButton inline class="mx-2" value="Factory, Fast" :click="createSelectorFromFactoryFast" />
 				</div>
 				
-				<p>SelectorFactory cache (normal): zeros = {{ selectorFactory.ciphers[0].length.toLocaleString() }}, ones = {{ selectorFactory.ciphers[1].length.toLocaleString() }}</p>
-				<p>SelectorFactory cache (fast): zeros = {{ selectorFactoryFast.ciphers[0].length.toLocaleString() }}, ones = {{ selectorFactoryFast.ciphers[1].length.toLocaleString() }}</p>
+				<p>
+					SelectorFactory cache (normal):
+					<template v-if="selectorFactory">
+						zeros = {{ selectorFactory.ciphers[0].length.toLocaleString() }},
+						ones = {{ selectorFactory.ciphers[1].length.toLocaleString() }}
+					</template>
+					<template v-else>
+						(not available)
+					</template>
+				</p>
+				
+				<p>
+					SelectorFactory cache (fast):
+					<template v-if="selectorFactoryFast">
+						zeros = {{ selectorFactoryFast.ciphers[0].length.toLocaleString() }},
+						ones = {{ selectorFactoryFast.ciphers[1].length.toLocaleString() }}
+					</template>
+					<template v-else>
+						(not available)
+					</template>
+				</p>
 				
 				<HexWindow v-model="selectorStr" label="Selector" :time="createSelectorTime" />
 				
@@ -109,13 +128,13 @@ import {
 	createEpir, createDecryptionContext,
 	loadDecryptionContextFromIndexedDB, saveDecryptionContextToIndexedDB
 } from '../src_ts/wasm';
-import { SelectorFactory } from '../src_ts/SelectorFactory';
+import { SelectorFactory, SelectorFactoryFast } from '../src_ts/SelectorFactory';
 
 export type DataType = {
 	epir: EpirBase | null,
 	decCtx: DecryptionContextBase | null,
-	selectorFactory: SelectorFactory,
-	selectorFactoryFast: SelectorFactory,
+	selectorFactory: SelectorFactory | null,
+	selectorFactoryFast: SelectorFactoryFast | null,
 	pointsComputed: number,
 	pointsComputing: boolean,
 	mGLoadTime: number,
@@ -142,8 +161,8 @@ export default Vue.extend({
 		return {
 			epir: null,
 			decCtx: null,
-			selectorFactory: new SelectorFactory(),
-			selectorFactoryFast: new SelectorFactory(),
+			selectorFactory: null,
+			selectorFactoryFast: null,
 			pointsComputed: 0,
 			pointsComputing: false,
 			mGLoadTime: -1,
@@ -169,6 +188,10 @@ export default Vue.extend({
 		privkeyStr(newPrivkeyStr) {
 			if(checkIsHex(newPrivkeyStr, SCALAR_SIZE)) {
 				this.pubkeyStr = arrayBufferToHex(this.epir!.createPubkey(this.getPrivkey()));
+				this.selectorFactory = new SelectorFactory(this.getPubkey());
+				this.selectorFactoryFast = new SelectorFactoryFast(this.getPrivkey());
+				this.selectorFactory.fill();
+				this.selectorFactoryFast.fill();
 			} else {
 				this.pubkeyStr = '(failed to decode privkey)';
 			}
@@ -186,8 +209,6 @@ export default Vue.extend({
 		this.epir = await createEpir();
 		this.generatePrivkey();
 		await this.loadMGIfExists();
-		this.selectorFactory.start(this.getPubkey());
-		this.selectorFactoryFast.startFast(this.getPrivkey());
 	},
 	methods: {
 		getPrivkey() {
@@ -236,8 +257,8 @@ export default Vue.extend({
 			try {
 				const beginSelectorsCreate = time();
 				const selector = await this.epir!.createSelector(this.getPubkey(), this.getIndexCounts(), 1024);
-				this.selectorStr = arrayBufferToHex(selector);
 				this.createSelectorTime = time() - beginSelectorsCreate;
+				this.selectorStr = arrayBufferToHex(selector);
 			} catch(e) {
 				alert(e);
 				console.log(e.stack);
@@ -247,30 +268,40 @@ export default Vue.extend({
 			try {
 				const beginSelectorsCreate = time();
 				const selector = await this.epir!.createSelectorFast(this.getPrivkey(), this.getIndexCounts(), 1024);
-				this.selectorStr = arrayBufferToHex(selector);
 				this.createSelectorTime = time() - beginSelectorsCreate;
+				this.selectorStr = arrayBufferToHex(selector);
 			} catch(e) {
 				alert(e);
 				console.log(e.stack);
 			}
 		},
 		async createSelectorFromFactory() {
+			if(!this.selectorFactory) {
+				alert('SelectorFactory is not initialized.');
+				return;
+			}
 			try {
 				const beginSelectorsCreate = time();
-				const selector = this.selectorFactory.create(this.getIndexCounts(), 1024);
-				this.selectorStr = arrayBufferToHex(selector);
+				const selector = this.selectorFactory.create(this.getIndexCounts(), 1024, false);
 				this.createSelectorTime = time() - beginSelectorsCreate;
+				this.selectorStr = arrayBufferToHex(selector);
+				this.selectorFactory.fill();
 			} catch(e) {
 				alert(e);
 				console.log(e.stack);
 			}
 		},
 		async createSelectorFromFactoryFast() {
+			if(!this.selectorFactoryFast) {
+				alert('SelectorFactory is not initialized.');
+				return;
+			}
 			try {
 				const beginSelectorsCreate = time();
-				const selector = this.selectorFactoryFast.create(this.getIndexCounts(), 1024);
-				this.selectorStr = arrayBufferToHex(selector);
+				const selector = this.selectorFactoryFast.create(this.getIndexCounts(), 1024, false);
 				this.createSelectorTime = time() - beginSelectorsCreate;
+				this.selectorStr = arrayBufferToHex(selector);
+				this.selectorFactoryFast.fill();
 			} catch(e) {
 				alert(e);
 				console.log(e.stack);

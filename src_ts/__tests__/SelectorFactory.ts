@@ -2,7 +2,7 @@
 import { EpirBase, DecryptionContextBase, CIPHER_SIZE } from '../EpirBase';
 import { createDecryptionContext } from '../addon';
 import { createEpir } from '../wasm';
-import { SelectorFactory } from '../SelectorFactory';
+import { SelectorFactory, SelectorFactoryFast } from '../SelectorFactory';
 import { privkey, pubkey, index_counts, idx } from './addon';
 
 export const checkSelector = (
@@ -32,24 +32,37 @@ beforeAll(async () => {
 });
 
 test('normal', async () => {
-	const selectorFactory: SelectorFactory = new SelectorFactory();
-	await selectorFactory.start(pubkey);
+	const selectorFactory = new SelectorFactory(pubkey.buffer);
+	await selectorFactory.fill();
 	const selector = selectorFactory.create(index_counts, idx);
-	await selectorFactory.stop();
 	expect(checkSelector(decCtx, privkey.buffer, index_counts, idx, selector)).toBe(true);
 });
 
 test('fast', async () => {
-	const selectorFactory: SelectorFactory = new SelectorFactory();
-	await selectorFactory.startFast(privkey.buffer);
+	const selectorFactory = new SelectorFactoryFast(privkey.buffer);
+	await selectorFactory.fill();
 	const selector = selectorFactory.create(index_counts, idx);
-	await selectorFactory.stop();
 	expect(checkSelector(decCtx, privkey.buffer, index_counts, idx, selector)).toBe(true);
 });
 
 test('insufficient', async () => {
-	const selectorFactory: SelectorFactory = new SelectorFactory([100, 10]);
-	await selectorFactory.start(pubkey.buffer);
-	expect(() => { selectorFactory.create(index_counts, idx) }).toThrow(/^Insufficient ciphers buffer\.$/);
+	const selectorFactory = new SelectorFactoryFast(privkey.buffer, [100, 10]);
+	await selectorFactory.fill();
+	expect(() => { selectorFactory.create(index_counts, idx) }).toThrow(/^Insufficient ciphers cache\.$/);
+});
+
+test('fill twice', async () => {
+	const selectorFactory = new SelectorFactoryFast(privkey.buffer);
+	await selectorFactory.fill();
+	await selectorFactory.fill();
+	const selector = selectorFactory.create(index_counts, idx);
+	expect(checkSelector(decCtx, privkey.buffer, index_counts, idx, selector)).toBe(true);
+});
+
+test('don\'t refill', async () => {
+	const selectorFactory = new SelectorFactoryFast(privkey.buffer);
+	await selectorFactory.fill();
+	const selector = selectorFactory.create(index_counts, idx, false);
+	expect(checkSelector(decCtx, privkey.buffer, index_counts, idx, selector)).toBe(true);
 });
 
