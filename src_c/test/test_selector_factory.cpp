@@ -26,6 +26,7 @@ void test_selector_factory(const bool is_fast, const bool is_async) {
 		ASSERT_EQ(epir_selector_factory_fill_sync(&ctx), 0);
 	}
 	for(size_t msg=0; msg<2; msg++) {
+		#pragma omp parallel for
 		for(size_t i=0; i<ctx.capacities[msg]; i++) {
 			const int32_t decrypted = epir_ecelgamal_decrypt(
 				privkey, &ctx.ciphers[msg][i * EPIR_CIPHER_SIZE], mG.data(), EPIR_DEFAULT_MG_MAX);
@@ -39,6 +40,7 @@ void test_selector_factory(const bool is_fast, const bool is_async) {
 	// Decrypt ciphers.
 	std::vector<unsigned char> choices(ciphers_count);
 	epir_selector_create_choice(choices.data(), 1, index_counts, n_indexes, idx);
+	#pragma omp parallel for
 	for(size_t i=0; i<ciphers_count; i++) {
 		const int32_t decrypted = epir_ecelgamal_decrypt(
 			privkey, &selector_test[i * EPIR_CIPHER_SIZE], mG.data(), EPIR_DEFAULT_MG_MAX);

@@ -53,6 +53,7 @@ TEST(ECElGamalTest, mG_generate) {
 }
 
 TEST(ECElGamalTest, mG_interpolation_search) {
+	#pragma omp parallel for
 	for(size_t i=0; i<EPIR_DEFAULT_MG_MAX; i++) {
 		epir_mG_t mG = mG_test[i];
 		const int32_t scalar_test = epir_mG_interpolation_search(mG.point, mG_test.data(), EPIR_DEFAULT_MG_MAX);
@@ -71,9 +72,7 @@ TEST(ECElGamalTest, mG_load_default) {
 	epir_mG_default_path(path_default, epir_mG_default_path_length() + 1);
 	std::ofstream ofs(std::string(path_default), std::ios::binary | std::ios::out);
 	ASSERT_FALSE(ofs.fail());
-	for(const epir_mG_t p: mG_test) {
-		ofs.write((char*)&p, sizeof(epir_mG_t));
-	}
+	ofs.write((const char*)mG_test.data(), sizeof(epir_mG_t) * mG_test.size());
 	ofs.close();
 	// Load.
 	static std::vector<epir_mG_t> mG_test2(EPIR_DEFAULT_MG_MAX);
