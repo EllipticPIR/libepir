@@ -42,17 +42,14 @@
 				
 				<p>Database elements: {{ getIndexCounts().reduce((acc, v) => acc * v, 1).toLocaleString() }}</p>
 				
-				<h2>Generate a selector (normal)</h2>
+				<h2>Generate a selector</h2>
 				
-				<ClickableButton value="Generate Selector (normal)" :click="createSelector" />
+				<div class="text-center">
+					<ClickableButton inline class="mx-2" value="Generate Selector (normal)" :click="createSelector" />
+					<ClickableButton inline class="mx-2" value="Generate Selector (fast)" :click="createSelectorFast" />
+				</div>
 				
-				<HexWindow v-model="selectorStr" label="Selector (normal)" :time="createSelectorTime" />
-				
-				<h2>Generate a selector (fast)</h2>
-				
-				<ClickableButton value="Generate Selector (fast)" :click="createSelectorFast" />
-				
-				<HexWindow v-model="selectorStrFast" label="Selector (fast)" :time="createSelectorTimeFast" />
+				<HexWindow v-model="selectorStr" label="Selector" :time="createSelectorTime" />
 				
 				<h2>Generate or input a database element</h2>
 				
@@ -119,8 +116,6 @@ export type DataType = {
 	indexCountsStr: string,
 	selectorStr: string,
 	createSelectorTime: number,
-	selectorStrFast: string,
-	createSelectorTimeFast: number,
 	dimension: string,
 	packing: string,
 	elemSize: number,
@@ -147,8 +142,6 @@ export default Vue.extend({
 			indexCountsStr: '1000, 1000, 1000',
 			selectorStr: '',
 			createSelectorTime: -1,
-			selectorStrFast: '',
-			createSelectorTimeFast: -1,
 			dimension: '3',
 			packing: '3',
 			elemSize: 32,
@@ -239,8 +232,8 @@ export default Vue.extend({
 			try {
 				const beginSelectorsCreate = time();
 				const selector = await this.epir!.createSelectorFast(this.getPrivkey(), this.getIndexCounts(), 1024);
-				this.selectorStrFast = arrayBufferToHex(selector);
-				this.createSelectorTimeFast = time() - beginSelectorsCreate;
+				this.selectorStr = arrayBufferToHex(selector);
+				this.createSelectorTime = time() - beginSelectorsCreate;
 			} catch(e) {
 				alert(e);
 				console.log(e.stack);
