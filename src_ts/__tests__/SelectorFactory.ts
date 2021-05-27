@@ -26,15 +26,13 @@ export const checkSelector = (
 	return true;
 };
 
-let epir: EpirBase;
 let decCtx: DecryptionContextBase;
 beforeAll(async () => {
-	epir = await createEpir();
 	decCtx = await createDecryptionContext(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
 });
 
 test('normal', async () => {
-	const selectorFactory: SelectorFactory = new SelectorFactory(epir);
+	const selectorFactory: SelectorFactory = new SelectorFactory();
 	await selectorFactory.start(pubkey);
 	const selector = selectorFactory.create(index_counts, idx);
 	await selectorFactory.stop();
@@ -42,7 +40,7 @@ test('normal', async () => {
 });
 
 test('fast', async () => {
-	const selectorFactory: SelectorFactory = new SelectorFactory(epir);
+	const selectorFactory: SelectorFactory = new SelectorFactory();
 	await selectorFactory.startFast(privkey.buffer);
 	const selector = selectorFactory.create(index_counts, idx);
 	await selectorFactory.stop();
@@ -50,7 +48,7 @@ test('fast', async () => {
 });
 
 test('insufficient', async () => {
-	const selectorFactory: SelectorFactory = new SelectorFactory(epir, [100, 10]);
+	const selectorFactory: SelectorFactory = new SelectorFactory([100, 10]);
 	await selectorFactory.start(pubkey.buffer);
 	expect(() => { selectorFactory.create(index_counts, idx) }).toThrow(/^Insufficient ciphers buffer\.$/);
 });

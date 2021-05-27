@@ -1,6 +1,6 @@
 
-import { arrayBufferConcat } from './util';
-import { EpirBase } from './EpirBase';
+import { arrayBufferConcat, getRandomScalarsConcat } from './util';
+import { EpirBase, CIPHER_SIZE } from './EpirBase';
 import SelectorFactoryWorker from './SelectorFactory.worker.ts';
 
 export class SelectorFactory {
@@ -11,7 +11,6 @@ export class SelectorFactory {
 	workers: SelectorFactoryWorker[][] = [[], []];
 	
 	constructor(
-		public epir: EpirBase,
 		public capacities = [10000, 100],
 		nThreads = navigator.hardwareConcurrency, public interval: number = 100) {
 		for(let i=0; i<nThreads; i++) {
@@ -27,25 +26,32 @@ export class SelectorFactory {
 		}
 		const promises = this.capacities.map((capacity, msg) => {
 			const needs = capacity - this.ciphers[msg].length;
-			const ciphersPerWorker = Math.ceil(needs / this.workers[msg].length);
+			const ciphersPerWorker = Math.floor(needs / this.workers[msg].length);
 			return Promise.all(this.workers[msg].map((worker, workerId) => {
 				const nCiphers = (workerId == this.workers[msg].length - 1 ?
 					needs - (this.workers[msg].length - 1) * ciphersPerWorker : ciphersPerWorker);
 				return new Promise<void>((resolve, reject) => {
+					if(nCiphers == 0) {
+						resolve();
+						return;
+					}
 					worker.onmessage = (ev) => {
 						switch(ev.data.method) {
-							case 'cipher':
-								this.ciphers[ev.data.msg].push(ev.data.cipher);
+							case 'ciphers':
+								for(let i=0; i*CIPHER_SIZE<ev.data.ciphers.byteLength; i++) {
+									this.ciphers[ev.data.msg].push(ev.data.ciphers.slice(i * CIPHER_SIZE, (i + 1) * CIPHER_SIZE));
+								}
 								break;
 							case 'generateCiphers':
 								resolve();
 								break;
 						}
 					};
+					const random = getRandomScalarsConcat(nCiphers);
 					worker.postMessage({
 						method: 'generateCiphers',
-						params: [this.epir, isFast, key, msg, nCiphers],
-					});
+						params: { isFast: isFast, key: key, msg: msg, count: nCiphers, random: random },
+					}, [random]);
 				});
 			}));
 		});

@@ -44,10 +44,18 @@
 				
 				<h2>Generate a selector</h2>
 				
-				<div class="text-center">
-					<ClickableButton inline class="mx-2" value="Generate Selector (normal)" :click="createSelector" />
-					<ClickableButton inline class="mx-2" value="Generate Selector (fast)" :click="createSelectorFast" />
+				<div class="text-center my-4">
+					<ClickableButton inline class="mx-2" value="On-Demand, Normal" :click="createSelector" />
+					<ClickableButton inline class="mx-2" value="On-Demand, Fast" :click="createSelectorFast" />
 				</div>
+				
+				<div class="text-center my-4">
+					<ClickableButton inline class="mx-2" value="Factory, Noraml" :click="createSelectorFromFactory" />
+					<ClickableButton inline class="mx-2" value="Factory, Fast" :click="createSelectorFromFactoryFast" />
+				</div>
+				
+				<p>SelectorFactory cache (normal): zeros = {{ selectorFactory.ciphers[0].length }}, ones = {{ selectorFactory.ciphers[1].length }}</p>
+				<p>SelectorFactory cache (fast): zeros = {{ selectorFactoryFast.ciphers[0].length }}, ones = {{ selectorFactoryFast.ciphers[1].length }}</p>
 				
 				<HexWindow v-model="selectorStr" label="Selector" :time="createSelectorTime" />
 				
@@ -101,10 +109,13 @@ import {
 	createEpir, createDecryptionContext,
 	loadDecryptionContextFromIndexedDB, saveDecryptionContextToIndexedDB
 } from '../src_ts/wasm';
+import { SelectorFactory } from '../src_ts/SelectorFactory';
 
 export type DataType = {
 	epir: EpirBase | null,
 	decCtx: DecryptionContextBase | null,
+	selectorFactory: SelectorFactory,
+	selectorFactoryFast: SelectorFactory,
 	pointsComputed: number,
 	pointsComputing: boolean,
 	mGLoadTime: number,
@@ -131,6 +142,8 @@ export default Vue.extend({
 		return {
 			epir: null,
 			decCtx: null,
+			selectorFactory: new SelectorFactory(),
+			selectorFactoryFast: new SelectorFactory(),
 			pointsComputed: 0,
 			pointsComputing: false,
 			mGLoadTime: -1,
@@ -173,6 +186,8 @@ export default Vue.extend({
 		this.epir = await createEpir();
 		this.generatePrivkey();
 		await this.loadMGIfExists();
+		this.selectorFactory.start(this.getPubkey());
+		this.selectorFactoryFast.startFast(this.getPrivkey());
 	},
 	methods: {
 		getPrivkey() {
@@ -232,6 +247,28 @@ export default Vue.extend({
 			try {
 				const beginSelectorsCreate = time();
 				const selector = await this.epir!.createSelectorFast(this.getPrivkey(), this.getIndexCounts(), 1024);
+				this.selectorStr = arrayBufferToHex(selector);
+				this.createSelectorTime = time() - beginSelectorsCreate;
+			} catch(e) {
+				alert(e);
+				console.log(e.stack);
+			}
+		},
+		async createSelectorFromFactory() {
+			try {
+				const beginSelectorsCreate = time();
+				const selector = this.selectorFactory.create(this.getIndexCounts(), 1024);
+				this.selectorStr = arrayBufferToHex(selector);
+				this.createSelectorTime = time() - beginSelectorsCreate;
+			} catch(e) {
+				alert(e);
+				console.log(e.stack);
+			}
+		},
+		async createSelectorFromFactoryFast() {
+			try {
+				const beginSelectorsCreate = time();
+				const selector = this.selectorFactoryFast.create(this.getIndexCounts(), 1024);
 				this.selectorStr = arrayBufferToHex(selector);
 				this.createSelectorTime = time() - beginSelectorsCreate;
 			} catch(e) {
