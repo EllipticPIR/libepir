@@ -312,13 +312,13 @@ export class Epir implements EpirBase {
 			this.helper.store64(ic_ + 8 * i, index_counts[i]);
 		}
 		const ciphers = this.helper.call('selector_ciphers_count', ic_, index_counts.length);
-		const selector_ = this.helper.malloc(CIPHER_SIZE * ciphers);
+		const choices_ = this.helper.malloc(ciphers);
 		this.helper.call('selector_create_choice',
-			selector_, ic_, index_counts.length, idx&0xffffffff, Math.floor(idx / 0xffffffff)&0xffffffff);
-		const selector = this.helper.slice(selector_, CIPHER_SIZE * ciphers);
-		this.helper.free(selector_);
+			choices_, 1, ic_, index_counts.length, idx&0xffffffff, Math.floor(idx / 0xffffffff)&0xffffffff);
+		const choices = this.helper.slice(choices_, ciphers);
+		this.helper.free(choices_);
 		this.helper.free(ic_);
-		return selector;
+		return choices;
 	}
 	
 	async selector_create_(
@@ -327,7 +327,7 @@ export class Epir implements EpirBase {
 			const nThreads = this.workers.length;
 			const promises: Promise<ArrayBuffer>[] = [];
 			const random = new Uint8Array(r ? r : getRandomScalarsConcat(this.ciphersCount(index_counts)));
-			const choice = this.create_choice(index_counts, idx);
+			const choices = this.create_choice(index_counts, idx);
 			for(let t=0; t<nThreads; t++) {
 				promises.push(new Promise((resolve, reject) => {
 					this.workers[t].onmessage = (ev) => {
@@ -338,15 +338,15 @@ export class Epir implements EpirBase {
 						}
 					};
 				}));
-				const ciphersPerThread = Math.ceil((choice.byteLength / CIPHER_SIZE) / nThreads);
+				const ciphersPerThread = Math.ceil(choices.byteLength / nThreads);
 				const begin = t * ciphersPerThread;
-				const end = Math.min((choice.byteLength / CIPHER_SIZE) + 1, (t + 1) * ciphersPerThread);
-				const choice_t = choice.slice(begin * CIPHER_SIZE, end * CIPHER_SIZE);
+				const end = Math.min(choices.byteLength + 1, (t + 1) * ciphersPerThread);
+				const choices_t = choices.slice(begin, end);
 				const random_t = random.slice(begin * SCALAR_SIZE, end * SCALAR_SIZE).buffer;
 				this.workers[t].postMessage({
 					method: 'selector_create',
-					choice: choice_t, key: key, random: random_t, isFast: isFast
-				}, [choice_t, random_t]);
+					choices: choices_t, key: key, random: random_t, isFast: isFast
+				}, [choices_t, random_t]);
 			}
 			const selectors = await Promise.all(promises);
 			resolve(arrayBufferConcat(selectors));

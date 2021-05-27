@@ -1,6 +1,7 @@
 
 import { MG_SIZE } from './EpirBase';
 import { LibEpir, LibEpirHelper, libEpirModule } from './wasm.libepir';
+import { arrayBufferConcat } from './util';
 
 const worker: Worker = self as any;
 
@@ -36,21 +37,22 @@ const funcs: KeyValue = {
 		}, [mG]);
 	},
 	// For selector creation.
-	selector_create: async (helper: LibEpirHelper, params: { choice: ArrayBuffer, key: ArrayBuffer, random: ArrayBuffer, isFast: boolean }) => {
+	selector_create: async (helper: LibEpirHelper, params: { choices: ArrayBuffer, key: ArrayBuffer, random: ArrayBuffer, isFast: boolean }) => {
 		const key_ = helper.malloc(params.key);
 		const cipher_ = helper.malloc(64);
 		const random_ = helper.malloc(32);
 		const encryptFn = (params.isFast ? 'ecelgamal_encrypt_fast' : 'ecelgamal_encrypt');
-		const choiceView = new Uint8Array(params.choice);
-		for(let i=0; i*64<params.choice.byteLength; i++) {
-			helper.set(params.choice, i * 64, 64, cipher_);
+		const choicesView = new Uint8Array(params.choices);
+		const selector: ArrayBuffer[] = [];
+		for(let i=0; i<params.choices.byteLength; i++) {
 			helper.set(params.random, i * 32, 32, random_);
-			helper.call(encryptFn, cipher_, key_, choiceView[i * 64], 0, random_);
-			choiceView.set(helper.subarray(cipher_, 64), i * 64);
+			helper.call(encryptFn, cipher_, key_, choicesView[i], 0, random_);
+			selector.push(helper.slice(cipher_, 64));
 		}
+		const selectorConcat = arrayBufferConcat(selector);
 		worker.postMessage({
-			method: 'selector_create', selector: choiceView.buffer,
-		}, [choiceView.buffer]);
+			method: 'selector_create', selector: selectorConcat,
+		}, [selectorConcat]);
 		helper.free(key_);
 		helper.free(cipher_);
 		helper.free(random_);
