@@ -1,6 +1,6 @@
 <template>
 	<div class="text-center">
-		<b-button @click="click">{{ value }}</b-button>
+		<v-btn @click="click" style="text-transform: none;">{{ value }}</v-btn>
 	</div>
 </template>
 

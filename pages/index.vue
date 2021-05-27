@@ -1,91 +1,92 @@
 <template>
-	<b-container>
-		<h1>EllipticPIR Client Library (Browser Tests)</h1>
-		
-		<hr />
-		
-		<p>This page demonstrates the execution of the EllipticPIR Client Library.</p>
-		
-		<h2>Generate mG</h2>
-		
-		<ClickableButton value="Generate mG" :click="generateMG" />
-		
-		<b-progress :max="mmax" height="2rem" animated class="my-4">
-			<b-progress-bar :value="pointsComputed" style="font-size:150%;">
-				<template v-if="pointsComputed != mmax">
-					{{ pointsComputed.toLocaleString() }} of {{ mmax.toLocaleString() }} points computed
-				</template>
-				<template v-else-if="pointsComputing">
-					(Sorting...)
-				</template>
-				<template v-else>
-					(Completed)
-				</template>
-			</b-progress-bar>
-		</b-progress>
-		<p>Load time: {{ mGLoadTime.toLocaleString() }} ms</p>
-		<p>Compute time: {{ mGComputeTime.toLocaleString() }} ms</p>
-		<p>Sort time: {{ mGSortTime.toLocaleString() }} ms</p>
-		
-		<h2>Generate a key pair</h2>
-		
-		<ClickableButton value="Generate private key" :click="generatePrivkey" />
-		
-		<InputWithLabel v-model="privkeyStr" label="Private Key" />
-		<InputWithLabel v-model="pubkeyStr" label="Public Key" disabled />
-		
-		<h2>Specify index counts</h2>
-		
-		<InputWithLabel v-model="indexCountsStr" label="Index counts" />
-		
-		<p>Database elements: {{ getIndexCounts().reduce((acc, v) => acc * v, 1).toLocaleString() }}</p>
-		
-		<h2>Generate a selector (normal)</h2>
-		
-		<ClickableButton value="Generate selector (normal)" :click="createSelector" />
-		
-		<HexWindow v-model="selectorStr" label="Selector (normal)" :time="createSelectorTime" />
-		
-		<h2>Generate a selector (fast)</h2>
-		
-		<ClickableButton value="Generate selector (fast)" :click="createSelectorFast" />
-		
-		<HexWindow v-model="selectorStrFast" label="Selector (fast)" :time="createSelectorTimeFast" />
-		
-		<h2>Generate or input a database element</h2>
-		
-		<InputWithLabel v-model="elemSize" label="Element size" type="number" min="1" max="255" />
-		
-		<ClickableButton value="Generate random database element" :click="generateElement" />
-		
-		<div>
-			<p>Element (hex)</p>
-			<textarea v-model="elemStr" rows="5" class="w-100" />
-		</div>
-		
-		<h2>Specify a dimension and a packing</h2>
-		
-		<InputWithLabel v-model="dimension" label="Dimension" type="number" min="1" max="10" />
-		<InputWithLabel v-model="packing" label="Packing" type="number" min="1" max="3" />
-		
-		<h2>Compute a server's reply (mock)</h2>
-		
-		<ClickableButton value="Compute reply (mock)" :click="computeReplyMock" />
-		
-		<HexWindow v-model="replyStr" label="Reply" :time="computeReplyMockTime" />
-		
-		<h2>Decrypt the server's reply</h2>
-		
-		<ClickableButton value="Decrypt reply" :click="decryptReply" />
-		
-		<HexWindow v-model="decryptedStr" label="Decrypted" :time="decryptReplyTime" rows="5" :show-size="false" />
-		
-		<hr />
-		
-		<footer class="mb-4">
-			Copyright &copy; EllipticPIR 2021. All rights reserved.
-		</footer>
-	</b-container>
+	<v-app>
+		<v-main>
+			<v-container>
+				<h1>EllipticPIR Client Library (Browser Tests)</h1>
+				
+				<hr />
+				
+				<p>This page demonstrates the execution of the EllipticPIR Client Library.</p>
+				
+				<h2>Generate mG</h2>
+				
+				<ClickableButton value="Generate mG" :click="generateMG" />
+				
+				<v-progress-linear :value="100 * pointsComputed / mmax" color="blue" height="50" striped class="my-4">
+					<strong>
+						<template v-if="pointsComputed != mmax">
+							{{ pointsComputed.toLocaleString() }} of {{ mmax.toLocaleString() }} points computed
+						</template>
+						<template v-else-if="pointsComputing">
+							(Sorting...)
+						</template>
+						<template v-else>
+							(Completed)
+						</template>
+					</strong>
+				</v-progress-linear>
+				<p>Load time: {{ mGLoadTime.toLocaleString() }} ms</p>
+				<p>Compute time: {{ mGComputeTime.toLocaleString() }} ms</p>
+				<p>Sort time: {{ mGSortTime.toLocaleString() }} ms</p>
+				
+				<h2>Generate a key pair</h2>
+				
+				<ClickableButton value="Generate Private Key" :click="generatePrivkey" />
+				
+				<InputWithLabel v-model="privkeyStr" label="Private Key" />
+				<InputWithLabel v-model="pubkeyStr" label="Public Key" readonly />
+				
+				<h2>Specify index counts</h2>
+				
+				<InputWithLabel v-model="indexCountsStr" label="Index counts" />
+				
+				<p>Database elements: {{ getIndexCounts().reduce((acc, v) => acc * v, 1).toLocaleString() }}</p>
+				
+				<h2>Generate a selector (normal)</h2>
+				
+				<ClickableButton value="Generate Selector (normal)" :click="createSelector" />
+				
+				<HexWindow v-model="selectorStr" label="Selector (normal)" :time="createSelectorTime" />
+				
+				<h2>Generate a selector (fast)</h2>
+				
+				<ClickableButton value="Generate Selector (fast)" :click="createSelectorFast" />
+				
+				<HexWindow v-model="selectorStrFast" label="Selector (fast)" :time="createSelectorTimeFast" />
+				
+				<h2>Generate or input a database element</h2>
+				
+				<InputWithLabel v-model="elemSize" label="Element size" type="number" min="1" max="255" />
+				
+				<ClickableButton value="Generate Random Database Element" :click="generateElement" />
+				
+				<v-textarea outlined label="Element (hex)" v-model="elemStr" rows="5" class="w-100" />
+				
+				<h2>Specify a dimension and a packing</h2>
+				
+				<InputWithLabel v-model="dimension" label="Dimension" type="number" min="1" max="10" />
+				<InputWithLabel v-model="packing" label="Packing" type="number" min="1" max="3" />
+				
+				<h2>Compute a server's reply (mock)</h2>
+				
+				<ClickableButton value="Compute Reply (mock)" :click="computeReplyMock" />
+				
+				<HexWindow v-model="replyStr" label="Reply" :time="computeReplyMockTime" />
+				
+				<h2>Decrypt the server's reply</h2>
+				
+				<ClickableButton value="Decrypt Reply" :click="decryptReply" />
+				
+				<HexWindow v-model="decryptedStr" label="Decrypted" :time="decryptReplyTime" rows="5" :show-size="false" />
+				
+				<hr />
+				
+				<footer class="mb-4">
+					Copyright &copy; EllipticPIR 2021. All rights reserved.
+				</footer>
+			</v-container>
+		</v-main>
+	</v-app>
 </template>
 
 <style type="text/css">
@@ -150,7 +151,7 @@ export default Vue.extend({
 			createSelectorTimeFast: -1,
 			dimension: '3',
 			packing: '3',
-			elemSize: 0,
+			elemSize: 32,
 			elemStr: '',
 			replyStr: '',
 			computeReplyMockTime: -1,

@@ -1,8 +1,13 @@
 <template>
-	<b-form-group :label="label">
-		<b-form-input :value="value" @input="$emit('input', $event)" :type="type" :min="min" :max="max" :disabled="disabled"></b-form-input>
-	</b-form-group>
+	<v-text-field
+		:label="label" :value="value" @input="$emit('input', $event)" :type="type" :min="min" :max="max" :readonly="readonly" />
 </template>
+
+<style type="text-css">
+input:read-only {
+	background-color: #e9e9e9;
+}
+</style>
 
 <script lang="ts">
 import Vue from 'vue';
@@ -22,7 +27,7 @@ export default Vue.extend({
 			type: String,
 			default: '',
 		},
-		disabled: {
+		readonly: {
 			type: Boolean,
 			default: false,
 		},

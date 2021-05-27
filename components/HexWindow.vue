@@ -1,7 +1,6 @@
 <template>
 	<div>
-		<p>{{ label }}</p>
-		<textarea :value="value" :rows="rows" class="w-100" disabled />
+		<v-textarea filled :label="label" :value="value" :rows="rows" class="w-100" readonly />
 		<template v-if="showSize">
 			<p>Binary size: {{ (value.length / 2).toLocaleString() }} bytes</p>
 		</template>
