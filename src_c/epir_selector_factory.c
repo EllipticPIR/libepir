@@ -43,15 +43,15 @@ int epir_selector_factory_fill_sync(epir_selector_factory_ctx *ctx) {
 	const epir_ecelgamal_encrypt_fn encrypt = ctx->is_fast ? epir_ecelgamal_encrypt_fast : epir_ecelgamal_encrypt;
 	for(size_t msg=0; msg<2; msg++) {
 		int32_t needs = ctx->capacities[msg] - ctx->idx[msg] - 1;
+		#pragma omp parallel for
 		for(int32_t i=0; i<needs; i++) {
 			unsigned char cipher[EPIR_CIPHER_SIZE];
 			encrypt(cipher, ctx->key, msg, NULL);
-			int ret;
-			if((ret = pthread_mutex_lock(&ctx->mutex)) != 0) return ret;
+			if(pthread_mutex_lock(&ctx->mutex) != 0) continue;
 			const int32_t idx = ++ctx->idx[msg];
-			if(idx >= (int32_t)ctx->capacities[msg]) return -1;
+			if(idx >= (int32_t)ctx->capacities[msg]) continue;
 			memcpy(&ctx->ciphers[msg][idx * EPIR_CIPHER_SIZE], cipher, EPIR_CIPHER_SIZE);
-			if((ret = pthread_mutex_unlock(&ctx->mutex)) != 0) return ret;
+			if(pthread_mutex_unlock(&ctx->mutex) != 0) continue;
 		}
 	}
 	return 0;
