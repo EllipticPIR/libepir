@@ -47,6 +47,11 @@ TEST(ECElGamalTest, mG_generate_sort) {
 	ASSERT_PRED2(SameHash<epir_mG_t>, mG_test, mG_hash);
 }
 
+TEST(ECElGamalTest, mG_generate) {
+	epir_mG_generate(mG_test.data(), EPIR_DEFAULT_MG_MAX, NULL, NULL);
+	ASSERT_PRED2(SameHash<epir_mG_t>, mG_test, mG_hash);
+}
+
 TEST(ECElGamalTest, mG_interpolation_search) {
 	for(size_t i=0; i<EPIR_DEFAULT_MG_MAX; i++) {
 		epir_mG_t mG = mG_test[i];
