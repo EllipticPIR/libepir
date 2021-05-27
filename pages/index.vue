@@ -128,7 +128,7 @@ import {
 	createEpir, createDecryptionContext,
 	loadDecryptionContextFromIndexedDB, saveDecryptionContextToIndexedDB
 } from '../src_ts/wasm';
-import { SelectorFactory, SelectorFactoryFast } from '../src_ts/SelectorFactory';
+import { SelectorFactory, SelectorFactoryFast } from '../src_ts/wasm.SelectorFactory';
 
 export type DataType = {
 	epir: EpirBase | null,

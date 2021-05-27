@@ -2,7 +2,7 @@
 import { EpirBase, DecryptionContextBase, CIPHER_SIZE } from '../EpirBase';
 import { createDecryptionContext } from '../addon';
 import { createEpir } from '../wasm';
-import { SelectorFactory, SelectorFactoryFast } from '../SelectorFactory';
+import { SelectorFactory, SelectorFactoryFast } from '../wasm.SelectorFactory';
 import { privkey, pubkey, index_counts, idx } from './addon';
 
 export const checkSelector = (

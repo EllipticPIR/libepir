@@ -1,7 +1,7 @@
 
 import { arrayBufferConcat, getRandomScalarsConcat } from './util';
 import { EpirBase, CIPHER_SIZE } from './EpirBase';
-import SelectorFactoryWorker from './SelectorFactory.worker.ts';
+import SelectorFactoryWorker from './wasm.SelectorFactory.worker.ts';
 
 const DEFAULT_CAPACITIES = [10000, 100];
 
