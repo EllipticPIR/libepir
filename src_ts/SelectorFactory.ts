@@ -26,23 +26,19 @@ export class SelectorFactory {
 		}
 		const promises = this.capacities.map((capacity, msg) => {
 			const needs = capacity - this.ciphers[msg].length;
+			if(needs <= 0) return;
 			const ciphersPerWorker = Math.floor(needs / this.workers[msg].length);
 			return Promise.all(this.workers[msg].map((worker, workerId) => {
 				const nCiphers = (workerId == this.workers[msg].length - 1 ?
 					needs - (this.workers[msg].length - 1) * ciphersPerWorker : ciphersPerWorker);
+				if(nCiphers <= 0) return;
 				return new Promise<void>((resolve, reject) => {
-					if(nCiphers == 0) {
-						resolve();
-						return;
-					}
 					worker.onmessage = (ev) => {
 						switch(ev.data.method) {
-							case 'ciphers':
+							case 'generateCiphers':
 								for(let i=0; i*CIPHER_SIZE<ev.data.ciphers.byteLength; i++) {
 									this.ciphers[ev.data.msg].push(ev.data.ciphers.slice(i * CIPHER_SIZE, (i + 1) * CIPHER_SIZE));
 								}
-								break;
-							case 'generateCiphers':
 								resolve();
 								break;
 						}

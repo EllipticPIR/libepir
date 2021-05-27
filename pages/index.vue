@@ -54,8 +54,8 @@
 					<ClickableButton inline class="mx-2" value="Factory, Fast" :click="createSelectorFromFactoryFast" />
 				</div>
 				
-				<p>SelectorFactory cache (normal): zeros = {{ selectorFactory.ciphers[0].length }}, ones = {{ selectorFactory.ciphers[1].length }}</p>
-				<p>SelectorFactory cache (fast): zeros = {{ selectorFactoryFast.ciphers[0].length }}, ones = {{ selectorFactoryFast.ciphers[1].length }}</p>
+				<p>SelectorFactory cache (normal): zeros = {{ selectorFactory.ciphers[0].length.toLocaleString() }}, ones = {{ selectorFactory.ciphers[1].length.toLocaleString() }}</p>
+				<p>SelectorFactory cache (fast): zeros = {{ selectorFactoryFast.ciphers[0].length.toLocaleString() }}, ones = {{ selectorFactoryFast.ciphers[1].length.toLocaleString() }}</p>
 				
 				<HexWindow v-model="selectorStr" label="Selector" :time="createSelectorTime" />
 				

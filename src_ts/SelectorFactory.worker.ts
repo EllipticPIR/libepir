@@ -1,7 +1,7 @@
 
 import { arrayBufferConcat } from './util';
-import { EpirBase, SCALAR_SIZE, CIPHER_SIZE } from './EpirBase';
-import { createEpir } from './wasm';
+import { SCALAR_SIZE, CIPHER_SIZE } from './EpirBase';
+import { LibEpirHelper, libEpirModule } from './wasm.libepir';
 
 const worker: Worker = self as any;
 
@@ -10,27 +10,31 @@ interface KeyValue {
 }
 const funcs: KeyValue = {
 	generateCiphers: async (
-		epir: EpirBase, params: { isFast: boolean, key: ArrayBuffer, msg: number, count: number, random: ArrayBuffer }) => {
+		helper: LibEpirHelper, params: { isFast: boolean, key: ArrayBuffer, msg: number, count: number, random: ArrayBuffer }) => {
 		const ciphers: ArrayBuffer[] = [];
+		const cipher_ = helper.malloc(CIPHER_SIZE);
+		const key_ = helper.malloc(params.key);
+		const r_ = helper.malloc(SCALAR_SIZE);
 		for(let i=0; i<params.count; i++) {
-			ciphers.push(params.isFast ?
-				epir.encryptFast(params.key, params.msg, params.random.slice(i * SCALAR_SIZE, (i + 1) * SCALAR_SIZE)) :
-				epir.encrypt(params.key, params.msg, params.random.slice(i * SCALAR_SIZE, (i + 1) * SCALAR_SIZE)));
+			const encrypt = params.isFast ? 'ecelgamal_encrypt_fast' : 'ecelgamal_encrypt';
+			helper.set(params.random, i * SCALAR_SIZE, SCALAR_SIZE, r_);
+			helper.call(encrypt, cipher_, key_, params.msg&0xffffffff, Math.floor(params.msg/0x100000000), r_);
+			const cipher = helper.slice(cipher_, CIPHER_SIZE);
+			ciphers.push(cipher);
 		}
 		const ciphersConcat = arrayBufferConcat(ciphers);
 		worker.postMessage({
-			method: 'ciphers',
+			method: 'generateCiphers',
 			msg: params.msg,
 			ciphers: ciphersConcat,
 		}, [ciphersConcat]);
-		worker.postMessage({
-			method: 'generateCiphers',
-		});
+		helper.free(cipher_);
+		helper.free(key_);
+		helper.free(r_);
 	},
 };
 
-const epirPromise = createEpir();
 worker.onmessage = async (ev) => {
-	funcs[ev.data.method].call(null, await epirPromise, ev.data.params);
+	funcs[ev.data.method](new LibEpirHelper(await libEpirModule()), ev.data.params);
 };
 
