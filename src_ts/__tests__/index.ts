@@ -1,4 +1,5 @@
 
+import { MG_DEFAULT_PATH } from '../EpirBase';
 import { createEpir, createDecryptionContext } from '../index';
 
 test('create an Epir instance', async () => {
@@ -6,6 +7,6 @@ test('create an Epir instance', async () => {
 });
 
 test('create a DecryptionContext instance', async () => {
-	const decCtx = await createDecryptionContext(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
+	const decCtx = await createDecryptionContext(MG_DEFAULT_PATH);
 });
 

@@ -1,5 +1,5 @@
 
-import { EpirBase, DecryptionContextBase, SelectorFactoryBase, CIPHER_SIZE } from '../EpirBase';
+import { EpirBase, DecryptionContextBase, SelectorFactoryBase, CIPHER_SIZE, MG_DEFAULT_PATH } from '../EpirBase';
 import { createDecryptionContext, SelectorFactory } from '../addon';
 import { privkey, pubkey, index_counts, idx } from './addon';
 
@@ -28,7 +28,7 @@ export const runTests = (
 	createSelectorFactory: (isFast: boolean, key: ArrayBuffer, capacities?: number[]) => SelectorFactoryBase) => {
 	let decCtx: DecryptionContextBase;
 	beforeAll(async () => {
-		decCtx = await createDecryptionContext(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
+		decCtx = await createDecryptionContext(MG_DEFAULT_PATH);
 	});
 	
 	test('normal', async () => {

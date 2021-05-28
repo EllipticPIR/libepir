@@ -9,6 +9,8 @@ export const DEFAULT_MMAX = 1 << DEFAULT_MMAX_MOD;
 export const MG_SIZE = 36;
 export const GE25519_P3_SIZE = 4 * 40;
 
+export const MG_DEFAULT_PATH = `${process.env['HOME']}/.EllipticPIR/mG.bin`;
+
 export type DecryptionContextCallbackFunction = ((points_computed: number) => void);
 export type DecryptionContextCallback = { cb: DecryptionContextCallbackFunction, interval: number };
 export type DecryptionContextParameter = string | ArrayBuffer | DecryptionContextCallback;

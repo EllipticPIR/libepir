@@ -7,7 +7,8 @@ import {
 	DecryptionContextBase,
 	DecryptionContextCreateFunction,
 	SCALAR_SIZE,
-	CIPHER_SIZE
+	CIPHER_SIZE,
+	MG_DEFAULT_PATH
 } from '../EpirBase';
 import { createEpir, createDecryptionContext } from '../addon';
 
@@ -112,7 +113,7 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 	
 	beforeAll(async () => {
 		epir = await createEpir();
-		decCtx = await createDecryptionContext(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
+		decCtx = await createDecryptionContext(MG_DEFAULT_PATH);
 	});
 	
 	describe('ECElGamal', () => {

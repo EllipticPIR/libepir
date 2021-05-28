@@ -4,6 +4,7 @@ import {
 	EpirCreateFunction,
 	DecryptionContextBase,
 	DecryptionContextCreateFunction,
+	MG_DEFAULT_PATH
 } from '../EpirBase';
 import { createEpir, createDecryptionContext } from '../addon';
 import { generateRandomScalars, xorshift_init, xorshift, privkey, pubkey } from './addon';
@@ -15,7 +16,7 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 	
 	beforeAll(async () => {
 		epir = await createEpir();
-		decCtx = await createDecryptionContext(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
+		decCtx = await createDecryptionContext(MG_DEFAULT_PATH);
 	});
 	
 	describe('Reply', () => {

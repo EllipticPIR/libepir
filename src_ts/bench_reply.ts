@@ -1,6 +1,7 @@
 
 import crypto from 'crypto';
 
+import { MG_DEFAULT_PATH } from './EpirBase';
 import { printMeasurement } from './util';
 import { createEpir, createDecryptionContext } from './addon';
 
@@ -10,7 +11,7 @@ export const ELEM_SIZE = 32;
 
 export const run = async () => {
 	const epir = await createEpir();
-	const decCtx = await createDecryptionContext(`${process.env['HOME']}/.EllipticPIR/mG.bin`);
+	const decCtx = await createDecryptionContext(MG_DEFAULT_PATH);
 	const privkey = epir.createPrivkey();
 	const pubkey = epir.createPubkey(privkey);
 	const elem = new Uint8Array(crypto.randomBytes(ELEM_SIZE));
