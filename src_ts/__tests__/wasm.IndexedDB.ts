@@ -15,7 +15,7 @@ describe('IndexedDB', () => {
 		expect(decCtx).toBe(null);
 	});
 	test('save', async () => {
-		const decCtx = await createDecryptionContext(undefined, 1 << 4);
+		const decCtx = await createDecryptionContext(undefined, 1 << 8);
 		await saveDecryptionContextToIndexedDB(decCtx);
 	});
 	test('load (success)', async () => {
