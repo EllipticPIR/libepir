@@ -1,7 +1,7 @@
 
 import crypto from 'crypto';
 
-import { MG_DEFAULT_PATH } from './EpirBase';
+import { MG_DEFAULT_PATH } from './types';
 import { printMeasurement } from './util';
 import { createEpir, createDecryptionContext } from './addon';
 

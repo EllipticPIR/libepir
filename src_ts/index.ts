@@ -1,5 +1,5 @@
 
-import { EpirCreateFunction, DecryptionContextCreateFunction } from './EpirBase';
+import { EpirCreateFunction, DecryptionContextCreateFunction } from './types';
 
 let epir: any;
 try {

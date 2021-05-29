@@ -1,5 +1,5 @@
 
-import { SCALAR_SIZE } from './EpirBase';
+import { SCALAR_SIZE } from './types';
 
 export const time = (): number => Date.now();
 

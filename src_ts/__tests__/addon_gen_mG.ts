@@ -1,5 +1,5 @@
 
-import { DecryptionContextCreateFunction } from '../EpirBase';
+import { DecryptionContextCreateFunction } from '../types';
 import { createDecryptionContext } from '../addon';
 import { sha256sum } from './addon';
 

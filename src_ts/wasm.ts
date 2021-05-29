@@ -14,7 +14,7 @@ import {
 	CIPHER_SIZE,
 	MG_SIZE,
 	GE25519_P3_SIZE
-} from './EpirBase';
+} from './types';
 import { arrayBufferConcat, getRandomScalar, getRandomScalarsConcat } from './util';
 import EPIRWorker from './wasm.worker.ts';
 import { LibEpirHelper } from './wasm.libepir';

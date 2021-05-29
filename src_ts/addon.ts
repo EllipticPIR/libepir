@@ -11,7 +11,7 @@ import {
 	SelectorFactoryBase,
 	DEFAULT_CAPACITIES,
 	DEFAULT_MMAX
-} from './EpirBase';
+} from './types';
 
 const epir_napi = require('bindings')('epir');
 

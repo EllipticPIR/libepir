@@ -9,7 +9,7 @@ import {
 	SCALAR_SIZE,
 	CIPHER_SIZE,
 	MG_DEFAULT_PATH
-} from '../EpirBase';
+} from '../types';
 import { createEpir, createDecryptionContext } from '../addon';
 
 export let x: number;

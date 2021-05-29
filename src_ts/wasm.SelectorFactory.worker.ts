@@ -1,6 +1,6 @@
 
 import { arrayBufferConcat } from './util';
-import { SCALAR_SIZE, CIPHER_SIZE } from './EpirBase';
+import { SCALAR_SIZE, CIPHER_SIZE } from './types';
 import { LibEpirHelper, libEpirModule } from './wasm.libepir';
 
 const worker: Worker = self as unknown as Worker;

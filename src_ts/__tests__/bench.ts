@@ -9,7 +9,9 @@ describe('bench', () => {
 		['selector',  runSelector],
 		['reply',     runReply],
 	])('%s', async (name, run) => {
-		console.log = () => {};
+		console.log = () => {
+			// Do nothing.
+		};
 		expect(await run()).toBe(true);
 	});
 });

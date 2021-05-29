@@ -1,7 +1,7 @@
 
 import crypto from 'crypto';
 
-import { SCALAR_SIZE } from '../EpirBase';
+import { SCALAR_SIZE } from '../types';
 import {
 	time, arrayBufferConcat, arrayBufferCompare, arrayBufferToHex, hexToArrayBuffer, checkIsHex,
 	getRandomBytes, isCanonical, getRandomScalar, getRandomScalars, getRandomScalarsConcat

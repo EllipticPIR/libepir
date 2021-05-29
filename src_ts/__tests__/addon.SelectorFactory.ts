@@ -1,5 +1,5 @@
 
-import { DecryptionContextBase, SelectorFactoryBase, CIPHER_SIZE, MG_DEFAULT_PATH } from '../EpirBase';
+import { DecryptionContextBase, SelectorFactoryBase, CIPHER_SIZE, MG_DEFAULT_PATH } from '../types';
 import { createDecryptionContext, SelectorFactory } from '../addon';
 import { privkey, pubkey, index_counts, idx } from './addon';
 

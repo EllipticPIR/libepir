@@ -1,6 +1,6 @@
 
 import { arrayBufferConcat, getRandomScalarsConcat } from './util';
-import { SelectorFactoryBase, DEFAULT_CAPACITIES, CIPHER_SIZE } from './EpirBase';
+import { SelectorFactoryBase, DEFAULT_CAPACITIES, CIPHER_SIZE } from './types';
 import SelectorFactoryWorker from './wasm.SelectorFactory.worker.ts';
 
 export class SelectorFactory implements SelectorFactoryBase {

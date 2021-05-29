@@ -5,7 +5,7 @@ import {
 	DecryptionContextBase,
 	DecryptionContextCreateFunction,
 	MG_DEFAULT_PATH
-} from '../EpirBase';
+} from '../types';
 import { createEpir, createDecryptionContext } from '../addon';
 import { generateRandomScalars, xorshift_init, xorshift, privkey, pubkey } from './addon';
 

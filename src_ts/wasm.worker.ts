@@ -1,5 +1,5 @@
 
-import { MG_SIZE } from './EpirBase';
+import { MG_SIZE } from './types';
 import { LibEpirHelper, libEpirModule } from './wasm.libepir';
 import { arrayBufferConcat } from './util';
 

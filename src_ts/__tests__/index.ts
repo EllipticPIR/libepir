@@ -1,5 +1,5 @@
 
-import { MG_DEFAULT_PATH } from '../EpirBase';
+import { MG_DEFAULT_PATH } from '../types';
 import { createEpir, createDecryptionContext } from '../index';
 
 test('create an Epir instance', async () => {
