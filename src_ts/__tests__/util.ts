@@ -33,7 +33,10 @@ describe('ArrayBuffer', () => {
 		const a = new Uint8Array([0x00, 0x01, 0xfe, 0xff]).buffer;
 		expect(arrayBufferToHex(a)).toBe('0001feff');
 	});
-	test('hexToArrayBuffer', () => {
+	test('hexToArrayBuffer (null)', () => {
+		expect(new Uint8Array(hexToArrayBuffer(''))).toEqual(new Uint8Array([]));
+	});
+	test('hexToArrayBuffer (0x0001feff)', () => {
 		expect(new Uint8Array(hexToArrayBuffer('0001feff'))).toEqual(new Uint8Array([0x00, 0x01, 0xfe, 0xff]));
 	});
 	test('checkIsHex', () => {
