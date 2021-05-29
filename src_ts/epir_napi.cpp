@@ -133,8 +133,8 @@ class DecryptionContext : public Napi::ObjectWrap<DecryptionContext> {
 		EllipticPIR::DecryptionContext decCtx = EllipticPIR::DecryptionContext("", 0);
 		
 		Napi::Value GetMG(const Napi::CallbackInfo& info);
-		Napi::Value Decrypt(const Napi::CallbackInfo& info);
-		Napi::Value ReplyDecrypt(const Napi::CallbackInfo& info);
+		Napi::Value DecryptCipher(const Napi::CallbackInfo& info);
+		Napi::Value DecryptReply(const Napi::CallbackInfo& info);
 		
 	public:
 		
@@ -145,9 +145,9 @@ class DecryptionContext : public Napi::ObjectWrap<DecryptionContext> {
 
 Napi::Object DecryptionContext::Init(Napi::Env env, Napi::Object exports) {
 	Napi::Function func = DefineClass(env, "DecryptionContext", {
-		InstanceMethod<&DecryptionContext::GetMG       >("getMG"),
-		InstanceMethod<&DecryptionContext::Decrypt     >("decrypt"),
-		InstanceMethod<&DecryptionContext::ReplyDecrypt>("replyDecrypt"),
+		InstanceMethod<&DecryptionContext::GetMG        >("getMG"),
+		InstanceMethod<&DecryptionContext::DecryptCipher>("decryptCipher"),
+		InstanceMethod<&DecryptionContext::DecryptReply >("decryptReply"),
 	});
 	Napi::FunctionReference *constructor = new Napi::FunctionReference();
 	*constructor = Napi::Persistent(func);
@@ -258,8 +258,8 @@ Napi::Value DecryptionContext::GetMG(const Napi::CallbackInfo &info) {
 	return Napi::ArrayBuffer::New(env, this->decCtx.mG.data(), sizeof(epir_mG_t) * this->decCtx.mG.size());
 }
 
-// DecryptionContext.decrypt(privkey: ArrayBuffer(32), cipher: ArrayBuffer(64)): number.
-Napi::Value DecryptionContext::Decrypt(const Napi::CallbackInfo &info) {
+// DecryptionContext.decryptCipher(privkey: ArrayBuffer(32), cipher: ArrayBuffer(64)): number.
+Napi::Value DecryptionContext::DecryptCipher(const Napi::CallbackInfo &info) {
 	Napi::Env env = info.Env();
 	if(info.Length() < 2) {
 		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
@@ -313,8 +313,8 @@ class ReplyDecryptWorker : public ArrayBufferPromiseWorker {
 		}
 };
 
-// DecryptionContext.replyDecrypt(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer>;
-Napi::Value DecryptionContext::ReplyDecrypt(const Napi::CallbackInfo& info) {
+// DecryptionContext.decryptReply(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer>;
+Napi::Value DecryptionContext::DecryptReply(const Napi::CallbackInfo& info) {
 	Napi::Env env = info.Env();
 	if(info.Length() < 4) {
 		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();

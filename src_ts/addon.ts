@@ -16,35 +16,16 @@ import {
 import bindings from 'bindings';
 const epir_napi = bindings('epir');
 
-declare class DecryptionContextNapi {
+declare class DecryptionContext implements DecryptionContextBase {
 	constructor(path: string);
 	getMG(): ArrayBuffer;
-	decrypt(privkey: ArrayBuffer, cipher: ArrayBuffer): number;
-	replyDecrypt(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer>;
-}
-
-export class DecryptionContext implements DecryptionContextBase {
-	
-	constructor(public napi: DecryptionContextNapi) {
-	}
-	
-	getMG(): ArrayBuffer {
-		return this.napi.getMG();
-	}
-	
-	decryptCipher(privkey: ArrayBuffer, cipher: ArrayBuffer): number {
-		return this.napi.decrypt(privkey, cipher);
-	}
-	
-	decryptReply(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer> {
-		return this.napi.replyDecrypt(privkey, dimension, packing, reply);
-	}
-	
+	decryptCipher(privkey: ArrayBuffer, cipher: ArrayBuffer): number;
+	decryptReply(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer>;
 }
 
 export const createDecryptionContext: DecryptionContextCreateFunction = async (
 	param?: DecryptionContextParameter, mmax: number = DEFAULT_MMAX) => {
-	const napi = await new Promise<DecryptionContextNapi>((resolve) => {
+	const napi = await new Promise<DecryptionContext>((resolve) => {
 		if((typeof param === 'undefined') || (typeof param === 'string') || (param instanceof ArrayBuffer)) {
 			resolve(new epir_napi.DecryptionContext(param, mmax));
 		} else {
@@ -57,7 +38,7 @@ export const createDecryptionContext: DecryptionContextCreateFunction = async (
 			}, interval: param.interval }, mmax);
 		}
 	});
-	return new DecryptionContext(napi);
+	return napi;
 };
 
 declare class SelectorFactoryNapi {
