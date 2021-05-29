@@ -11,13 +11,8 @@ import { generateRandomScalars, xorshift_init, xorshift, privkey, pubkey } from 
 
 export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext: DecryptionContextCreateFunction): void => {
 	
-	let epir: EpirBase;
-	let decCtx: DecryptionContextBase;
-	
-	beforeAll(async () => {
-		epir = await createEpir();
-		decCtx = await createDecryptionContext(MG_DEFAULT_PATH);
-	});
+	const epirPromise = createEpir();
+	const decCtxPromise = createDecryptionContext(MG_DEFAULT_PATH);
 	
 	describe('Reply', () => {
 		const DIMENSION = 3;
@@ -33,34 +28,42 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 			return elem.buffer;
 		};
 		
-		test('get a reply size', () => {
+		test('get a reply size', async () => {
+			const epir = await epirPromise;
 			expect(epir.computeReplySize(DIMENSION, PACKING, ELEM_SIZE)).toBe(320896);
 		});
 		
-		test('get a reply random count', () => {
+		test('get a reply random count', async () => {
+			const epir = await epirPromise;
 			expect(epir.computeReplyRCount(DIMENSION, PACKING, ELEM_SIZE)).toBe(5260);
 		});
 		
 		test('decrypt a reply (deterministic, success)', async () => {
+			const epir = await epirPromise;
+			const decCtx = await decCtxPromise;
 			const elem = generateElem();
 			const reply_r_count = epir.computeReplyRCount(DIMENSION, PACKING, ELEM_SIZE);
 			const reply = epir.computeReplyMock(pubkey.buffer, DIMENSION, PACKING, elem, generateRandomScalars(reply_r_count));
 			const decrypted = await decCtx.decryptReply(privkey.buffer, DIMENSION, PACKING, reply);
 			expect(decrypted.slice(0, ELEM_SIZE)).toEqual(elem);
-		});
+		}, 30 * 1000);
 		
 		test('decrypt a reply (random, success)', async () => {
+			const epir = await epirPromise;
+			const decCtx = await decCtxPromise;
 			const elem = generateElem();
 			const reply = epir.computeReplyMock(pubkey.buffer, DIMENSION, PACKING, elem);
 			const decrypted = await decCtx.decryptReply(privkey.buffer, DIMENSION, PACKING, reply);
 			expect(decrypted.slice(0, ELEM_SIZE)).toEqual(elem);
-		});
+		}, 30 * 1000);
 		
 		test('decrypt a reply (random, fail)', async () => {
+			const epir = await epirPromise;
+			const decCtx = await decCtxPromise;
 			const elem = generateElem();
 			const reply = epir.computeReplyMock(pubkey.buffer, DIMENSION, PACKING, elem);
 			await expect(decCtx.decryptReply(pubkey.buffer, DIMENSION, PACKING, reply)).rejects.toMatch(/^Failed to decrypt\.$/);
-		});
+		}, 30 * 1000);
 	});
 	
 };
