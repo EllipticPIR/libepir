@@ -20,31 +20,14 @@ Napi::Object SelectorFactory::Init(Napi::Env env, Napi::Object exports) {
 SelectorFactory::SelectorFactory(const Napi::CallbackInfo &info) : Napi::ObjectWrap<SelectorFactory>(info) {
 	Napi::Env env = info.Env();
 	// Check arguments.
-	if(info.Length() < 4) {
-		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
-		return;
-	}
-	if(!info[0].IsBoolean()) {
-		Napi::TypeError::New(env, "The parameter 'isFast' is not a boolean.").ThrowAsJavaScriptException();
-		return;
-	}
-	try {
-		checkIsArrayBuffer(info[1], 32);
-	} catch(const char *err) {
-		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
-		return;
-	}
-	if(!info[2].IsNumber()) {
-		Napi::TypeError::New(env, "The parameter 'capacityZero' is not a number.").ThrowAsJavaScriptException();
-		return;
-	}
-	if(!info[3].IsNumber()) {
-		Napi::TypeError::New(env, "The parameter 'capacityOne' is not a number.").ThrowAsJavaScriptException();
-		return;
-	}
+	CHECK_N_ARGS_NO_RETURN(4);
+	CHECK_IS_BOOLEAN_NO_RETURN(info[0], "isFast");
+	CHECK_IS_ARRAY_BUFFER_NO_RETURN(info[1], 32);
+	CHECK_IS_NUMBER_NO_RETURN(info[2], "capacityZero");
+	CHECK_IS_NUMBER_NO_RETURN(info[3], "capacityOne");
 	// Read arguments.
 	const bool isFast = info[0].As<Napi::Boolean>();
-	const uint8_t *key = static_cast<const uint8_t*>(info[1].As<Napi::ArrayBuffer>().Data());
+	const uint8_t *key = READ_ARRAY_BUFFER(info[1]);
 	const uint32_t capacityZero = info[2].As<Napi::Number>().Uint32Value();
 	const uint32_t capacityOne = info[3].As<Napi::Number>().Uint32Value();
 	if(isFast) {
@@ -84,14 +67,8 @@ Napi::Value SelectorFactory::Fill(const Napi::CallbackInfo &info) {
 Napi::Value SelectorFactory::Create(const Napi::CallbackInfo &info) {
 	Napi::Env env = info.Env();
 	// Check arguments.
-	if(info.Length() < 2) {
-		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	if(!info[1].IsNumber()) {
-		Napi::TypeError::New(env, "The parameter 'idx' is not a number.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
+	CHECK_N_ARGS(2);
+	CHECK_IS_NUMBER(info[1], "idx");
 	try {
 		const std::vector<uint64_t> indexCounts = readIndexCounts(env, info[0]);
 		const uint64_t idx = info[1].As<Napi::Number>().Int64Value();
@@ -100,13 +77,12 @@ Napi::Value SelectorFactory::Create(const Napi::CallbackInfo &info) {
 		Napi::TypedArrayOf<uint8_t> selector = Napi::TypedArrayOf<uint8_t>::New(env, nCiphers * EPIR_CIPHER_SIZE);
 		const int ret = epir_selector_factory_create_selector(selector.Data(), &this->ctx, indexCounts.data(), indexCounts.size(), idx);
 		if(ret != 0) {
-			Napi::Error::New(env, "Insufficient ciphers cache.").ThrowAsJavaScriptException();
-			return env.Null();
+			THROW_ERROR("Insufficient ciphers cache.");
 		}
 		return selector.ArrayBuffer();
 	} catch(Napi::Error &err) {
 		err.ThrowAsJavaScriptException();
-		return env.Null();
+		return DEFAULT_RETURN_ON_ERROR;
 	}
 }
 

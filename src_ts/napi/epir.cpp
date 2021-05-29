@@ -20,18 +20,10 @@ Napi::Value CreatePrivkey(const Napi::CallbackInfo &info) {
 Napi::Value PubkeyFromPrivkey(const Napi::CallbackInfo &info) {
 	// Check arguments.
 	Napi::Env env = info.Env();
-	if(info.Length() < 1) {
-		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	try {
-		checkIsArrayBuffer(info[0], EPIR_SCALAR_SIZE);
-	} catch(const char *err) {
-		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
-		return env.Null();
-	}
+	CHECK_N_ARGS(1);
+	CHECK_IS_ARRAY_BUFFER(info[0], EPIR_SCALAR_SIZE);
 	// Read arguments.
-	const uint8_t *privkey = static_cast<const uint8_t*>(info[0].As<Napi::ArrayBuffer>().Data());
+	const uint8_t *privkey = READ_ARRAY_BUFFER(info[0]);
 	// Create return value.
 	auto pubkey = Napi::TypedArrayOf<uint8_t>::New(env, EPIR_POINT_SIZE);
 	epir_pubkey_from_privkey(pubkey.Data(), privkey);
@@ -44,36 +36,19 @@ Napi::Value Encrypt_(
 	void (*encrypt)(unsigned char*, const unsigned char*, const uint64_t, const unsigned char*)) {
 	// Check arguments.
 	Napi::Env env = info.Env();
-	if(info.Length() < 2) {
-		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	try {
-		checkIsArrayBuffer(info[0], EPIR_POINT_SIZE);
-	} catch(const char *err) {
-		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	if(!info[1].IsNumber()) {
-		Napi::TypeError::New(env, "The parameter 'msg' is not a number.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
+	CHECK_N_ARGS(2);
+	CHECK_IS_ARRAY_BUFFER(info[0], EPIR_POINT_SIZE);
+	CHECK_IS_NUMBER(info[1], "msg");
 	// Read arguments.
-	const uint8_t *key = static_cast<const uint8_t*>(info[0].As<Napi::ArrayBuffer>().Data());
+	const uint8_t *key = READ_ARRAY_BUFFER(info[0]);
 	const int64_t msg = info[1].As<Napi::Number>().Int64Value();
 	if(msg < 0) {
-		Napi::TypeError::New(env, "The parameter 'msg' is should not be negative.").ThrowAsJavaScriptException();
-		return env.Null();
+		THROW_RANGE_ERROR("The parameter 'msg' should not be negative.");
 	}
 	uint8_t *r = NULL;
 	if(info.Length() >= 3) {
-		try {
-			checkIsArrayBuffer(info[2], EPIR_SCALAR_SIZE);
-		} catch(const char *err) {
-			Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
-			return env.Null();
-		}
-		r = static_cast<uint8_t*>(info[2].As<Napi::ArrayBuffer>().Data());
+		CHECK_IS_ARRAY_BUFFER(info[2], EPIR_SCALAR_SIZE);
+		r = READ_ARRAY_BUFFER(info[2]);
 	}
 	// Create return value.
 	auto cipher = Napi::TypedArrayOf<uint8_t>::New(env, EPIR_CIPHER_SIZE);
@@ -95,14 +70,8 @@ Napi::Value CiphersOrElementsCount(
 	const Napi::CallbackInfo &info,
 	uint64_t (*count)(const uint64_t *index_counts, const uint8_t n_indexes)) {
 	Napi::Env env = info.Env();
-	if(info.Length() < 1) {
-		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	if(!info[0].IsArray()) {
-		Napi::TypeError::New(env, "The parameter `index_counts` is not an array.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
+	CHECK_N_ARGS(1);
+	CHECK_IS_ARRAY(info[0], "indexCounts");
 	// Load arguments.
 	try {
 		const std::vector<uint64_t> index_counts = readIndexCounts(env, info[0]);
@@ -144,27 +113,13 @@ class SelectorCreateWorker : public ArrayBufferPromiseWorker {
 		}
 };
 
-// .selector_create[_fast](pubkey: ArrayBuffer(32), index_counts: number[], idx: number, r?: ArrayBuffer): Promise<ArrayBuffer>.
+// .selector_create[_fast](pubkey: ArrayBuffer(32), indexCounts: number[], idx: number, r?: ArrayBuffer): Promise<ArrayBuffer>.
 Napi::Value SelectorCreate_(const Napi::CallbackInfo &info, epir_selector_create_fn selector_create) {
 	Napi::Env env = info.Env();
-	if(info.Length() < 3) {
-		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	try {
-		checkIsArrayBuffer(info[0], EPIR_POINT_SIZE);
-	} catch(const char *err) {
-		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	if(!info[1].IsArray()) {
-		Napi::TypeError::New(env, "The parameter `index_counts` is not an array.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	if(!info[2].IsNumber()) {
-		Napi::TypeError::New(env, "The parameter `idx` is not a number.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
+	CHECK_N_ARGS(3);
+	CHECK_IS_ARRAY_BUFFER(info[0], EPIR_POINT_SIZE);
+	CHECK_IS_ARRAY(info[1], "indexCounts");
+	CHECK_IS_NUMBER(info[2], "idx");
 	// Load arguments.
 	const uint8_t *key = static_cast<const uint8_t*>(info[0].As<Napi::ArrayBuffer>().Data());
 	try {
@@ -172,24 +127,17 @@ Napi::Value SelectorCreate_(const Napi::CallbackInfo &info, epir_selector_create
 		const uint64_t elements_count = epir_selector_elements_count(index_counts.data(), index_counts.size());
 		const uint64_t ciphers_count = epir_selector_ciphers_count(index_counts.data(), index_counts.size());
 		if(elements_count == 0) {
-			Napi::TypeError::New(env, "The total number of `index_counts[i]` should be greater than zero.").ThrowAsJavaScriptException();
-			return env.Null();
+			THROW_RANGE_ERROR("The total number of `index_counts[i]` should be greater than zero.");
 		}
 		const int64_t idx = info[2].As<Napi::Number>().Int64Value();
 		if(idx < 0 || (uint64_t)idx >= elements_count) {
-			Napi::TypeError::New(env, "The `idx` has an invalid range.").ThrowAsJavaScriptException();
-			return env.Null();
+			THROW_RANGE_ERROR("The 'idx' has an invalid range.");
 		}
 		uint8_t *r = NULL;
 		if(info.Length() >= 4 && !info[3].IsUndefined()) {
-			try {
-				const size_t expected_r_size = ciphers_count * EPIR_SCALAR_SIZE;
-				checkIsArrayBuffer(info[3], expected_r_size);
-				r = static_cast<uint8_t*>(info[3].As<Napi::ArrayBuffer>().Data());
-			} catch(const char *err) {
-				Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
-				return env.Null();
-			}
+			const size_t expected_r_size = ciphers_count * EPIR_SCALAR_SIZE;
+			CHECK_IS_ARRAY_BUFFER(info[3], expected_r_size);
+			r = READ_ARRAY_BUFFER(info[3]);
 		}
 		// Create AsyncWorker instance.
 		SelectorCreateWorker *wk = new SelectorCreateWorker(env, key, index_counts, idx, r, selector_create);
@@ -212,26 +160,22 @@ Napi::Value SelectorCreateFast(const Napi::CallbackInfo &info) {
 Napi::Value ReplyXSize(
 	const Napi::CallbackInfo &info, size_t (*func)(const uint8_t dimension, const uint8_t packing, const size_t elem_size)) {
 	Napi::Env env = info.Env();
-	if(info.Length() < 3) {
-		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	if(!info[0].IsNumber() || !info[1].IsNumber() || !info[2].IsNumber()) {
-		Napi::TypeError::New(env, "The parameters are not numbers.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
+	CHECK_N_ARGS(3);
+	CHECK_IS_NUMBER(info[0], "dimension");
+	CHECK_IS_NUMBER(info[1], "packing");
+	CHECK_IS_NUMBER(info[2], "elemSize");
 	const uint8_t dimension = info[0].As<Napi::Number>().Uint32Value();
 	const uint8_t packing = info[1].As<Napi::Number>().Uint32Value();
 	const size_t elem_size = info[2].As<Napi::Number>().Int64Value();
 	return Napi::Number::New(env, func(dimension, packing, elem_size));
 }
 
-// .reply_size(dimension: number, packing: number, elem_size: number): number.
+// .reply_size(dimension: number, packing: number, elemSize: number): number.
 Napi::Value ReplySize(const Napi::CallbackInfo &info) {
 	return ReplyXSize(info, epir_reply_size);
 }
 
-// .reply_r_count(dimension: number, packing: number, elem_size: number): number.
+// .reply_r_count(dimension: number, packing: number, elemSize: number): number.
 Napi::Value ReplyRCount(const Napi::CallbackInfo &info) {
 	return ReplyXSize(info, epir_reply_r_count);
 }
@@ -239,37 +183,19 @@ Napi::Value ReplyRCount(const Napi::CallbackInfo &info) {
 // .reply_mock(pubkey: ArrayBuffer, dimension: number, packing: number, elem: ArrayBuffer, r?: ArrayBuffer): ArrayBuffer.
 Napi::Value ReplyMock(const Napi::CallbackInfo &info) {
 	Napi::Env env = info.Env();
-	if(info.Length() < 4) {
-		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
+	CHECK_N_ARGS(4);
 	// Check arguments.
-	try {
-		checkIsArrayBuffer(info[0], EPIR_POINT_SIZE);
-	} catch(const char *err) {
-		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	if(!info[1].IsNumber() || !info[2].IsNumber()) {
-		Napi::TypeError::New(env, "The parameters are not numbers.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	try {
-		checkIsArrayBuffer(info[3], 0);
-	} catch(const char *err) {
-		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
-		return env.Null();
-	}
+	CHECK_IS_ARRAY_BUFFER(info[0], EPIR_POINT_SIZE);
+	CHECK_IS_NUMBER(info[1], "dimension");
+	CHECK_IS_NUMBER(info[2], "packing");
+	CHECK_IS_ARRAY_BUFFER(info[3], 0);
 	// Read arguments.
-	const uint8_t *pubkey = static_cast<const uint8_t*>(info[0].As<Napi::ArrayBuffer>().Data());
+	const uint8_t *pubkey = READ_ARRAY_BUFFER(info[0]);
 	const uint8_t dimension = info[1].As<Napi::Number>().Uint32Value();
 	const uint8_t packing = info[2].As<Napi::Number>().Uint32Value();
-	const uint8_t *elem = static_cast<const uint8_t*>(info[3].As<Napi::ArrayBuffer>().Data());
+	const uint8_t *elem = READ_ARRAY_BUFFER(info[3]);
 	const size_t elem_size = info[3].As<Napi::ArrayBuffer>().ByteLength();
-	uint8_t *r = NULL;
-	if(info.Length() >= 5) {
-		r = static_cast<uint8_t*>(info[4].As<Napi::ArrayBuffer>().Data());
-	}
+	const uint8_t *r = (info.Length() >= 5) ? READ_ARRAY_BUFFER(info[4]) : NULL;
 	const size_t reply_size = epir_reply_size(dimension, packing, elem_size);
 	auto reply = Napi::TypedArrayOf<uint8_t>::New(env, reply_size);
 	epir_reply_mock(reply.Data(), pubkey, dimension, packing, elem, elem_size, r);
@@ -277,20 +203,21 @@ Napi::Value ReplyMock(const Napi::CallbackInfo &info) {
 }
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
-	exports.Set(Napi::String::New(env, "create_privkey"), Napi::Function::New(env, CreatePrivkey));
-	exports.Set(Napi::String::New(env, "pubkey_from_privkey"), Napi::Function::New(env, PubkeyFromPrivkey));
-	exports.Set(Napi::String::New(env, "encrypt"), Napi::Function::New(env, Encrypt));
-	exports.Set(Napi::String::New(env, "encrypt_fast"), Napi::Function::New(env, EncryptFast));
-	exports.Set(Napi::String::New(env, "ciphers_count"), Napi::Function::New(env, CiphersCount));
-	exports.Set(Napi::String::New(env, "elements_count"), Napi::Function::New(env, ElementsCount));
-	exports.Set(Napi::String::New(env, "selector_create"), Napi::Function::New(env, SelectorCreate));
-	exports.Set(Napi::String::New(env, "selector_create_fast"), Napi::Function::New(env, SelectorCreateFast));
+	#define DEFINE_FUNCTION(jsName, cName) exports.Set(Napi::String::New(env, jsName), Napi::Function::New(env, cName))
+	DEFINE_FUNCTION("create_privkey"      , CreatePrivkey     );
+	DEFINE_FUNCTION("pubkey_from_privkey" , PubkeyFromPrivkey );
+	DEFINE_FUNCTION("encrypt"             , Encrypt           );
+	DEFINE_FUNCTION("encrypt_fast"        , EncryptFast       );
+	DEFINE_FUNCTION("ciphers_count"       , CiphersCount      );
+	DEFINE_FUNCTION("elements_count"      , ElementsCount     );
+	DEFINE_FUNCTION("selector_create"     , SelectorCreate    );
+	DEFINE_FUNCTION("selector_create_fast", SelectorCreateFast);
 	DecryptionContext::Init(env, exports);
 	SelectorFactory::Init(env, exports);
 	// For testing.
-	exports.Set(Napi::String::New(env, "reply_size"), Napi::Function::New(env, ReplySize));
-	exports.Set(Napi::String::New(env, "reply_r_count"), Napi::Function::New(env, ReplyRCount));
-	exports.Set(Napi::String::New(env, "reply_mock"), Napi::Function::New(env, ReplyMock));
+	DEFINE_FUNCTION("reply_size"   , ReplySize  );
+	DEFINE_FUNCTION("reply_r_count", ReplyRCount);
+	DEFINE_FUNCTION("reply_mock"   , ReplyMock  );
 	return exports;
 }
 

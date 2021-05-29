@@ -38,9 +38,8 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 		return;
 	}
 	const Napi::Value param = info[0];
-	if(info.Length() > 1 && !info[1].IsNumber()) {
-		Napi::TypeError::New(env, "The parameter 'mmax' has an invalid type.").ThrowAsJavaScriptException();
-		return;
+	if(info.Length() > 1) {
+		CHECK_IS_NUMBER_NO_RETURN(info[1], "mmax");
 	}
 	const size_t mmax = (info.Length() > 1 ? info[1].As<Napi::Number>().Uint32Value() : EPIR_DEFAULT_MG_MAX);
 	if(param.IsUndefined()) {
@@ -52,38 +51,28 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 		try {
 			this->decCtx = EllipticPIR::DecryptionContext(path, mmax);
 		} catch(const char *err) {
-			Napi::Error::New(env, err).ThrowAsJavaScriptException();
-			return;
+			THROW_ERROR_NO_RETURN(err);
 		}
 	} else if(param.IsArrayBuffer()) {
 		// Load from ArrayBuffer.
-		try {
-			checkIsArrayBuffer(param, sizeof(epir_mG_t) * mmax);
-		} catch(const char *err) {
-			Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
-			return;
-		}
+		CHECK_IS_ARRAY_BUFFER_NO_RETURN(param, sizeof(epir_mG_t) * mmax);
 		const uint8_t *mG = static_cast<const uint8_t*>(param.As<Napi::ArrayBuffer>().Data());
 		this->decCtx = EllipticPIR::DecryptionContext(mG, mmax);
 	} else if(param.IsObject()) {
 		const Napi::Object cbObj = param.As<Napi::Object>();
 		if(!cbObj.Has("cb") || !cbObj.Has("interval")) {
-			Napi::TypeError::New(env, "The parameter 'param' has missing property.").ThrowAsJavaScriptException();
-			return;
+			THROW_TYPE_ERROR_NO_RETURN("The parameter 'param' has missing property.");
 		}
 		if(!cbObj.Get("cb").IsFunction()) {
-			Napi::TypeError::New(env, "The parameter 'param.cb' is not a function.").ThrowAsJavaScriptException();
-			return;
+			THROW_TYPE_ERROR_NO_RETURN("The parameter 'param.cb' is not a function.");
 		}
 		if(!cbObj.Get("interval").IsNumber()) {
-			Napi::TypeError::New(env, "The parameter 'param.interval' is not a number.").ThrowAsJavaScriptException();
-			return;
+			THROW_TYPE_ERROR_NO_RETURN("The parameter 'param.interval' is not a number.");
 		}
 		const Napi::Function cb = cbObj.Get("cb").As<Napi::Function>();
 		const int64_t interval = cbObj.Get("interval").As<Napi::Number>().Int64Value();
 		if(interval <= 0) {
-			Napi::RangeError::New(env, "The parameter 'param.interval' should be greater than zero.").ThrowAsJavaScriptException();
-			return;
+			THROW_RANGE_ERROR_NO_RETURN("The parameter 'param.interval' should be greater than zero.");
 		}
 		// Generate mG.bin using the specified callback.
 		Context *ctx = new Context(Napi::Persistent(info.This()));
@@ -108,8 +97,7 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 		this->decCtx = EllipticPIR::DecryptionContext(cb_, &data, mmax);
 		tsfn.Release();
 	} else {
-		Napi::TypeError::New(env, "The parameter has an invalid type.").ThrowAsJavaScriptException();
-		return;
+		THROW_TYPE_ERROR_NO_RETURN("The parameter has an invalid type.");
 	}
 }
 
@@ -122,30 +110,16 @@ Napi::Value DecryptionContext::GetMG(const Napi::CallbackInfo &info) {
 // DecryptionContext.decryptCipher(privkey: ArrayBuffer(32), cipher: ArrayBuffer(64)): number.
 Napi::Value DecryptionContext::DecryptCipher(const Napi::CallbackInfo &info) {
 	Napi::Env env = info.Env();
-	if(info.Length() < 2) {
-		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	try {
-		checkIsArrayBuffer(info[0], EPIR_SCALAR_SIZE);
-	} catch(const char *err) {
-		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	try {
-		checkIsArrayBuffer(info[1], EPIR_CIPHER_SIZE);
-	} catch(const char *err) {
-		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
-		return env.Null();
-	}
+	CHECK_N_ARGS(2);
+	CHECK_IS_ARRAY_BUFFER(info[0], EPIR_SCALAR_SIZE);
+	CHECK_IS_ARRAY_BUFFER(info[1], EPIR_CIPHER_SIZE);
 	// Load arguments.
-	const uint8_t *privkey = static_cast<const uint8_t*>(info[0].As<Napi::ArrayBuffer>().Data());
-	const uint8_t *cipher = static_cast<const uint8_t*>(info[1].As<Napi::ArrayBuffer>().Data());
+	const uint8_t *privkey = READ_ARRAY_BUFFER(info[0]);
+	const uint8_t *cipher = READ_ARRAY_BUFFER(info[1]);
 	// Decrypt.
 	const int32_t decrypted = this->decCtx.decryptCipher(privkey, cipher);
 	if(decrypted < 0) {
-		Napi::Error::New(env, "Failed to decrypt.").ThrowAsJavaScriptException();
-		return env.Null();
+		THROW_ERROR("Failed to decrypt.");
 	}
 	return Napi::Number::New(env, decrypted);
 }
@@ -177,31 +151,16 @@ class ReplyDecryptWorker : public ArrayBufferPromiseWorker {
 // DecryptionContext.decryptReply(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer>;
 Napi::Value DecryptionContext::DecryptReply(const Napi::CallbackInfo& info) {
 	Napi::Env env = info.Env();
-	if(info.Length() < 4) {
-		Napi::TypeError::New(env, "Wrong number of arguments.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	try {
-		checkIsArrayBuffer(info[0], EPIR_SCALAR_SIZE);
-	} catch(const char *err) {
-		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	if(!info[1].IsNumber() || !info[2].IsNumber()) {
-		Napi::TypeError::New(env, "The parameter `dimension` and/or `packing` is not a number.").ThrowAsJavaScriptException();
-		return env.Null();
-	}
-	try {
-		checkIsArrayBuffer(info[3], 0);
-	} catch(const char *err) {
-		Napi::TypeError::New(env, err).ThrowAsJavaScriptException();
-		return env.Null();
-	}
+	CHECK_N_ARGS(4);
+	CHECK_IS_ARRAY_BUFFER(info[0], EPIR_SCALAR_SIZE);
+	CHECK_IS_NUMBER(info[1], "dimension");
+	CHECK_IS_NUMBER(info[2], "packing");
+	CHECK_IS_ARRAY_BUFFER(info[3], 0);
 	// Load arguments.
-	const uint8_t *privkey = static_cast<const uint8_t*>(info[0].As<Napi::ArrayBuffer>().Data());
+	const uint8_t *privkey = READ_ARRAY_BUFFER(info[0]);
 	const uint32_t dimension = info[1].As<Napi::Number>().Uint32Value();
 	const uint32_t packing = info[2].As<Napi::Number>().Uint32Value();
-	const uint8_t *reply = static_cast<const uint8_t*>(info[3].As<Napi::ArrayBuffer>().Data());
+	const uint8_t *reply = READ_ARRAY_BUFFER(info[3]);
 	const size_t reply_size = info[3].As<Napi::ArrayBuffer>().ByteLength();
 	// Decrypt.
 	ReplyDecryptWorker *wk = new ReplyDecryptWorker(env, &this->decCtx, privkey, reply, reply_size, dimension, packing);
