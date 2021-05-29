@@ -15,7 +15,7 @@
 
 namespace EllipticPIR {
 	
-	std::string mGDefaultPath() {
+	static inline std::string mGDefaultPath() {
 		char path_default[epir_mG_default_path_length() + 1];
 		epir_mG_default_path(path_default, epir_mG_default_path_length() + 1);
 		return std::string(path_default);
