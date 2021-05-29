@@ -1,9 +1,9 @@
 
 import { MG_SIZE } from './EpirBase';
-import { LibEpir, LibEpirHelper, libEpirModule } from './wasm.libepir';
+import { LibEpirHelper, libEpirModule } from './wasm.libepir';
 import { arrayBufferConcat } from './util';
 
-const worker: Worker = self as any;
+const worker: Worker = self as Worker;
 
 interface KeyValue {
 	[key: string]: (helper: LibEpirHelper, params: any) => Promise<void>;
@@ -16,7 +16,7 @@ const funcs: KeyValue = {
 		const mG_ = helper.malloc(mG_count * MG_SIZE);
 		const mG_p3_ = helper.malloc(params.mG_p3);
 		let pointsComputed = 0;
-		const cb = helper.addFunction((data: any) => {
+		const cb = helper.addFunction(() => {
 			pointsComputed++;
 			if(pointsComputed % params.cbInterval == 0 || pointsComputed === mG_count) {
 				worker.postMessage({ method: 'mg_generate_cb', pointsComputed: pointsComputed });

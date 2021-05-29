@@ -7,7 +7,6 @@ import {
 	DecryptionContextBase,
 	DecryptionContextParameter,
 	DecryptionContextCallback,
-	DecryptionContextCallbackFunction,
 	DecryptionContextCreateFunction,
 	DEFAULT_MMAX,
 	SCALAR_SIZE,
@@ -16,9 +15,9 @@ import {
 	MG_SIZE,
 	GE25519_P3_SIZE
 } from './EpirBase';
-import { time, arrayBufferConcat, arrayBufferCompare, getRandomScalar, getRandomScalarsConcat } from './util';
+import { arrayBufferConcat, getRandomScalar, getRandomScalarsConcat } from './util';
 import EPIRWorker from './wasm.worker.ts';
-import { LibEpir, LibEpirHelper } from './wasm.libepir';
+import { LibEpirHelper } from './wasm.libepir';
 import { SelectorFactory } from './wasm.SelectorFactory';
 
 export class DecryptionContext implements DecryptionContextBase {
@@ -49,23 +48,17 @@ export class DecryptionContext implements DecryptionContextBase {
 		return decrypted;
 	}
 	
-	decryptReply(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer> {
-		return new Promise(async (resolve, reject) => {
-			try {
-				let midstate = reply;
-				for(let phase=0; phase<dimension; phase++) {
-					const decrypted = await this.decryptMany(midstate, privkey, packing);
-					if(phase == dimension - 1) {
-						midstate = decrypted;
-					} else {
-						midstate = decrypted.slice(0, decrypted.byteLength - (decrypted.byteLength % CIPHER_SIZE));
-					}
-				}
-				resolve(midstate);
-			} catch(err) {
-				reject(err);
+	async decryptReply(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer> {
+		let midstate = reply;
+		for(let phase=0; phase<dimension; phase++) {
+			const decrypted = await this.decryptMany(midstate, privkey, packing);
+			if(phase == dimension - 1) {
+				midstate = decrypted;
+			} else {
+				midstate = decrypted.slice(0, decrypted.byteLength - (decrypted.byteLength % CIPHER_SIZE));
 			}
-		});
+		}
+		return midstate;
 	}
 	
 	interpolationSearch(find: ArrayBuffer): number {
@@ -76,7 +69,7 @@ export class DecryptionContext implements DecryptionContextBase {
 		const nThreads = this.workers.length;
 		const ciphersCount = ciphers.byteLength / CIPHER_SIZE;
 		const mGs = await Promise.all(this.workers.map((worker, i): Promise<ArrayBuffer> => {
-			return new Promise((resolve, reject) => {
+			return new Promise((resolve) => {
 				worker.onmessage = (ev) => {
 					switch(ev.data.method) {
 						case 'decrypt_mG_many':
@@ -121,7 +114,7 @@ const mGGeneratePrepare = (helper: LibEpirHelper, nThreads: number, mmax: number
 	const mG_p3_ = helper.malloc(nThreads * GE25519_P3_SIZE);
 	if(cb) {
 		let pointsComputed = 0;
-		const cb_ = helper.addFunction((data: any) => {
+		const cb_ = helper.addFunction(() => {
 			pointsComputed++;
 			if(pointsComputed % cb.interval != 0) return;
 			cb.cb(pointsComputed);
@@ -155,10 +148,10 @@ const mGGenerate = async (helper: LibEpirHelper, cb: undefined | DecryptionConte
 	}
 	let pcLastReported = cb ? Math.floor(nThreads / cb.interval) : 0;
 	const promises = workers.map(async (worker, workerId) => {
-		return new Promise<ArrayBuffer>((resolve, reject) => {
+		return new Promise<ArrayBuffer>((resolve) => {
 			worker.onmessage = (ev) => {
 				switch(ev.data.method) {
-					case 'mg_generate_cb':
+					case 'mg_generate_cb': {
 						if(!cb) break;
 						pointsComputed[workerId] = ev.data.pointsComputed;
 						const pcAll = pointsComputed.reduce((acc, v) => acc + v, 0) + nThreads;
@@ -169,9 +162,11 @@ const mGGenerate = async (helper: LibEpirHelper, cb: undefined | DecryptionConte
 							cb.cb(mmax);
 						}
 						break;
-					case 'mg_generate_compute':
+					}
+					case 'mg_generate_compute': {
 						resolve(ev.data.mG);
 						break;
+					}
 				}
 			};
 			workers[workerId].postMessage({
@@ -237,14 +232,14 @@ export class MGDatabase extends Dexie {
 	}
 }
 
-export const loadDecryptionContextFromIndexedDB = async (dbName: string = 'mG.bin'): Promise<DecryptionContextBase | null> => {
+export const loadDecryptionContextFromIndexedDB = async (dbName = 'mG.bin'): Promise<DecryptionContextBase | null> => {
 	const db = new MGDatabase(dbName);
 	const mGDB = await db.mG.get(0);
 	if(!mGDB) return null;
 	return await createDecryptionContext(mGDB.value);
 };
 
-export const saveDecryptionContextToIndexedDB = async (decCtx: DecryptionContextBase, dbName: string = 'mG.bin'): Promise<void> => {
+export const saveDecryptionContextToIndexedDB = async (decCtx: DecryptionContextBase, dbName = 'mG.bin'): Promise<void> => {
 	const db = new MGDatabase(dbName);
 	await db.mG.put({ key: 0, value: decCtx.getMG() });
 };
@@ -325,34 +320,32 @@ export class Epir implements EpirBase {
 	
 	async selector_create_(
 		key: ArrayBuffer, index_counts: number[], idx: number, r: ArrayBuffer | undefined, isFast: boolean): Promise<ArrayBuffer> {
-		return new Promise(async (resolve, reject) => {
-			const nThreads = this.workers.length;
-			const promises: Promise<ArrayBuffer>[] = [];
-			const random = new Uint8Array(r ? r : getRandomScalarsConcat(this.ciphersCount(index_counts)));
-			const choices = this.create_choice(index_counts, idx);
-			for(let t=0; t<nThreads; t++) {
-				promises.push(new Promise((resolve, reject) => {
-					this.workers[t].onmessage = (ev) => {
-						switch(ev.data.method) {
-							case 'selector_create':
-								resolve(ev.data.selector);
-								break;
-						}
-					};
-				}));
-				const ciphersPerThread = Math.ceil(choices.byteLength / nThreads);
-				const begin = t * ciphersPerThread;
-				const end = Math.min(choices.byteLength + 1, (t + 1) * ciphersPerThread);
-				const choices_t = choices.slice(begin, end);
-				const random_t = random.slice(begin * SCALAR_SIZE, end * SCALAR_SIZE).buffer;
-				this.workers[t].postMessage({
-					method: 'selector_create',
-					choices: choices_t, key: key, random: random_t, isFast: isFast
-				}, [choices_t, random_t]);
-			}
-			const selectors = await Promise.all(promises);
-			resolve(arrayBufferConcat(selectors));
-		});
+		const nThreads = this.workers.length;
+		const promises: Promise<ArrayBuffer>[] = [];
+		const random = new Uint8Array(r ? r : getRandomScalarsConcat(this.ciphersCount(index_counts)));
+		const choices = this.create_choice(index_counts, idx);
+		for(let t=0; t<nThreads; t++) {
+			promises.push(new Promise((resolve) => {
+				this.workers[t].onmessage = (ev) => {
+					switch(ev.data.method) {
+						case 'selector_create':
+							resolve(ev.data.selector);
+							break;
+					}
+				};
+			}));
+			const ciphersPerThread = Math.ceil(choices.byteLength / nThreads);
+			const begin = t * ciphersPerThread;
+			const end = Math.min(choices.byteLength + 1, (t + 1) * ciphersPerThread);
+			const choices_t = choices.slice(begin, end);
+			const random_t = random.slice(begin * SCALAR_SIZE, end * SCALAR_SIZE).buffer;
+			this.workers[t].postMessage({
+				method: 'selector_create',
+				choices: choices_t, key: key, random: random_t, isFast: isFast
+			}, [choices_t, random_t]);
+		}
+		const selectors = await Promise.all(promises);
+		return arrayBufferConcat(selectors);
 	}
 	
 	async createSelector(pubkey: ArrayBuffer, index_counts: number[], idx: number, r?: ArrayBuffer): Promise<ArrayBuffer> {
