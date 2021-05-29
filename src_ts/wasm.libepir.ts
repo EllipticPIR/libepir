@@ -1,18 +1,9 @@
 
-export type LibEpir = {
-	HEAPU8: Uint8Array,
-	_malloc: (len: number) => number,
-	_free: (buf: number) => void,
-	addFunction: (func: (...args: unknown[]) => unknown, signature: string) => number,
-	removeFunction: (buf: number) => void,
-} & { [func: string]: (...args: unknown[]) => unknown; };
-export type LibEpirModule = (() => Promise<LibEpir>);
-
-export const libEpirModule = require('../dist/libepir') as LibEpirModule;
+import libepir from '../dist/libepir';
 
 export class LibEpirHelper {
 	
-	constructor(public libepir: LibEpir) {
+	constructor(public libepir: libepir.LibEpir) {
 	}
 	
 	store(offset: number, n: number, len: number): void {
@@ -74,4 +65,8 @@ export class LibEpirHelper {
 	}
 	
 }
+
+export const createLibEpirHelper = async (): Promise<LibEpirHelper> => {
+	return new LibEpirHelper(await libepir());
+};
 

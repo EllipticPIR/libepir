@@ -1,6 +1,6 @@
 
 import { MG_SIZE } from './types';
-import { LibEpirHelper, libEpirModule } from './wasm.libepir';
+import { createLibEpirHelper, LibEpirHelper } from './wasm.libepir';
 import { arrayBufferConcat } from './util';
 
 const worker: Worker = self as unknown as Worker;
@@ -79,7 +79,7 @@ const decryptMGMany = async (
 };
 
 worker.onmessage = async (ev) => {
-	const helper = new LibEpirHelper(await libEpirModule());
+	const helper = await createLibEpirHelper();
 	switch(ev.data.method) {
 		case 'mg_generate_compute':
 			mGGenerateCompute(helper, ev.data);

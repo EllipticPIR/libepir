@@ -1,7 +1,7 @@
 
 import { arrayBufferConcat } from './util';
 import { SCALAR_SIZE, CIPHER_SIZE } from './types';
-import { LibEpirHelper, libEpirModule } from './wasm.libepir';
+import { createLibEpirHelper, LibEpirHelper } from './wasm.libepir';
 
 const worker: Worker = self as unknown as Worker;
 
@@ -30,6 +30,6 @@ const execute = async (
 };
 
 worker.onmessage = async (ev) => {
-	execute(new LibEpirHelper(await libEpirModule()), ev.data);
+	execute(await createLibEpirHelper(), ev.data);
 };
 

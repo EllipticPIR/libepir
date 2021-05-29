@@ -17,7 +17,7 @@ import {
 } from './types';
 import { arrayBufferConcat, getRandomScalar, getRandomScalarsConcat } from './util';
 import EPIRWorker from './wasm.worker.ts';
-import { LibEpirHelper } from './wasm.libepir';
+import { createLibEpirHelper, LibEpirHelper } from './wasm.libepir';
 import { SelectorFactory } from './wasm.SelectorFactory';
 
 export class DecryptionContext implements DecryptionContextBase {
@@ -208,9 +208,7 @@ const getMG = async (helper: LibEpirHelper, param: undefined | string | Decrypti
 
 export const createDecryptionContext: DecryptionContextCreateFunction = async (
 	param?: DecryptionContextParameter, mmax: number = DEFAULT_MMAX) => {
-	const { libEpirModule } = await import('./wasm.libepir');
-	const wasm = await libEpirModule();
-	const helper = new LibEpirHelper(wasm);
+	const helper = await createLibEpirHelper();
 	const mG = (param instanceof ArrayBuffer ? param : await getMG(helper, param, mmax));
 	return new DecryptionContext(helper, mG);
 };
@@ -378,9 +376,7 @@ export class Epir implements EpirBase {
 }
 
 export const createEpir: EpirCreateFunction = async () => {
-	const { libEpirModule } = await import('./wasm.libepir');
-	const libepir = await libEpirModule();
-	const helper = new LibEpirHelper(libepir);
+	const helper = await createLibEpirHelper();
 	return new Epir(helper);
 };
 
