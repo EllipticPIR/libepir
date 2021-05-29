@@ -53,6 +53,7 @@ export class SelectorFactory extends SelectorFactoryBase {
 	
 	constructor(
 		public readonly isFast: boolean, public readonly key: ArrayBuffer,
+		/* istanbul ignore next */
 		public readonly capacities: number[] = DEFAULT_CAPACITIES) {
 		super(isFast, key, capacities);
 		this.napi = new epir_napi.SelectorFactory(isFast, key, capacities[0], capacities[1]);

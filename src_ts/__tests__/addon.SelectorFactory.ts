@@ -1,7 +1,7 @@
 
 import { DecryptionContextBase, SelectorFactoryBase, CIPHER_SIZE, MG_DEFAULT_PATH } from '../types';
 import { createDecryptionContext, SelectorFactory } from '../addon';
-import { privkey, pubkey, index_counts, idx } from './addon';
+import { privkey, pubkey, idx } from './addon';
 
 export const checkSelector = (
 	decCtx: DecryptionContextBase, privkey: ArrayBuffer, indexCounts: number[], idx: number, selector: ArrayBuffer): boolean => {
@@ -24,46 +24,51 @@ export const checkSelector = (
 	return true;
 };
 
+const INDEX_COUNTS = [100, 100, 100];
+const CAPACITIES = [1000, 10];
+
 export const runTests = (
 	createSelectorFactory: (isFast: boolean, key: ArrayBuffer, capacities?: number[]) => SelectorFactoryBase): void => {
-	let decCtx: DecryptionContextBase;
-	beforeAll(async () => {
-		decCtx = await createDecryptionContext(MG_DEFAULT_PATH);
-	});
+	
+	const decCtxPromise = createDecryptionContext(MG_DEFAULT_PATH);
 	
 	test('normal', async () => {
-		const selectorFactory = createSelectorFactory(false, pubkey.buffer);
+		const decCtx = await decCtxPromise;
+		const selectorFactory = createSelectorFactory(false, pubkey.buffer, CAPACITIES);
 		await selectorFactory.fill();
-		const selector = selectorFactory.create(index_counts, idx);
-		expect(checkSelector(decCtx, privkey.buffer, index_counts, idx, selector)).toBe(true);
+		const selector = selectorFactory.create(INDEX_COUNTS, idx);
+		expect(checkSelector(decCtx, privkey.buffer, INDEX_COUNTS, idx, selector)).toBe(true);
 	});
 	
 	test('fast', async () => {
-		const selectorFactory = createSelectorFactory(true, privkey.buffer);
+		const decCtx = await decCtxPromise;
+		const selectorFactory = createSelectorFactory(true, privkey.buffer, CAPACITIES);
 		await selectorFactory.fill();
-		const selector = selectorFactory.create(index_counts, idx);
-		expect(checkSelector(decCtx, privkey.buffer, index_counts, idx, selector)).toBe(true);
+		const selector = selectorFactory.create(INDEX_COUNTS, idx);
+		expect(checkSelector(decCtx, privkey.buffer, INDEX_COUNTS, idx, selector)).toBe(true);
 	});
 	
 	test('insufficient', async () => {
 		const selectorFactory = createSelectorFactory(true, privkey.buffer, [100, 10]);
 		await selectorFactory.fill();
-		expect(() => { selectorFactory.create(index_counts, idx) }).toThrow(/^Insufficient ciphers cache\.$/);
+		expect(() => { selectorFactory.create(INDEX_COUNTS, idx) }).toThrow(/^Insufficient ciphers cache\.$/);
 	});
 	
 	test('fill twice', async () => {
-		const selectorFactory = createSelectorFactory(true, privkey.buffer);
+		const decCtx = await decCtxPromise;
+		const selectorFactory = createSelectorFactory(true, privkey.buffer, CAPACITIES);
 		await selectorFactory.fill();
 		await selectorFactory.fill();
-		const selector = selectorFactory.create(index_counts, idx);
-		expect(checkSelector(decCtx, privkey.buffer, index_counts, idx, selector)).toBe(true);
+		const selector = selectorFactory.create(INDEX_COUNTS, idx);
+		expect(checkSelector(decCtx, privkey.buffer, INDEX_COUNTS, idx, selector)).toBe(true);
 	});
 	
 	test('don\'t refill', async () => {
-		const selectorFactory = createSelectorFactory(true, privkey.buffer);
+		const decCtx = await decCtxPromise;
+		const selectorFactory = createSelectorFactory(true, privkey.buffer, CAPACITIES);
 		await selectorFactory.fill();
-		const selector = selectorFactory.create(index_counts, idx, false);
-		expect(checkSelector(decCtx, privkey.buffer, index_counts, idx, selector)).toBe(true);
+		const selector = selectorFactory.create(INDEX_COUNTS, idx, false);
+		expect(checkSelector(decCtx, privkey.buffer, INDEX_COUNTS, idx, selector)).toBe(true);
 	});
 };
 

@@ -10,7 +10,9 @@ export class SelectorFactory implements SelectorFactoryBase {
 	
 	constructor(
 		public readonly isFast: boolean, public readonly key: ArrayBuffer,
-		public readonly capacities: number[] = DEFAULT_CAPACITIES, nThreads = navigator.hardwareConcurrency) {
+		/* istanbul ignore next */
+		public readonly capacities: number[] = DEFAULT_CAPACITIES,
+		nThreads = navigator.hardwareConcurrency) {
 		for(let i=0; i<nThreads; i++) {
 			this.workers[0][i] = new SelectorFactoryWorker();
 			this.workers[1][i] = new SelectorFactoryWorker();
