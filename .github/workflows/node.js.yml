@@ -50,9 +50,11 @@ jobs:
           ${{ runner.os }}-build-
           ${{ runner.os }}-
 
-    - run: npm ci
+    - name: Install npm dependencies
+      run: npm ci
 
-    - run: npm run build --if-present
+    - name: Build
+      run: npm run build --if-present
 
     - name: Cache emsdk-cache
       uses: actions/cache@v2
@@ -69,7 +71,8 @@ jobs:
     - name: Build WebAssembly
       run: npm run em:build
 
-    - run: npm test
+    - name: Test
+      run: npm test -- --maxWorkers=2
 
     - name: Codecov
       uses: codecov/codecov-action@v1
