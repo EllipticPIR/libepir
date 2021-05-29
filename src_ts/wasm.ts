@@ -43,7 +43,7 @@ export class DecryptionContext implements DecryptionContextBase {
 	}
 	
 	decryptCipher(privkey: ArrayBuffer, cipher: ArrayBuffer): number {
-		const decrypted = this.helper.call('ecelgamal_decrypt', privkey, cipher, this.mG_, this.mmax);
+		const decrypted = this.helper.call('ecelgamal_decrypt', privkey, cipher, this.mG_, this.mmax) as number;
 		if(decrypted < 0) throw new Error('Failed to decrypt.');
 		return decrypted;
 	}
@@ -62,7 +62,7 @@ export class DecryptionContext implements DecryptionContextBase {
 	}
 	
 	interpolationSearch(find: ArrayBuffer): number {
-		return this.helper.call('mG_interpolation_search', find, this.mG_, this.mmax);
+		return this.helper.call('mG_interpolation_search', find, this.mG_, this.mmax) as number;
 	}
 	
 	async decryptMany(ciphers: ArrayBuffer, privkey: ArrayBuffer, packing: number): Promise<ArrayBuffer> {
@@ -290,7 +290,7 @@ export class Epir implements EpirBase {
 		for(let i=0; i<index_counts.length; i++) {
 			this.helper.store64(ic_ + 8 * i, index_counts[i]);
 		}
-		const c = this.helper.call(count, ic_, index_counts.length);
+		const c = this.helper.call(count, ic_, index_counts.length) as number;
 		this.helper.free(ic_);
 		return c;
 	}
@@ -308,7 +308,7 @@ export class Epir implements EpirBase {
 		for(let i=0; i<index_counts.length; i++) {
 			this.helper.store64(ic_ + 8 * i, index_counts[i]);
 		}
-		const ciphers = this.helper.call('selector_ciphers_count', ic_, index_counts.length);
+		const ciphers = this.helper.call('selector_ciphers_count', ic_, index_counts.length) as number;
 		const choices_ = this.helper.malloc(ciphers);
 		this.helper.call('selector_create_choice',
 			choices_, 1, ic_, index_counts.length, idx&0xffffffff, Math.floor(idx / 0xffffffff)&0xffffffff);
@@ -358,11 +358,11 @@ export class Epir implements EpirBase {
 	
 	// For testing.
 	computeReplySize(dimension: number, packing: number, elem_size: number): number {
-		return this.helper.call('reply_size', dimension, packing, elem_size);
+		return this.helper.call('reply_size', dimension, packing, elem_size) as number;
 	}
 	
 	computeReplyRCount(dimension: number, packing: number, elem_size: number): number {
-		return this.helper.call('reply_r_count', dimension, packing, elem_size);
+		return this.helper.call('reply_r_count', dimension, packing, elem_size) as number;
 	}
 	
 	computeReplyMock(pubkey: ArrayBuffer, dimension: number, packing: number, elem: ArrayBuffer, r?: ArrayBuffer): ArrayBuffer {

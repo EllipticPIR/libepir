@@ -3,7 +3,7 @@ import { arrayBufferConcat } from './util';
 import { SCALAR_SIZE, CIPHER_SIZE } from './EpirBase';
 import { LibEpirHelper, libEpirModule } from './wasm.libepir';
 
-const worker: Worker = self as Worker;
+const worker: Worker = self as unknown as Worker;
 
 interface KeyValue {
 	[key: string]: (hlper: LibEpirHelper, params: any) => Promise<void>;
