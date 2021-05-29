@@ -1,5 +1,5 @@
 
-module.exports = {
+export default {
 	roots: [
 		'<rootDir>/src_ts',
 	],
