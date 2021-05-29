@@ -90,3 +90,6 @@ jobs:
         publish_dir: ./build_nuxt
         cname: demo.ellipticpir.com
 
+    - name: Lint
+      run: npm run lint
+
