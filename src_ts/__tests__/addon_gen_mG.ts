@@ -12,7 +12,7 @@ const mGHashSmall = new Uint8Array([
 	0x50, 0x80, 0x84, 0x31, 0xb8, 0x00, 0x8a, 0xf2
 ]);
 
-export const runTests = (createDecryptionContext: DecryptionContextCreateFunction) => {
+export const runTests = (createDecryptionContext: DecryptionContextCreateFunction): void => {
 	describe('Generate mG', () => {
 		test('without callback', async () => {
 			const decCtx = await createDecryptionContext(undefined, MMAX);

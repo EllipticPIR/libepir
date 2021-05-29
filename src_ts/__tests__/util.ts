@@ -4,10 +4,14 @@ import crypto from 'crypto';
 import { SCALAR_SIZE } from '../EpirBase';
 import {
 	time, arrayBufferConcat, arrayBufferCompare, arrayBufferToHex, hexToArrayBuffer, checkIsHex,
-	getRandomBytes, isCanonical, isZero, getRandomScalar, getRandomScalars, getRandomScalarsConcat
+	getRandomBytes, isCanonical, getRandomScalar, getRandomScalars, getRandomScalarsConcat
 } from '../util';
 
-let getRandomValues = (buf: Uint8Array) => {};
+let getRandomValues: ((buf: Uint8Array) => void) = (buf: Uint8Array) => {
+	for(let i=0; i<buf.length; i++) {
+		buf[i] = 0;
+	}
+};
 
 test('time', () => {
 	expect(time()).toBeLessThanOrEqual(Date.now());
@@ -78,7 +82,7 @@ describe('Random', () => {
 	test('getRandomScalar (fail for first)', async () => {
 		let i = 0;
 		const randoms: Uint8Array[] = [zero, one];
-		const getRandomValues = global.self.crypto.getRandomValues;
+		getRandomValues = global.self.crypto.getRandomValues;
 		Object.defineProperty(global.self.crypto, 'getRandomValues', {
 			value: (buf: Uint8Array) => buf.set(randoms[i++]),
 		});

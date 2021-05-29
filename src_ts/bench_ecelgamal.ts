@@ -1,13 +1,11 @@
 
-import crypto from 'crypto';
-
 import { DEFAULT_MMAX, MG_DEFAULT_PATH } from './EpirBase';
 import { printMeasurement } from './util';
 import { createEpir, createDecryptionContext } from './addon';
 
 export const LOOP = 10 * 1000;
 
-export const run = async () => {
+export const run = async (): Promise<boolean> => {
 	const msgs: number[] = [];
 	for(let i=0; i<LOOP; i++) {
 		msgs[i] = Math.floor(Math.random() * DEFAULT_MMAX);
@@ -15,7 +13,6 @@ export const run = async () => {
 	const epir = await createEpir();
 	const decCtx = await createDecryptionContext(MG_DEFAULT_PATH);
 	const privkey = epir.createPrivkey();
-	const pubkey = epir.createPubkey(privkey);
 	const encrypted = await printMeasurement<ArrayBuffer[]>(() => {
 		return msgs.map((msg) => epir.encryptFast(privkey, msg));
 	}, 'Ciphertext encrypted in');

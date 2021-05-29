@@ -17,18 +17,18 @@ export let y: number;
 export let z: number;
 export let w: number;
 
-export const xorshift_init = () => {
+export const xorshift_init = (): void => {
 	x = 123456789;
 	y = 362436069;
 	z = 521288629;
 	w = 88675123;
 };
 
-export const shiftL = (n: number, cnt: number) => {
+export const shiftL = (n: number, cnt: number): number => {
 	return (n * (2 ** cnt)) & 0xffffffff;
 };
 
-export const xorshift = () => {
+export const xorshift = (): number => {
 	const t = x ^ (shiftL(x, 11));
 	x = y; y = z; z = w;
 	w = (w ^ (w >>> 19)) ^ (t ^ (t >>> 8));
@@ -41,7 +41,7 @@ export const sha256sum = (buf: ArrayBuffer): ArrayBuffer => {
 	return new Uint8Array(Buffer.from(hash.digest('hex'), 'hex'));
 };
 
-export const generateRandomScalars = (cnt: number) => {
+export const generateRandomScalars = (cnt: number): ArrayBuffer => {
 	const r = new Uint8Array(cnt * SCALAR_SIZE);
 	xorshift_init();
 	for(let i=0; i<cnt; i++) {
@@ -106,7 +106,7 @@ export const selectorHash = new Uint8Array([
 	0x1f, 0x3d, 0x19, 0x2f, 0x59, 0xac, 0xe9, 0x0c
 ]);
 
-export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext: DecryptionContextCreateFunction) => {
+export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext: DecryptionContextCreateFunction): void => {
 	
 	let epir: EpirBase;
 	let decCtx: DecryptionContextBase;

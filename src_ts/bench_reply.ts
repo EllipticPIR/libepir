@@ -9,7 +9,7 @@ export const DIMENSION = 3;
 export const PACKING = 3;
 export const ELEM_SIZE = 32;
 
-export const run = async () => {
+export const run = async (): Promise<boolean> => {
 	const epir = await createEpir();
 	const decCtx = await createDecryptionContext(MG_DEFAULT_PATH);
 	const privkey = epir.createPrivkey();

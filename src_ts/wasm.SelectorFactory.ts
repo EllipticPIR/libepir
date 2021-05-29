@@ -17,16 +17,18 @@ export class SelectorFactory implements SelectorFactoryBase {
 		}
 	}
 	
-	fill(): Promise<any> {
+	async fill(): Promise<void> {
 		const promises = this.capacities.map((capacity, msg) => {
 			const needs = capacity - this.ciphers[msg].length;
-			if(needs <= 0) return;
 			const ciphersPerWorker = Math.floor(needs / this.workers[msg].length);
 			return Promise.all(this.workers[msg].map((worker, workerId) => {
 				const nCiphers = (workerId == this.workers[msg].length - 1 ?
 					needs - (this.workers[msg].length - 1) * ciphersPerWorker : ciphersPerWorker);
-				if(nCiphers <= 0) return;
-				return new Promise<void>((resolve, reject) => {
+				return new Promise<void>((resolve) => {
+					if(nCiphers <= 0) {
+						resolve();
+						return;
+					}
 					worker.onmessage = (ev) => {
 						switch(ev.data.method) {
 							case 'generateCiphers':
@@ -45,10 +47,10 @@ export class SelectorFactory implements SelectorFactoryBase {
 				});
 			}));
 		});
-		return Promise.all(promises);
+		await Promise.all(promises);
 	}
 	
-	create(indexCounts: number[], idx: number, refill: boolean = true): ArrayBuffer {
+	create(indexCounts: number[], idx: number, refill = true): ArrayBuffer {
 		let prod = indexCounts.reduce((acc, v) => acc * v, 1);
 		const ret: ArrayBuffer[] = [];
 		for(let ic=0; ic<indexCounts.length; ic++) {

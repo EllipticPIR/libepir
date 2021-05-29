@@ -28,7 +28,7 @@ export const DEFAULT_CAPACITIES = [10000, 100];
 
 export abstract class SelectorFactoryBase {
 	constructor(public readonly isFast: boolean, public readonly key: ArrayBuffer, public readonly capacities: number[]) {}
-	abstract fill(): Promise<any>;
+	abstract fill(): Promise<void>;
 	abstract create(indexCounts: number[], idx: number, refill?: boolean): ArrayBuffer;
 }
 

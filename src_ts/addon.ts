@@ -17,9 +17,9 @@ const epir_napi = require('bindings')('epir');
 
 export interface DecryptionContextNapi {
 	constructor(path: string): DecryptionContextNapi;
-	getMG: () => ArrayBuffer;
-	decrypt: (privkey: ArrayBuffer, cipher: ArrayBuffer) => number;
-	replyDecrypt: (privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer) => Promise<ArrayBuffer>;
+	getMG(): ArrayBuffer;
+	decrypt(privkey: ArrayBuffer, cipher: ArrayBuffer): number;
+	replyDecrypt(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer>;
 }
 
 export class DecryptionContext implements DecryptionContextBase {
@@ -43,7 +43,7 @@ export class DecryptionContext implements DecryptionContextBase {
 
 export const createDecryptionContext: DecryptionContextCreateFunction = async (
 	param?: DecryptionContextParameter, mmax: number = DEFAULT_MMAX) => {
-	const napi = await new Promise<DecryptionContextNapi>((resolve, reject) => {
+	const napi = await new Promise<DecryptionContextNapi>((resolve) => {
 		if((typeof param === 'undefined') || (typeof param === 'string') || (param instanceof ArrayBuffer)) {
 			resolve(new epir_napi.DecryptionContext(param, mmax));
 		} else {
@@ -76,11 +76,11 @@ export class SelectorFactory extends SelectorFactoryBase {
 		this.napi = new epir_napi.SelectorFactory(isFast, key, capacities[0], capacities[1]);
 	}
 	
-	fill() {
+	fill(): Promise<void> {
 		return this.napi.fill();
 	}
 	
-	create(indexCounts: number[], idx: number, refill: boolean = true) {
+	create(indexCounts: number[], idx: number, refill = true): ArrayBuffer {
 		const selector = this.napi.create(indexCounts, idx);
 		if(refill) this.fill();
 		return selector;

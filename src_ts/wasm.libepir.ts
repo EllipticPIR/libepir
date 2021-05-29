@@ -3,9 +3,9 @@ export type LibEpir = {
 	HEAPU8: Uint8Array,
 	_malloc: (len: number) => number,
 	_free: (buf: number) => void,
-	addFunction: (func: (...args: any[]) => any, signature: string) => number,
+	addFunction: (func: (...args: unknown[]) => unknown, signature: string) => number,
 	removeFunction: (buf: number) => void,
-} & { [func: string]: (...args: any[]) => any; };
+} & { [func: string]: (...args: unknown[]) => unknown; };
 export type LibEpirModule = (() => Promise<LibEpir>);
 
 export const libEpirModule = require('../dist/libepir') as LibEpirModule;
@@ -15,22 +15,22 @@ export class LibEpirHelper {
 	constructor(public libepir: LibEpir) {
 	}
 	
-	store(offset: number, n: number, len: number) {
+	store(offset: number, n: number, len: number): void {
 		for(let i=0; i<len; i++) {
 			this.libepir.HEAPU8[offset + i] = n & 0xff;
 			n >>= 8;
 		}
 	}
 	
-	store32(offset: number, n: number) {
+	store32(offset: number, n: number): void {
 		this.store(offset, n, 4);
 	}
 	
-	store64(offset: number, n: number) {
+	store64(offset: number, n: number): void {
 		this.store(offset, n, 8);
 	}
 	
-	set(buf: ArrayBuffer, offset: number, len: number, buf_: number) {
+	set(buf: ArrayBuffer, offset: number, len: number, buf_: number): void {
 		this.libepir.HEAPU8.set(new Uint8Array(buf, offset, len), buf_);
 	}
 	
@@ -49,7 +49,7 @@ export class LibEpirHelper {
 	addFunction = this.libepir.addFunction;
 	removeFunction = this.libepir.removeFunction;
 	
-	call(func: string, ...params: (ArrayBuffer | number | null)[]) {
+	call(func: string, ...params: (ArrayBuffer | number | null)[]): unknown {
 		const bufs: number[] = [];
 		params = params.map((param) => {
 			if(typeof param === 'number' || param === null) {
@@ -65,7 +65,7 @@ export class LibEpirHelper {
 		return ret;
 	}
 	
-	slice(begin: number, len: number) {
+	slice(begin: number, len: number): ArrayBuffer {
 		return this.libepir.HEAPU8.slice(begin, begin + len).buffer;
 	}
 	

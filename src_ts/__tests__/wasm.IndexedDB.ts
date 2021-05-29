@@ -3,7 +3,7 @@ require('fake-indexeddb/auto');
 
 import { loadDecryptionContextFromIndexedDB, saveDecryptionContextToIndexedDB, createDecryptionContext } from '../wasm';
 
-const FDBFactory = require('fake-indexeddb/lib/FDBFactory');
+require('fake-indexeddb/lib/FDBFactory');
 
 // For WebAssembly tests, we have tests which uses max CPU cores (x2 for main threads and worker threads).
 const testsWithWorkersCount = 2;

@@ -9,7 +9,7 @@ import {
 import { createEpir, createDecryptionContext } from '../addon';
 import { generateRandomScalars, xorshift_init, xorshift, privkey, pubkey } from './addon';
 
-export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext: DecryptionContextCreateFunction) => {
+export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext: DecryptionContextCreateFunction): void => {
 	
 	let epir: EpirBase;
 	let decCtx: DecryptionContextBase;

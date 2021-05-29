@@ -1,5 +1,5 @@
 
-import { EpirBase, DecryptionContextBase, SelectorFactoryBase, CIPHER_SIZE, MG_DEFAULT_PATH } from '../EpirBase';
+import { DecryptionContextBase, SelectorFactoryBase, CIPHER_SIZE, MG_DEFAULT_PATH } from '../EpirBase';
 import { createDecryptionContext, SelectorFactory } from '../addon';
 import { privkey, pubkey, index_counts, idx } from './addon';
 
@@ -25,7 +25,7 @@ export const checkSelector = (
 };
 
 export const runTests = (
-	createSelectorFactory: (isFast: boolean, key: ArrayBuffer, capacities?: number[]) => SelectorFactoryBase) => {
+	createSelectorFactory: (isFast: boolean, key: ArrayBuffer, capacities?: number[]) => SelectorFactoryBase): void => {
 	let decCtx: DecryptionContextBase;
 	beforeAll(async () => {
 		decCtx = await createDecryptionContext(MG_DEFAULT_PATH);

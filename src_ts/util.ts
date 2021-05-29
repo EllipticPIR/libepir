@@ -1,7 +1,7 @@
 
 import { SCALAR_SIZE } from './EpirBase';
 
-export const time = () => Date.now();
+export const time = (): number => Date.now();
 
 export const runMeasurement = async <T>(func: () => (Promise<T> | T)): Promise<{ execTime: number, ret: T }> => {
 	const begin = time();
@@ -16,13 +16,14 @@ export const runMeasurement = async <T>(func: () => (Promise<T> | T)): Promise<{
 	}
 };
 
-export const printMeasurement = async <T>(func: () => (Promise<any> | any), prefix: string, postfix: string = 'ms.'): Promise<T> => {
-	const { execTime, ret } = await runMeasurement(func);
+export const printMeasurement = async <T>(
+	func: () => (Promise<T> | T), prefix: string, postfix = 'ms.'): Promise<T> => {
+	const { execTime, ret } = await runMeasurement<T>(func);
 	console.log(`\u001b[32m${prefix} ${execTime.toLocaleString()} ${postfix}\u001b[0m`);
 	return ret;
 }
 
-export const arrayBufferConcat = (arr: ArrayBuffer[]) => {
+export const arrayBufferConcat = (arr: ArrayBuffer[]): ArrayBuffer => {
 	const len = arr.reduce((acc, v) => acc + v.byteLength, 0);
 	const ret = new Uint8Array(len);
 	for(let i=0, offset=0; i<arr.length; i++) {
@@ -53,10 +54,12 @@ export const arrayBufferToHex = (buf: ArrayBuffer): string => {
 };
 
 export const hexToArrayBuffer = (hex: string): ArrayBuffer => {
-	return new Uint8Array(hex.match(/.{2}/g)!.map((h) => parseInt(h, 16))).buffer;
+	const split = hex.match(/.{2}/g);
+	if(!split) return new ArrayBuffer(0);
+	return new Uint8Array(split.map((h) => parseInt(h, 16))).buffer;
 };
 
-export const checkIsHex = (hex: string, expectedSize: number = -1): boolean => {
+export const checkIsHex = (hex: string, expectedSize = -1): boolean => {
 	const pattern = /^[0-9a-fA-F]+$/;
 	if(expectedSize >= 0) {
 		return ((hex.length === 2 * expectedSize) && (hex.match(pattern) !== null));
