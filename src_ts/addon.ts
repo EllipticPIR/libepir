@@ -13,10 +13,11 @@ import {
 	DEFAULT_MMAX
 } from './types';
 
-const epir_napi = require('bindings')('epir');
+import bindings from 'bindings';
+const epir_napi = bindings('epir');
 
-export interface DecryptionContextNapi {
-	constructor(path: string): DecryptionContextNapi;
+declare class DecryptionContextNapi {
+	constructor(path: string);
 	getMG(): ArrayBuffer;
 	decrypt(privkey: ArrayBuffer, cipher: ArrayBuffer): number;
 	replyDecrypt(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer>;
@@ -59,8 +60,8 @@ export const createDecryptionContext: DecryptionContextCreateFunction = async (
 	return new DecryptionContext(napi);
 };
 
-export interface SelectorFactoryNapi {
-	constructor(isFast: boolean, key: ArrayBuffer, capacityZero: number, capacityOne: number): SelectorFactoryNapi;
+declare class SelectorFactoryNapi {
+	constructor(isFast: boolean, key: ArrayBuffer, capacityZero: number, capacityOne: number);
 	fill: () => Promise<void>;
 	create: (indexCounts: number[], idx: number) => ArrayBuffer;
 }

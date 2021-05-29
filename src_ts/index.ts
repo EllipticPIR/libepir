@@ -1,13 +1,10 @@
+/**
+ * IMPORTANT NOTICE:
+ * If you are using libepir on browsers, please import `src_ts/wasm.ts` directory
+ * instead of using this file nor using built JS files in `dist` since WebWorker code
+ * won't work correctly.
+ */
 
-import { EpirCreateFunction, DecryptionContextCreateFunction } from './types';
-
-let epir: any;
-try {
-	epir = require('./addon');
-} catch(e) {
-	epir = require('./wasm');
-}
-
-export const createEpir: EpirCreateFunction = epir.createEpir;
-export const createDecryptionContext: DecryptionContextCreateFunction = epir.createDecryptionContext;
+import { createEpir, createDecryptionContext } from './addon';
+export { createEpir, createDecryptionContext };
 
