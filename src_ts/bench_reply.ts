@@ -23,6 +23,7 @@ export const run = async (): Promise<boolean> => {
 	}, 'Decrypt reply:');
 	const decryptedView = new Uint8Array(decrypted);
 	for(let i=0; i<ELEM_SIZE; i++) {
+		/* istanbul ignore if  */
 		if(elem[i] != decryptedView[i]) {
 			console.log('Wrong decryption result detected.');
 			return false;
@@ -31,6 +32,7 @@ export const run = async (): Promise<boolean> => {
 	return true;
 };
 
+/* istanbul ignore if  */
 if(!module.parent) {
 	run();
 }

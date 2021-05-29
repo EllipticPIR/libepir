@@ -20,6 +20,7 @@ export const run = async (): Promise<boolean> => {
 		return encrypted.map((enc) => decCtx.decryptCipher(privkey, enc));
 	}, 'Ciphertext encrypted in');
 	for(let i=0; i<LOOP; i++) {
+		/* istanbul ignore if  */
 		if(msgs[i] !== decrypted[i]) {
 			console.log('Message decrypted to a different data.');
 			return false;
@@ -28,6 +29,7 @@ export const run = async (): Promise<boolean> => {
 	return true;
 };
 
+/* istanbul ignore if  */
 if(!module.parent) {
 	run();
 }

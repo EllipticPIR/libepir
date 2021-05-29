@@ -18,6 +18,7 @@ export const run = async (): Promise<boolean> => {
 	return true;
 };
 
+/* istanbul ignore if  */
 if(!module.parent) {
 	run();
 }
