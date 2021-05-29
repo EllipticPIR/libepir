@@ -123,7 +123,7 @@
 import Vue from 'vue';
 
 import { time, arrayBufferToHex, hexToArrayBuffer, getRandomBytes, checkIsHex } from '../src_ts/util';
-import { EpirBase, DecryptionContextBase, DEFAULT_MMAX, SCALAR_SIZE, POINT_SIZE } from '../src_ts/EpirBase';
+import { EpirBase, DecryptionContextBase, DEFAULT_MMAX, SCALAR_SIZE, POINT_SIZE } from '../src_ts/types';
 import {
 	createEpir, createDecryptionContext,
 	loadDecryptionContextFromIndexedDB, saveDecryptionContextToIndexedDB,
