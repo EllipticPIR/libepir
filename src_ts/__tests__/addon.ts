@@ -2,9 +2,7 @@
 import crypto from 'crypto';
 
 import {
-	EpirBase,
 	EpirCreateFunction,
-	DecryptionContextBase,
 	DecryptionContextCreateFunction,
 	SCALAR_SIZE,
 	CIPHER_SIZE,

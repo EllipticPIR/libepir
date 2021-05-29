@@ -1,8 +1,6 @@
 
 import {
-	EpirBase,
 	EpirCreateFunction,
-	DecryptionContextBase,
 	DecryptionContextCreateFunction,
 	MG_DEFAULT_PATH
 } from '../types';
