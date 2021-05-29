@@ -30,19 +30,14 @@ export class SelectorFactory implements SelectorFactoryBase {
 						return;
 					}
 					worker.onmessage = (ev) => {
-						switch(ev.data.method) {
-							case 'generateCiphers':
-								for(let i=0; i*CIPHER_SIZE<ev.data.ciphers.byteLength; i++) {
-									this.ciphers[ev.data.msg].push(ev.data.ciphers.slice(i * CIPHER_SIZE, (i + 1) * CIPHER_SIZE));
-								}
-								resolve();
-								break;
+						for(let i=0; i*CIPHER_SIZE<ev.data.ciphers.byteLength; i++) {
+							this.ciphers[ev.data.msg].push(ev.data.ciphers.slice(i * CIPHER_SIZE, (i + 1) * CIPHER_SIZE));
 						}
+						resolve();
 					};
 					const random = getRandomScalarsConcat(nCiphers);
 					worker.postMessage({
-						method: 'generateCiphers',
-						params: { isFast: this.isFast, key: this.key, msg: msg, count: nCiphers, random: random },
+						isFast: this.isFast, key: this.key, msg: msg, count: nCiphers, random: random,
 					}, [random]);
 				});
 			}));

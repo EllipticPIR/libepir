@@ -200,7 +200,7 @@ const mGGenerate = async (helper: LibEpirHelper, cb: undefined | DecryptionConte
 
 const getMG = async (helper: LibEpirHelper, param: undefined | string | DecryptionContextCallback, mmax: number): Promise<ArrayBuffer> => {
 	if(typeof param == 'string') {
-		return new Uint8Array(await require('fs').promises.readFile(param)).buffer;
+		return new Uint8Array(await (await import('fs')).promises.readFile(param)).buffer;
 	} else {
 		return mGGenerate(helper, param, mmax);
 	}
