@@ -1,9 +1,9 @@
 
 #include <napi.h>
 
-#include "../src_c/epir.hpp"
-#include "../src_c/epir_reply_mock.h"
-#include "../src_c/epir_selector_factory.h"
+#include "../../src_c/epir.hpp"
+#include "../../src_c/epir_reply_mock.h"
+#include "../../src_c/epir_selector_factory.h"
 
 class PromiseWorker : public Napi::AsyncWorker {
 	public:
