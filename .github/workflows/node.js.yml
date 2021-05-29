@@ -50,8 +50,13 @@ jobs:
           ${{ runner.os }}-build-
           ${{ runner.os }}-
 
+    - name: ccache
+      uses: hendrikmuhs/ccache-action@v1
+
     - name: Install npm dependencies
-      run: npm ci
+      run: |
+        export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+        npm ci
 
     - name: Build
       run: npm run build --if-present
