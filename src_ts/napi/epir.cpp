@@ -95,33 +95,38 @@ Napi::Value ElementsCount(const Napi::CallbackInfo &info) {
 
 class SelectorCreateWorker : public ArrayBufferPromiseWorker {
 	private:
-		const unsigned char *key;
+		const std::array<unsigned char, 32> key;
 		const std::vector<uint64_t> index_counts;
 		const uint64_t idx;
-		const unsigned char *r;
+		std::vector<unsigned char> r;
 		const epir_selector_create_fn selector_create;
 	public:
 		SelectorCreateWorker(napi_env env,
-			const unsigned char *key, const std::vector<uint64_t> &index_counts, const uint64_t idx, const unsigned char *r,
+			const std::array<unsigned char, 32> key, const std::vector<uint64_t> &index_counts, const uint64_t idx,
+			const std::vector<unsigned char> &r,
 			const epir_selector_create_fn selector_create) :
 			ArrayBufferPromiseWorker(env),
-			key(key), index_counts(index_counts), idx(idx), r(r), selector_create(selector_create) {
-			this->data.resize(epir_selector_ciphers_count(index_counts.data(), index_counts.size()) * EPIR_CIPHER_SIZE);
+			key(key), index_counts(index_counts), idx(idx), r(r),
+			selector_create(selector_create) {
 		}
 		void Execute() override {
-			this->selector_create(this->data.data(), this->key, this->index_counts.data(), this->index_counts.size(), this->idx, this->r);
+			this->data.resize(epir_selector_ciphers_count(index_counts.data(), index_counts.size()) * EPIR_CIPHER_SIZE);
+			this->selector_create(
+				this->data.data(), this->key.data(), this->index_counts.data(), this->index_counts.size(), this->idx,
+				this->r.size() == 0 ? NULL : this->r.data());
 		}
 };
 
-// .selector_create[_fast](pubkey: ArrayBuffer(32), indexCounts: number[], idx: number, r?: ArrayBuffer): Promise<ArrayBuffer>.
+// .selector_create[_fast](key: ArrayBuffer(32), indexCounts: number[], idx: number, r?: ArrayBuffer): Promise<ArrayBuffer>.
 Napi::Value SelectorCreate_(const Napi::CallbackInfo &info, epir_selector_create_fn selector_create) {
 	Napi::Env env = info.Env();
 	CHECK_N_ARGS(3);
-	CHECK_IS_ARRAY_BUFFER(info[0], EPIR_POINT_SIZE);
+	CHECK_IS_ARRAY_BUFFER(info[0], 32);
 	CHECK_IS_ARRAY(info[1], "indexCounts");
 	CHECK_IS_NUMBER(info[2], "idx");
 	// Load arguments.
-	const uint8_t *key = static_cast<const uint8_t*>(info[0].As<Napi::ArrayBuffer>().Data());
+	std::array<uint8_t, 32> key;
+	memcpy(key.data(), READ_ARRAY_BUFFER(info[0]), 32);
 	try {
 		const std::vector<uint64_t> index_counts = readIndexCounts(env, info[1]);
 		const uint64_t elements_count = epir_selector_elements_count(index_counts.data(), index_counts.size());
@@ -133,11 +138,12 @@ Napi::Value SelectorCreate_(const Napi::CallbackInfo &info, epir_selector_create
 		if(idx < 0 || (uint64_t)idx >= elements_count) {
 			THROW_RANGE_ERROR("The 'idx' has an invalid range.");
 		}
-		uint8_t *r = NULL;
+		std::vector<uint8_t> r(0);
 		if(info.Length() >= 4 && !info[3].IsUndefined()) {
 			const size_t expected_r_size = ciphers_count * EPIR_SCALAR_SIZE;
 			CHECK_IS_ARRAY_BUFFER(info[3], expected_r_size);
-			r = READ_ARRAY_BUFFER(info[3]);
+			r.resize(expected_r_size);
+			memcpy(r.data(), READ_ARRAY_BUFFER(info[3]), expected_r_size);
 		}
 		// Create AsyncWorker instance.
 		SelectorCreateWorker *wk = new SelectorCreateWorker(env, key, index_counts, idx, r, selector_create);
