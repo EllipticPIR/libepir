@@ -20,7 +20,7 @@ size_t epir_reply_size(const uint8_t dimension, const uint8_t packing, const siz
 EMSCRIPTEN_KEEPALIVE
 size_t epir_reply_r_count(const uint8_t dimension, const uint8_t packing, const size_t elem_size);
 
-void (*epir_reply_mock_fn)(
+typedef void (epir_reply_mock_fn)(
 	unsigned char *reply,
 	const unsigned char *privkey,
 	const uint8_t dimension, const uint8_t packing,
@@ -30,21 +30,13 @@ void (*epir_reply_mock_fn)(
  * Generates a sample server reply (normal).
  */
 EMSCRIPTEN_KEEPALIVE
-void epir_reply_mock(
-	unsigned char *reply,
-	const unsigned char *pubkey,
-	const uint8_t dimension, const uint8_t packing,
-	const uint8_t *elem, const size_t elem_size, const unsigned char *r);
+epir_reply_mock_fn epir_reply_mock;
 
 /**
  * Generates a sample server reply (fast).
  */
 EMSCRIPTEN_KEEPALIVE
-void epir_reply_mock_fast(
-	unsigned char *reply,
-	const unsigned char *privkey,
-	const uint8_t dimension, const uint8_t packing,
-	const uint8_t *elem, const size_t elem_size, const unsigned char *r);
+epir_reply_mock_fn epir_reply_mock_fast;
 
 #ifdef __cplusplus
 }

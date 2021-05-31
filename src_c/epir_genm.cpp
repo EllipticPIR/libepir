@@ -17,9 +17,11 @@
 #include "epir.hpp"
 #include "common.h"
 
+using namespace EllipticPIR;
+
 int main(int argc, char *argv[]) {
 	
-	std::string path_default = EllipticPIR::mGDefaultPath();
+	std::string path_default = mGDefaultPath();
 	
 	if(argc > 1 && (std::string(argv[1]) == "-h" || std::string(argv[1]) == "--help")) {
 		printf("usage: %s [PATH=%s [M_MAX_MOD=24]]\n", argv[0], path_default.c_str());
@@ -65,7 +67,7 @@ int main(int argc, char *argv[]) {
 		}
 	};
 	cb_data_t cb_data = { mmax, microtime(), 0.0 };
-	EllipticPIR::DecryptionContext decCtx(cb, &cb_data, mmax);
+	DecryptionContext decCtx = DecryptionContext::generate(cb, &cb_data, mmax);
 	printf("\x1b[32mPoints sorted in %.0fms.\x1b[39m\n", (microtime() - cb_data.beginSort) / 1000.);
 	
 	// Output to a binary file.
@@ -75,7 +77,7 @@ int main(int argc, char *argv[]) {
 			printf("Failed to open UTXO binary file for write.\n");
 			return 1;
 		}
-		ofs.write((char*)decCtx.mG.data(), sizeof(epir_mG_t) * mmax);
+		ofs.write((char*)decCtx.data(), sizeof(epir_mG_t) * mmax);
 		ofs.close();
 	);
 	

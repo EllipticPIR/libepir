@@ -11,6 +11,8 @@
 
 #define LOOP (10 * 1000)
 
+using namespace EllipticPIR;
+
 int main(int argc, char *argv[]) {
 	
 	const char *mG_path = (argc < 2 ? NULL : argv[1]);
@@ -24,16 +26,16 @@ int main(int argc, char *argv[]) {
 	
 	// Create key pair.
 	printf("Generatig a key pair...\n");
-	const EllipticPIR::PrivateKey privkey;
-	const EllipticPIR::PublicKey pubkey(privkey);
+	const PrivateKey privkey;
+	const PublicKey pubkey(privkey);
 	
 	// Load mG.bin.
 	printf("Loading mG.bin...\n");
 	PRINT_MEASUREMENT(true, "mG.bin loaded in %.0fms.\n",
-		EllipticPIR::DecryptionContext decCtx(mG_path ? std::string(mG_path) : "");
+		DecryptionContext decCtx(mG_path ? std::string(mG_path) : "");
 	);
 	
-	std::vector<EllipticPIR::Cipher> ciphers;
+	std::vector<Cipher> ciphers;
 	PRINT_MEASUREMENT(true, "Ciphertext encrypted in %.0fms.\n",
 		for(size_t i=0; i<LOOP; i++) {
 			ciphers.push_back(privkey.encrypt(msg[i]));

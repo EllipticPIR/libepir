@@ -21,215 +21,193 @@ namespace EllipticPIR {
 		return std::string(path_default);
 	}
 	
-	typedef std::array<unsigned char, EPIR_CIPHER_SIZE> Cipher;
-	
-	class Scalar {
-		
+	class Cipher : public std::array<unsigned char, EPIR_CIPHER_SIZE> {
 		public:
-			
-			unsigned char bytes[EPIR_SCALAR_SIZE];
-			
+			Cipher() {}
+			Cipher(const unsigned char *cipher) {
+				memcpy(this->data(), cipher, EPIR_CIPHER_SIZE);
+			}
+	};
+	
+	class Scalar : public std::array<unsigned char, EPIR_SCALAR_SIZE> {
+		public:
 			/**
 			 * Create a new Scalar instance with a random scalar.
 			 */
 			Scalar() {
-				epir_create_privkey(this->bytes);
+				epir_create_privkey(this->data());
 			}
-			
 			/**
 			 * Create a new Scalar instance with a given buffer.
 			 */
 			Scalar(const unsigned char *buf) {
-				memcpy(this->bytes, buf, EPIR_SCALAR_SIZE);
+				memcpy(this->data(), buf, EPIR_SCALAR_SIZE);
 			}
-			
-			Scalar(const std::array<unsigned char, EPIR_SCALAR_SIZE> buf) {
-				memcpy(this->bytes, buf.data(), EPIR_SCALAR_SIZE);
-			}
-		
 	};
 	
-	class Encryptor {
-		
+	class IndexCounts : public std::vector<uint64_t> {
 		public:
-			
-			/**
-			 * Encrypt a message using a given randomness (if given).
-			 */
-			virtual Cipher encrypt(
-				const uint64_t message, const unsigned char *r = NULL) const = 0;
-			
-			Cipher encrypt(
-				const uint64_t message, const Scalar r) const {
-				return this->encrypt(message, r.bytes);
+			IndexCounts(std::vector<uint64_t> &ic) : std::vector<uint64_t>(ic) {
 			}
-			
-			Cipher encrypt(
-				const uint64_t message, const std::array<unsigned char, EPIR_SCALAR_SIZE> r) const {
-				return this->encrypt(message, r.data());
+			IndexCounts(const size_t indexCounts, const uint64_t indexes) : std::vector<uint64_t>(indexCounts, indexes) {
 			}
-			
 			/**
 			 * Compute a number of ciphers in a selector.
 			 */
-			static uint64_t ciphersCount(std::vector<uint64_t> indexCounts) {
-				return epir_selector_ciphers_count(indexCounts.data(), indexCounts.size());
+			uint64_t ciphersCount() const {
+				return epir_selector_ciphers_count(this->data(), this->size());
 			}
-			
 			/**
 			 * Compute a number of elements in a selector.
 			 */
-			static uint64_t elementsCount(std::vector<uint64_t> indexCounts) {
-				return epir_selector_elements_count(indexCounts.data(), indexCounts.size());
+			uint64_t elementsCount() const {
+				return epir_selector_elements_count(this->data(), this->size());
 			}
-			
-			virtual std::vector<unsigned char> createSelector(
-				const std::vector<uint64_t> &indexCounts, const uint64_t idx, const unsigned char *r = NULL) const = 0;
+	};
+	
+	class Selector : public std::vector<unsigned char> {
+		public:
+			Selector(const size_t len) : std::vector<unsigned char>(len) {}
+	};
+	
+	class Encryptor {
+		public:
+			/**
+			 * Encrypt a message.
+			 */
+			virtual Cipher encrypt(const uint64_t message) const = 0;
+			/**
+			 * Encrypt a message using a given randomness.
+			 */
+			virtual Cipher encrypt(const uint64_t message, const Scalar &r) const = 0;
+			/**
+			 * Create a selector with random entropy.
+			 */
+			virtual Selector createSelector(const IndexCounts &indexCounts, const uint64_t idx) const = 0;
+			/**
+			 * Create a selector with given randomness.
+			 */
+			virtual Selector createSelector(const IndexCounts &indexCounts, const uint64_t idx, const Scalar &r) const = 0;
 		
 	};
 	
-	class PrivateKey: public Scalar, Encryptor {
-		
+	class PrivateKey : public Scalar, Encryptor {
 		public:
-			
-			Cipher encrypt(const uint64_t message, const unsigned char *r = NULL) const {
+			PrivateKey() : Scalar() {}
+			PrivateKey(const unsigned char *privkey) : Scalar(privkey) {}
+			Cipher encrypt(const uint64_t message) const override {
 				Cipher cipher;
-				epir_ecelgamal_encrypt_fast(cipher.data(), this->bytes, message, r);
+				epir_ecelgamal_encrypt_fast(cipher.data(), this->data(), message, NULL);
 				return cipher;
 			}
-			
-			std::vector<unsigned char> createSelector(
-				const std::vector<uint64_t> &indexCounts, const uint64_t idx, const unsigned char *r = NULL) const {
-				std::vector<unsigned char> selector(Encryptor::ciphersCount(indexCounts));
-				epir_selector_create_fast(
-					selector.data(), this->bytes,
-					indexCounts.data(), indexCounts.size(), idx, r);
+			Cipher encrypt(const uint64_t message, const Scalar &r) const override {
+				Cipher cipher;
+				epir_ecelgamal_encrypt_fast(cipher.data(), this->data(), message, r.data());
+				return cipher;
+			}
+			Selector createSelector(const IndexCounts &indexCounts, const uint64_t idx) const override {
+				Selector selector(indexCounts.ciphersCount());
+				epir_selector_create_fast(selector.data(), this->data(), indexCounts.data(), indexCounts.size(), idx, NULL);
 				return selector;
 			}
-		
+			Selector createSelector(const IndexCounts &indexCounts, const uint64_t idx, const Scalar &r) const override {
+				Selector selector(indexCounts.ciphersCount());
+				epir_selector_create_fast(selector.data(), this->data(), indexCounts.data(), indexCounts.size(), idx, r.data());
+				return selector;
+			}
 	};
 	
-	class PublicKey: Encryptor {
-		
+	class Point : public std::array<unsigned char, EPIR_POINT_SIZE> {};
+	
+	class PublicKey : public Point, Encryptor {
 		public:
-			
-			unsigned char bytes[EPIR_POINT_SIZE];
-			
 			/**
 			 * Create a new PublicKey instance using a PrivateKey.
 			 */
 			PublicKey(const PrivateKey &privkey) {
-				epir_pubkey_from_privkey(this->bytes, privkey.bytes);
+				epir_pubkey_from_privkey(this->data(), privkey.data());
 			}
-			
 			/**
 			 * Create a new PublicKey instance with a given buffer.
 			 */
 			PublicKey(const unsigned char *buf) {
-				memcpy(this->bytes, buf, EPIR_POINT_SIZE);
+				memcpy(this->data(), buf, EPIR_POINT_SIZE);
 			}
-			
-			PublicKey(const std::array<unsigned char, EPIR_POINT_SIZE> buf) {
-				memcpy(this->bytes, buf.data(), EPIR_POINT_SIZE);
-			}
-			
-			Cipher encrypt(const uint64_t message, const unsigned char *r = NULL) const {
+			Cipher encrypt(const uint64_t message) const override {
 				Cipher cipher;
-				epir_ecelgamal_encrypt(cipher.data(), this->bytes, message, r);
+				epir_ecelgamal_encrypt(cipher.data(), this->data(), message, NULL);
 				return cipher;
 			}
-			
-			std::vector<unsigned char> createSelector(
-				const std::vector<uint64_t> &indexCounts, const uint64_t idx, const unsigned char *r = NULL) const {
-				std::vector<unsigned char> selector(Encryptor::ciphersCount(indexCounts));
-				epir_selector_create(
-					selector.data(), this->bytes,
-					indexCounts.data(), indexCounts.size(), idx, r);
+			Cipher encrypt(const uint64_t message, const Scalar &r) const override {
+				Cipher cipher;
+				epir_ecelgamal_encrypt(cipher.data(), this->data(), message, r.data());
+				return cipher;
+			}
+			Selector createSelector(
+				const IndexCounts &indexCounts, const uint64_t idx) const override {
+				Selector selector(indexCounts.ciphersCount());
+				epir_selector_create(selector.data(), this->data(), indexCounts.data(), indexCounts.size(), idx, NULL);
 				return selector;
 			}
-		
+			Selector createSelector(
+				const IndexCounts &indexCounts, const uint64_t idx, const Scalar &r) const override {
+				Selector selector(indexCounts.ciphersCount());
+				epir_selector_create(selector.data(), this->data(), indexCounts.data(), indexCounts.size(), idx, r.data());
+				return selector;
+			}
 	};
 	
-	class DecryptionContext {
-		
-	public:
-		
-		std::vector<epir_mG_t> mG;
-		
-		/**
-		 * Load mG.bin to create a new DecryptionContext instanct.
-		 */
-		DecryptionContext(const std::string path, const size_t mmax = EPIR_DEFAULT_MG_MAX):
-			mG(mmax) {
-			size_t elemsRead = epir_mG_load(this->mG.data(), mmax, (path == "" ? NULL : path.c_str()));
-			if(elemsRead != mmax) throw "Failed to load mG.bin.";
-		}
-		
-		/**
-		 * Generate mG.bin.
-		 */
-		DecryptionContext(
-			void (*cb)(const size_t, void*) = NULL, void *cbData = NULL, const size_t mmax = EPIR_DEFAULT_MG_MAX): mG(mmax) {
-			epir_mG_generate_no_sort(this->mG.data(), mmax, cb, cbData);
-			std::sort(mG.begin(), mG.end(), [](const epir_mG_t &a, const epir_mG_t &b) {
-				return memcmp(a.point, b.point, EPIR_POINT_SIZE) < 0;
-			});
-		}
-		
-		/**
-		 * Load from raw binary.
-		 */
-		DecryptionContext(const unsigned char *buf, const size_t mmax = EPIR_DEFAULT_MG_MAX): mG(mmax) {
-			memcpy(this->mG.data(), buf, sizeof(epir_mG_t) * mmax);
-		}
-		
-		int32_t decryptCipher(const unsigned char *privkey, const unsigned char *cipher) const {
-			return epir_ecelgamal_decrypt(privkey, cipher, this->mG.data(), this->mG.size());
-		}
-		
-		int32_t decryptCipher(const unsigned char *privkey, const Cipher &cipher) const {
-			return this->decryptCipher(privkey, cipher.data());
-		}
-		
-		int32_t decryptCipher(const PrivateKey &privkey, const unsigned char *cipher) const {
-			return this->decryptCipher(privkey.bytes, cipher);
-		}
-		
-		int32_t decryptCipher(const PrivateKey &privkey, const Cipher &cipher) const {
-			return this->decryptCipher(privkey.bytes, cipher.data());
-		}
-		
-		std::vector<unsigned char> decryptReply(
-			const unsigned char *privkey, const unsigned char *reply, const size_t reply_size,
-			const uint8_t dimension, const uint8_t packing) const {
-			std::vector<unsigned char> buf(reply_size);
-			memcpy(buf.data(), reply, reply_size);
-			int decryptedCount = epir_reply_decrypt(
-				buf.data(), reply_size, privkey, dimension, packing, this->mG.data(), this->mG.size());
-			if(decryptedCount < 0) throw "Failed to decrypt.";
-			std::vector<unsigned char> ret(decryptedCount);
-			memcpy(ret.data(), buf.data(), decryptedCount);
-			return ret;
-		}
-		
-		std::vector<unsigned char> decryptReply(
-			const unsigned char *privkey, const std::vector<unsigned char> &reply,
-			const uint8_t dimension, const uint8_t packing) const {
-			return this->decryptReply(privkey, reply.data(), reply.size(), dimension, packing);
-		}
-		
-		std::vector<unsigned char> decryptReply(
-			const PrivateKey &privkey, const unsigned char *reply, const size_t reply_size,
-			const uint8_t dimension, const uint8_t packing) const {
-			return this->decryptReply(privkey.bytes, reply, reply_size, dimension, packing);
-		}
-		
-		std::vector<unsigned char> decryptReply(
-			const PrivateKey &privkey, const std::vector<unsigned char> &reply,
-			const uint8_t dimension, const uint8_t packing) const {
-			return this->decryptReply(privkey.bytes, reply.data(), reply.size(), dimension, packing);
-		}
-		
+	class Reply : public std::vector<unsigned char> {
+		public:
+			Reply(const size_t len) : std::vector<unsigned char>(len) {}
+			Reply(const size_t len, const unsigned char *reply) : std::vector<unsigned char>(len) {
+				memcpy(this->data(), reply, len);
+			}
+	};
+	
+	class DecryptionContext : public std::vector<epir_mG_t> {
+		public:
+			DecryptionContext(const size_t mmax) : std::vector<epir_mG_t>(mmax) {}
+			/**
+			 * Load mG.bin to create a new DecryptionContext instance.
+			 */
+			DecryptionContext(const std::string path = "", const size_t mmax = EPIR_DEFAULT_MG_MAX) :
+				std::vector<epir_mG_t>(mmax) {
+				size_t elemsRead = epir_mG_load(this->data(), mmax, (path == "" ? NULL : path.c_str()));
+				if(elemsRead != mmax) throw "Failed to load mG.bin.";
+			}
+			/**
+			 * Load from raw binary.
+			 */
+			DecryptionContext(const unsigned char *buf, const size_t mmax = EPIR_DEFAULT_MG_MAX) :
+				std::vector<epir_mG_t>(mmax) {
+				memcpy(this->data(), buf, sizeof(epir_mG_t) * mmax);
+			}
+			/**
+			 * Generate mG.bin.
+			 */
+			static DecryptionContext generate(
+				void (*cb)(const size_t, void*) = NULL, void *cbData = NULL, const size_t mmax = EPIR_DEFAULT_MG_MAX) {
+				DecryptionContext decCtx(mmax);
+				epir_mG_generate_no_sort(decCtx.data(), mmax, cb, cbData);
+				std::sort(decCtx.begin(), decCtx.end(), [](const epir_mG_t &a, const epir_mG_t &b) {
+					return memcmp(a.point, b.point, EPIR_POINT_SIZE) < 0;
+				});
+				return decCtx;
+			}
+			int32_t decryptCipher(const PrivateKey &privkey, const Cipher &cipher) const {
+				return epir_ecelgamal_decrypt(privkey.data(), cipher.data(), this->data(), this->size());
+			}
+			std::vector<unsigned char> decryptReply(
+				const PrivateKey &privkey, const Reply &reply, const uint8_t dimension, const uint8_t packing) const {
+				std::vector<unsigned char> buf(reply.size());
+				memcpy(buf.data(), reply.data(), reply.size());
+				int decryptedCount = epir_reply_decrypt(
+					buf.data(), reply.size(), privkey.data(), dimension, packing, this->data(), this->size());
+				if(decryptedCount < 0) throw "Failed to decrypt.";
+				buf.resize(decryptedCount);
+				return buf;
+			}
 	};
 	
 }

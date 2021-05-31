@@ -44,7 +44,7 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 	const size_t mmax = (info.Length() > 1 ? info[1].As<Napi::Number>().Uint32Value() : EPIR_DEFAULT_MG_MAX);
 	if(param.IsUndefined()) {
 		// Generate mG.bin WITHOUT using the specified callback.
-		this->decCtx = EllipticPIR::DecryptionContext(NULL, NULL, mmax);
+		this->decCtx = EllipticPIR::DecryptionContext::generate(NULL, NULL, mmax);
 	} else if(param.IsString()) {
 		// Load mG.bin from the path.
 		const std::string path = std::string(param.As<Napi::String>());
@@ -94,7 +94,7 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 				return;
 			}
 		};
-		this->decCtx = EllipticPIR::DecryptionContext(cb_, &data, mmax);
+		this->decCtx = EllipticPIR::DecryptionContext::generate(cb_, &data, mmax);
 		tsfn.Release();
 	} else {
 		THROW_TYPE_ERROR_NO_RETURN("The parameter has an invalid type.");
@@ -104,7 +104,7 @@ DecryptionContext::DecryptionContext(const Napi::CallbackInfo &info) : Napi::Obj
 // DecryptionContext.getMG(): ArrayBuffer.
 Napi::Value DecryptionContext::GetMG(const Napi::CallbackInfo &info) {
 	Napi::Env env = info.Env();
-	return Napi::ArrayBuffer::New(env, this->decCtx.mG.data(), sizeof(epir_mG_t) * this->decCtx.mG.size());
+	return Napi::ArrayBuffer::New(env, this->decCtx.data(), sizeof(epir_mG_t) * this->decCtx.size());
 }
 
 // DecryptionContext.decryptCipher(privkey: ArrayBuffer(32), cipher: ArrayBuffer(64)): number.
@@ -114,8 +114,8 @@ Napi::Value DecryptionContext::DecryptCipher(const Napi::CallbackInfo &info) {
 	CHECK_IS_ARRAY_BUFFER(info[0], EPIR_SCALAR_SIZE);
 	CHECK_IS_ARRAY_BUFFER(info[1], EPIR_CIPHER_SIZE);
 	// Load arguments.
-	const uint8_t *privkey = READ_ARRAY_BUFFER(info[0]);
-	const uint8_t *cipher = READ_ARRAY_BUFFER(info[1]);
+	const EllipticPIR::PrivateKey privkey(READ_ARRAY_BUFFER(info[0]));
+	const EllipticPIR::Cipher cipher(READ_ARRAY_BUFFER(info[1]));
 	// Decrypt.
 	const int32_t decrypted = this->decCtx.decryptCipher(privkey, cipher);
 	if(decrypted < 0) {
@@ -127,21 +127,20 @@ Napi::Value DecryptionContext::DecryptCipher(const Napi::CallbackInfo &info) {
 class ReplyDecryptWorker : public ArrayBufferPromiseWorker {
 	private:
 		const EllipticPIR::DecryptionContext *decCtx;
-		const std::array<unsigned char, EPIR_SCALAR_SIZE> privkey;
-		const std::vector<unsigned char> reply;
+		const EllipticPIR::PrivateKey privkey;
+		const EllipticPIR::Reply reply;
 		const uint8_t dimension;
 		const uint8_t packing;
 	public:
 		ReplyDecryptWorker(napi_env env,
-			const EllipticPIR::DecryptionContext *decCtx, const std::array<unsigned char, EPIR_SCALAR_SIZE> &privkey,
-			const std::vector<unsigned char> &reply, const uint8_t dimension, const uint8_t packing) :
+			const EllipticPIR::DecryptionContext *decCtx, const unsigned char *privkey,
+			const unsigned char *reply, const size_t replySize, const uint8_t dimension, const uint8_t packing) :
 			ArrayBufferPromiseWorker(env),
-			decCtx(decCtx), privkey(privkey), reply(reply), dimension(dimension), packing(packing) {
+			decCtx(decCtx), privkey(privkey), reply(replySize, reply), dimension(dimension), packing(packing) {
 		}
 		void Execute() override {
 			try {
-				this->data = this->decCtx->decryptReply(
-					this->privkey.data(), this->reply.data(), this->reply.size(), this->dimension, this->packing);
+				this->data = this->decCtx->decryptReply(this->privkey, this->reply, this->dimension, this->packing);
 			} catch(const char *err) {
 				this->SetError(std::string(err));
 			}
@@ -157,15 +156,13 @@ Napi::Value DecryptionContext::DecryptReply(const Napi::CallbackInfo& info) {
 	CHECK_IS_NUMBER(info[2], "packing");
 	CHECK_IS_ARRAY_BUFFER(info[3], 0);
 	// Load arguments.
-	std::array<unsigned char, EPIR_SCALAR_SIZE> privkey;
-	memcpy(privkey.data(), READ_ARRAY_BUFFER(info[0]), EPIR_SCALAR_SIZE);
+	const unsigned char *privkey = READ_ARRAY_BUFFER(info[0]);
 	const uint32_t dimension = info[1].As<Napi::Number>().Uint32Value();
 	const uint32_t packing = info[2].As<Napi::Number>().Uint32Value();
+	const unsigned char *reply = READ_ARRAY_BUFFER(info[3]);
 	const size_t replySize = info[3].As<Napi::ArrayBuffer>().ByteLength();
-	std::vector<unsigned char> reply(replySize);
-	memcpy(reply.data(), READ_ARRAY_BUFFER(info[3]), replySize);
 	// Decrypt.
-	ReplyDecryptWorker *wk = new ReplyDecryptWorker(env, &this->decCtx, privkey, reply, dimension, packing);
+	ReplyDecryptWorker *wk = new ReplyDecryptWorker(env, &this->decCtx, privkey, reply, replySize, dimension, packing);
 	wk->Queue();
 	return wk->_deferred.Promise();
 }
