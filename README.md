@@ -69,7 +69,7 @@ $ npm ci
 
 ### Usage
 
-See [./src\_ts/EpirBase.ts](./src_ts/EpirBase.ts) for Node.js binding definitions.
+See [./src\_ts/types.ts](./src_ts/types.ts) for Node.js binding definitions.
 
 For general usage, see files under the [./src\_ts/\_\_tests\_\_](./src_ts/__tests__) directory and
 [./pages/index.vue](./pages/index.vue).
