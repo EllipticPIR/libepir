@@ -2,7 +2,6 @@
 #include <napi.h>
 
 #include "../../src_c/epir.hpp"
-#include "../../src_c/epir_reply_mock.h"
 
 #include "common.hpp"
 #include "decryption_context.hpp"
@@ -31,9 +30,7 @@ Napi::Value PubkeyFromPrivkey(const Napi::CallbackInfo &info) {
 }
 
 // .encrypt_(pubkey: ArrayBuffer(32), msg: number, r?: ArrayBuffer(32)): ArrayBuffer(64).
-Napi::Value Encrypt_(
-	const Napi::CallbackInfo &info,
-	void (*encrypt)(unsigned char*, const unsigned char*, const uint64_t, const unsigned char*)) {
+Napi::Value Encrypt_(const Napi::CallbackInfo &info, epir_ecelgamal_encrypt_fn *encrypt) {
 	// Check arguments.
 	Napi::Env env = info.Env();
 	CHECK_N_ARGS(2);
@@ -99,12 +96,12 @@ class SelectorCreateWorker : public ArrayBufferPromiseWorker {
 		const std::vector<uint64_t> index_counts;
 		const uint64_t idx;
 		std::vector<unsigned char> r;
-		const epir_selector_create_fn selector_create;
+		const epir_selector_create_fn *selector_create;
 	public:
 		SelectorCreateWorker(napi_env env,
 			const std::array<unsigned char, 32> key, const std::vector<uint64_t> &index_counts, const uint64_t idx,
 			const std::vector<unsigned char> &r,
-			const epir_selector_create_fn selector_create) :
+			const epir_selector_create_fn *selector_create) :
 			ArrayBufferPromiseWorker(env),
 			key(key), index_counts(index_counts), idx(idx), r(r),
 			selector_create(selector_create) {

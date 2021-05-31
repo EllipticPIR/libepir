@@ -4,8 +4,6 @@
 
 #include <napi.h>
 
-#include "../../src_c/epir_selector_factory.h"
-
 class SelectorFactory : public Napi::ObjectWrap<SelectorFactory> {
 	private:
 		

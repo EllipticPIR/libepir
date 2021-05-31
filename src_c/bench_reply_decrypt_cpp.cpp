@@ -5,7 +5,6 @@
 #include <stdio.h>
 
 #include "epir.hpp"
-#include "epir_reply_mock.h"
 #include "common.h"
 
 #define DIMENSION ((uint8_t)3)

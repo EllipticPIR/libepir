@@ -1,6 +1,5 @@
 
 #include "epir.h"
-#include "epir_reply_mock.h"
 
 #define divide_up(a, b) (((a) / (b)) + (((a) % (b)) == 0 ? 0 : 1 ))
 

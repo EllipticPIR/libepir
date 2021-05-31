@@ -10,6 +10,8 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <stdbool.h>
+#include <pthread.h>
 
 #define CONFIGURED 1
 #pragma GCC diagnostic push
@@ -51,7 +53,7 @@ void epir_create_privkey(unsigned char *privkey);
 EMSCRIPTEN_KEEPALIVE
 void epir_pubkey_from_privkey(unsigned char *pubkey, const unsigned char *privkey);
 
-typedef void (*epir_ecelgamal_encrypt_fn)
+typedef void (epir_ecelgamal_encrypt_fn)
 	(unsigned char *cipher, const unsigned char *key, const uint64_t message, const unsigned char *r);
 
 /**
@@ -62,7 +64,7 @@ typedef void (*epir_ecelgamal_encrypt_fn)
  * @param r       A randomness used when the cipher generation. If set to NULL, we will randomly choose the value.
  */
 EMSCRIPTEN_KEEPALIVE
-void epir_ecelgamal_encrypt(unsigned char *cipher, const unsigned char *pubkey, const uint64_t message, const unsigned char *r);
+epir_ecelgamal_encrypt_fn epir_ecelgamal_encrypt;
 
 /**
  * Create a new EC-ElGamal cipher text (encrypt) using private key instead of public key (fast).
@@ -72,7 +74,7 @@ void epir_ecelgamal_encrypt(unsigned char *cipher, const unsigned char *pubkey, 
  * @param r       A randomness used when the cipher generation. If set to NULL, we will randomly choose the value.
  */
 EMSCRIPTEN_KEEPALIVE
-void epir_ecelgamal_encrypt_fast(unsigned char *cipher, const unsigned char *privkey, const uint64_t message, const unsigned char *r);
+epir_ecelgamal_encrypt_fn epir_ecelgamal_encrypt_fast;
 
 typedef struct __attribute__((__packed__)) {
 	unsigned char point[EPIR_POINT_SIZE];
@@ -139,13 +141,7 @@ EMSCRIPTEN_KEEPALIVE
 void epir_selector_create_choice(
 	unsigned char *choices, const size_t interval, const uint64_t *index_counts, const uint8_t n_indexes, const uint64_t idx);
 
-void epir_selector_create_(
-	unsigned char *ciphers, const unsigned char *key,
-	const uint64_t *index_counts, const uint8_t n_indexes,
-	const uint64_t idx, epir_ecelgamal_encrypt_fn encrypt,
-	const unsigned char *r);
-
-typedef void (*epir_selector_create_fn)(
+typedef void (epir_selector_create_fn)(
 	unsigned char *ciphers, const unsigned char *key,
 	const uint64_t *index_counts, const uint8_t n_indexes,
 	const uint64_t idx, const unsigned char *r);
@@ -158,10 +154,7 @@ typedef void (*epir_selector_create_fn)(
  * @param n_indexes    The number of elements in the `index_counts`.
  * @param idx          The index to set.
  */
-void epir_selector_create(
-	unsigned char *ciphers, const unsigned char *pubkey,
-	const uint64_t *index_counts, const uint8_t n_indexes,
-	const uint64_t idx, const unsigned char *r);
+epir_selector_create_fn epir_selector_create;
 
 /**
  * Create a selector using a private key (fast).
@@ -171,10 +164,7 @@ void epir_selector_create(
  * @param n_indexes    The number of elements in the `index_counts`.
  * @param idx          The index to set.
  */
-void epir_selector_create_fast(
-	unsigned char *ciphers, const unsigned char *privkey,
-	const uint64_t *index_counts, const uint8_t n_indexes,
-	const uint64_t idx, const unsigned char *r);
+epir_selector_create_fn epir_selector_create_fast;
 
 /**
  * Decrypt a server's reply.
@@ -192,6 +182,57 @@ void epir_selector_create_fast(
 int epir_reply_decrypt(
 	unsigned char *reply, const size_t reply_size, const unsigned char *privkey,
 	const uint8_t dimension, const uint8_t packing, const epir_mG_t *mG, const size_t mmax);
+
+EMSCRIPTEN_KEEPALIVE
+size_t epir_reply_size(const uint8_t dimension, const uint8_t packing, const size_t elem_size);
+
+EMSCRIPTEN_KEEPALIVE
+size_t epir_reply_r_count(const uint8_t dimension, const uint8_t packing, const size_t elem_size);
+
+typedef void (epir_reply_mock_fn)(
+	unsigned char *reply,
+	const unsigned char *privkey,
+	const uint8_t dimension, const uint8_t packing,
+	const uint8_t *elem, const size_t elem_size, const unsigned char *r);
+
+/**
+ * Generates a sample server reply (normal).
+ */
+EMSCRIPTEN_KEEPALIVE
+epir_reply_mock_fn epir_reply_mock;
+
+/**
+ * Generates a sample server reply (fast).
+ */
+EMSCRIPTEN_KEEPALIVE
+epir_reply_mock_fn epir_reply_mock_fast;
+
+typedef struct {
+	bool is_fast;
+	unsigned char key[32];
+	uint32_t capacities[2];
+	unsigned char *ciphers[2];
+	int32_t idx[2];
+	pthread_mutex_t mutex;
+	pthread_t thread;
+} epir_selector_factory_ctx;
+
+typedef int (epir_selector_factory_ctx_init_fn)(
+	epir_selector_factory_ctx *ctx, const unsigned char *pubkey, const uint32_t capacity_zero, const uint32_t capacity_one);
+
+epir_selector_factory_ctx_init_fn epir_selector_factory_ctx_init;
+
+epir_selector_factory_ctx_init_fn epir_selector_factory_ctx_init_fast;
+
+int epir_selector_factory_ctx_destroy(epir_selector_factory_ctx *ctx);
+
+int epir_selector_factory_fill_sync(epir_selector_factory_ctx *ctx);
+
+int epir_selector_factory_fill(epir_selector_factory_ctx *ctx);
+
+int epir_selector_factory_create_selector(
+	unsigned char *ciphers, epir_selector_factory_ctx *ctx,
+	const uint64_t *index_counts, const uint8_t n_indexes, const uint64_t idx);
 
 #ifdef __cplusplus
 }

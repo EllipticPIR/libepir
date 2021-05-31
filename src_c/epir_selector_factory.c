@@ -1,6 +1,5 @@
 
 #include "epir.h"
-#include "epir_selector_factory.h"
 
 static inline int epir_selector_factory_ctx_init_(
 	epir_selector_factory_ctx *ctx,
@@ -40,7 +39,7 @@ int epir_selector_factory_ctx_destroy(epir_selector_factory_ctx *ctx) {
 }
 
 int epir_selector_factory_fill_sync(epir_selector_factory_ctx *ctx) {
-	const epir_ecelgamal_encrypt_fn encrypt = ctx->is_fast ? epir_ecelgamal_encrypt_fast : epir_ecelgamal_encrypt;
+	epir_ecelgamal_encrypt_fn *encrypt = ctx->is_fast ? epir_ecelgamal_encrypt_fast : epir_ecelgamal_encrypt;
 	int ret = 0;
 	for(size_t msg=0; msg<2; msg++) {
 		int32_t needs = ctx->capacities[msg] - ctx->idx[msg] - 1;

@@ -331,10 +331,10 @@ void epir_selector_create_choice(
 	}
 }
 
-void epir_selector_create_(
+static void epir_selector_create_(
 	unsigned char *ciphers, const unsigned char *key,
 	const uint64_t *index_counts, const uint8_t n_indexes,
-	const uint64_t idx, epir_ecelgamal_encrypt_fn encrypt,
+	const uint64_t idx, epir_ecelgamal_encrypt_fn *encrypt,
 	const unsigned char *r) {
 	const uint64_t n_ciphers = epir_selector_ciphers_count(index_counts, n_indexes);
 	epir_selector_create_choice(ciphers, EPIR_CIPHER_SIZE, index_counts, n_indexes, idx);

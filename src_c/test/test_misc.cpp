@@ -2,7 +2,6 @@
 #include <gtest/gtest.h>
 
 #include "../epir.h"
-#include "../epir_reply_mock.h"
 
 #include "test_common.hpp"
 

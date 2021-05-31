@@ -13,7 +13,7 @@ option(BUILD_BENCHES "Build benchmarks." OFF)
 option(EMSCRIPTEN "Build for Emscripten." OFF)
 option(TEST_USING_MG "Test using mG.bin. Setting off to reduce the test duration" ON)
 
-set(EPIR_SOURCES epir.c epir.h epir_reply_mock.c epir_reply_mock.h epir_selector_factory.c epir_selector_factory.h)
+set(EPIR_SOURCES epir.c epir.h epir_reply_mock.c epir_selector_factory.c)
 
 if(EMSCRIPTEN)
 	include_directories(${CMAKE_SOURCE_DIR}/../node_modules/libepir-sodium-wasm/dist/include)
