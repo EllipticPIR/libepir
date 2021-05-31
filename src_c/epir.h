@@ -218,7 +218,7 @@ typedef struct {
 } epir_selector_factory_ctx;
 
 typedef int (epir_selector_factory_ctx_init_fn)(
-	epir_selector_factory_ctx *ctx, const unsigned char *pubkey, const uint32_t capacity_zero, const uint32_t capacity_one);
+	epir_selector_factory_ctx *ctx, const unsigned char *key, const uint32_t capacity_zero, const uint32_t capacity_one);
 
 epir_selector_factory_ctx_init_fn epir_selector_factory_ctx_init;
 

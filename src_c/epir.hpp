@@ -158,10 +158,34 @@ namespace EllipticPIR {
 	};
 	
 	class Reply : public std::vector<unsigned char> {
+		private:
+			Reply(epir_reply_mock_fn *mock, const unsigned char *key,
+				const uint8_t dimension, const uint8_t packing, const std::vector<unsigned char> elem, const unsigned char *r) {
+				const size_t replySize = epir_reply_size(dimension, packing, elem.size());
+				this->resize(replySize);
+				mock(this->data(), key, dimension, packing, elem.data(), elem.size(), r);
+			}
 		public:
 			Reply(const size_t len) : std::vector<unsigned char>(len) {}
 			Reply(const size_t len, const unsigned char *reply) : std::vector<unsigned char>(len) {
 				memcpy(this->data(), reply, len);
+			}
+			/**
+			 * Generate mock.
+			 */
+			Reply(const PrivateKey &privkey, const uint8_t dimension, const uint8_t packing, const std::vector<unsigned char> elem) :
+				Reply(epir_reply_mock_fast, privkey.data(), dimension, packing, elem, NULL) {
+			}
+			Reply(const PrivateKey &privkey, const uint8_t dimension, const uint8_t packing, const std::vector<unsigned char> elem,
+				const unsigned char *r) :
+				Reply(epir_reply_mock_fast, privkey.data(), dimension, packing, elem, r) {
+			}
+			Reply(const PublicKey &pubkey, const uint8_t dimension, const uint8_t packing, const std::vector<unsigned char> elem) :
+				Reply(epir_reply_mock, pubkey.data(), dimension, packing, elem, NULL) {
+			}
+			Reply(const PublicKey &pubkey, const uint8_t dimension, const uint8_t packing, const std::vector<unsigned char> elem,
+				const unsigned char *r) :
+				Reply(epir_reply_mock, pubkey.data(), dimension, packing, elem, r) {
 			}
 	};
 	
@@ -207,6 +231,32 @@ namespace EllipticPIR {
 				if(decryptedCount < 0) throw "Failed to decrypt.";
 				buf.resize(decryptedCount);
 				return buf;
+			}
+	};
+	
+	class SelectorFactory {
+		private:
+			epir_selector_factory_ctx ctx;
+			~SelectorFactory() {
+				epir_selector_factory_ctx_destroy(&ctx);
+			}
+		public:
+			SelectorFactory(const PrivateKey &privkey, const uint32_t capacityZero = 10'000, const uint32_t capacityOne = 100) {
+				epir_selector_factory_ctx_init_fast(&this->ctx, privkey.data(), capacityZero, capacityOne);
+			}
+			SelectorFactory(const PublicKey &pubkey, const uint32_t capacityZero = 10'000, const uint32_t capacityOne = 100) {
+				epir_selector_factory_ctx_init(&this->ctx, pubkey.data(), capacityZero, capacityOne);
+			}
+			void fillSync() {
+				epir_selector_factory_fill_sync(&this->ctx);
+			}
+			void fill() {
+				epir_selector_factory_fill(&this->ctx);
+			}
+			Selector create(const IndexCounts &indexCounts, const uint64_t idx) {
+				Selector selector(indexCounts.ciphersCount());
+				epir_selector_factory_create_selector(selector.data(), &this->ctx, indexCounts.data(), indexCounts.size(), idx);
+				return selector;
 			}
 	};
 	
