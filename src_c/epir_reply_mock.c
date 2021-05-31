@@ -25,11 +25,12 @@ size_t epir_reply_r_count(const uint8_t dimension, const uint8_t packing, const 
 /**
  * Generates a sample server reply.
  */
-void epir_reply_mock(
+static inline void epir_reply_mock_(
 	unsigned char *reply,
-	const unsigned char *pubkey,
+	const unsigned char *key,
 	const uint8_t dimension, const uint8_t packing,
-	const uint8_t *elem, const size_t elem_size, const unsigned char *r) {
+	const uint8_t *elem, const size_t elem_size, const unsigned char *r,
+	epir_ecelgamal_encrypt_fn encrypt) {
 	const size_t reply_size_final = epir_reply_size(dimension, packing, elem_size);
 	unsigned char *midstate = (unsigned char*)malloc(reply_size_final);
 	memcpy(reply, elem, elem_size);
@@ -43,13 +44,29 @@ void epir_reply_mock(
 			for(size_t j=0; (j<packing)&&(i*packing+j<reply_size); j++) {
 				msg |= reply[i * packing + j] << (8 * j);
 			}
-			epir_ecelgamal_encrypt(
-				&midstate[i * EPIR_CIPHER_SIZE], pubkey, msg,
+			encrypt(
+				&midstate[i * EPIR_CIPHER_SIZE], key, msg,
 				r ? &r[(r_offset++) * EPIR_SCALAR_SIZE] : NULL);
 		}
 		memcpy(reply, midstate, midstate_size);
 		reply_size = midstate_size;
 	}
 	free(midstate);
+}
+
+void epir_reply_mock(
+	unsigned char *reply,
+	const unsigned char *pubkey,
+	const uint8_t dimension, const uint8_t packing,
+	const uint8_t *elem, const size_t elem_size, const unsigned char *r) {
+	epir_reply_mock_(reply, pubkey, dimension, packing, elem, elem_size, r, epir_ecelgamal_encrypt);
+}
+
+void epir_reply_mock_fast(
+	unsigned char *reply,
+	const unsigned char *privkey,
+	const uint8_t dimension, const uint8_t packing,
+	const uint8_t *elem, const size_t elem_size, const unsigned char *r) {
+	epir_reply_mock_(reply, privkey, dimension, packing, elem, elem_size, r, epir_ecelgamal_encrypt_fast);
 }
 

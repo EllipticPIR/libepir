@@ -74,28 +74,48 @@ std::array<uint8_t, ELEM_SIZE> generateElem() {
 	return elem;
 }
 
-std::vector<uint8_t> generateReply(const std::array<uint8_t, ELEM_SIZE> elem) {
+std::vector<uint8_t> generateReply(const bool isFast, const std::array<uint8_t, ELEM_SIZE> elem) {
 	const size_t reply_size = epir_reply_size(DIMENSION, PACKING, ELEM_SIZE);
 	std::vector<uint8_t> reply(reply_size);
-	epir_reply_mock(reply.data(), pubkey, DIMENSION, PACKING, elem.data(), ELEM_SIZE, NULL);
+	if(isFast) {
+		epir_reply_mock_fast(reply.data(), privkey, DIMENSION, PACKING, elem.data(), ELEM_SIZE, NULL);
+	} else {
+		epir_reply_mock(reply.data(), pubkey, DIMENSION, PACKING, elem.data(), ELEM_SIZE, NULL);
+	}
 	return reply;
 }
 
-TEST(ReplyTest, decrypt_success) {
+void replyTestSuccess(const bool isFast) {
 	const std::array<uint8_t, ELEM_SIZE> elem = generateElem();
-	std::vector<uint8_t> reply = generateReply(elem);
+	std::vector<uint8_t> reply = generateReply(isFast, elem);
 	const int data_len = epir_reply_decrypt(
 		reply.data(), reply.size(), privkey, DIMENSION, PACKING, mG.data(), EPIR_DEFAULT_MG_MAX);
 	ASSERT_GE(data_len, (int)ELEM_SIZE);
 	ASSERT_PRED3(SameBuffer, reply.data(), elem.data(), ELEM_SIZE);
 }
 
-TEST(ReplyTest, decrypt_fail) {
+void replyTestFail(const bool isFast) {
 	const std::array<uint8_t, ELEM_SIZE> elem = generateElem();
-	std::vector<uint8_t> reply = generateReply(elem);
+	std::vector<uint8_t> reply = generateReply(isFast, elem);
 	const int data_len = epir_reply_decrypt(
 		reply.data(), reply.size(), pubkey, DIMENSION, PACKING, mG.data(), EPIR_DEFAULT_MG_MAX);
 	ASSERT_EQ(data_len, -1);
+}
+
+TEST(ReplyTest, decrypt_normal_success) {
+	replyTestSuccess(false);
+}
+
+TEST(ReplyTest, decrypt_normal_fail) {
+	replyTestFail(false);
+}
+
+TEST(ReplyTest, decrypt_fast_success) {
+	replyTestSuccess(true);
+}
+
+TEST(ReplyTest, decrypt_fast_fail) {
+	replyTestFail(true);
 }
 #endif
 
