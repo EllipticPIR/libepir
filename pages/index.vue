@@ -10,24 +10,10 @@
 				
 				<h2>Generate mG</h2>
 				
-				<ClickableButton value="Generate mG" :click="generateMG" />
+				<ClickableButton value="Generate mG" :click="() => { this.decCtx = this.$refs.generateMG.generate(); }" />
 				
-				<v-progress-linear :value="100 * pointsComputed / mmax" color="blue" height="50" striped class="my-4">
-					<strong>
-						<template v-if="pointsComputed != mmax">
-							{{ pointsComputed.toLocaleString() }} of {{ mmax.toLocaleString() }} points computed
-						</template>
-						<template v-else-if="pointsComputing">
-							(Sorting...)
-						</template>
-						<template v-else>
-							(Completed)
-						</template>
-					</strong>
-				</v-progress-linear>
-				<p>Load time: {{ mGLoadTime.toLocaleString() }} ms</p>
-				<p>Compute time: {{ mGComputeTime.toLocaleString() }} ms</p>
-				<p>Sort time: {{ mGSortTime.toLocaleString() }} ms</p>
+				<GenerateMG ref="generateMG" :mmax="mmax" :load="(decCtx) => { this.decCtx = decCtx; }"
+					:show-load-time="true" :show-compute-time="true" :show-sort-time="true" />
 				
 				<h2>Generate a key pair</h2>
 				
@@ -208,7 +194,6 @@ export default Vue.extend({
 		this.elemStr = arrayBufferToHex(getRandomBytes(32));
 		this.epir = await createEpir();
 		this.generatePrivkey();
-		await this.loadMGIfExists();
 	},
 	methods: {
 		getPrivkey() {
@@ -225,30 +210,6 @@ export default Vue.extend({
 		getElem() {
 			if(!checkIsHex(this.elemStr)) throw new Error('Invalid database element.');
 			return hexToArrayBuffer(this.elemStr);
-		},
-		async loadMGIfExists() {
-			const beginMG = time();
-			const decCtx = await loadDecryptionContextFromIndexedDB();
-			if(!decCtx) return;
-			this.decCtx = decCtx;
-			this.pointsComputed = DEFAULT_MMAX;
-			this.mGLoadTime = time() - beginMG;
-		},
-		async generateMG() {
-			const beginCompute = time();
-			this.pointsComputed = 0;
-			this.pointsComputing = true;
-			this.decCtx = await createDecryptionContext({ cb: (pointsComputed: number) => {
-				this.pointsComputed = pointsComputed;
-				const progress = 100 * pointsComputed / DEFAULT_MMAX;
-				if(pointsComputed === DEFAULT_MMAX) {
-					this.mGComputeTime = time() - beginCompute;
-				}
-			}, interval: 100 * 1000 }, DEFAULT_MMAX);
-			this.mGSortTime = time() - beginCompute - this.mGComputeTime;
-			saveDecryptionContextToIndexedDB(this.decCtx);
-			this.mGLoadTime = time() - beginCompute;
-			this.pointsComputing = false;
 		},
 		generatePrivkey() {
 			this.privkeyStr = arrayBufferToHex(this.epir!.createPrivkey());
