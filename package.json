@@ -28,6 +28,7 @@
     "epir_genm": "./build_c/epir-prefix/src/epir-build/epir_genm"
   },
   "files": [
+    "@types",
     "components/*",
     "pages/*",
     "src_c/*",
