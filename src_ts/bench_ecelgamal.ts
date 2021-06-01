@@ -15,10 +15,10 @@ export const run = async (): Promise<boolean> => {
 	const privkey = epir.createPrivkey();
 	const encrypted = await printMeasurement<ArrayBuffer[]>(() => {
 		return msgs.map((msg) => epir.encryptFast(privkey, msg));
-	}, 'Ciphertext encrypted in');
+	}, 'Ciphertext encrypted (fast) in');
 	const decrypted = await printMeasurement<number[]>(() => {
 		return encrypted.map((enc) => decCtx.decryptCipher(privkey, enc));
-	}, 'Ciphertext encrypted in');
+	}, 'Ciphertext decrypted in');
 	for(let i=0; i<LOOP; i++) {
 		/* istanbul ignore if  */
 		if(msgs[i] !== decrypted[i]) {
