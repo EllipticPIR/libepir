@@ -72,7 +72,6 @@ export default class GenerateMG extends Vue {
 		this.pointsComputing = true;
 		const decCtx = await createDecryptionContext({ cb: (pointsComputed: number) => {
 			this.pointsComputed = pointsComputed;
-			const progress = 100 * pointsComputed / this.mmax;
 			if(pointsComputed === this.mmax) {
 				this.computeTime = time() - beginCompute;
 			}

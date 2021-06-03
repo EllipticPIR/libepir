@@ -110,11 +110,7 @@ import Vue from 'vue';
 
 import { time, arrayBufferToHex, hexToArrayBuffer, getRandomBytes, checkIsHex } from '../src_ts/util';
 import { EpirBase, DecryptionContextBase, DEFAULT_MMAX, SCALAR_SIZE, POINT_SIZE } from '../src_ts/types';
-import {
-	createEpir, createDecryptionContext,
-	loadDecryptionContextFromIndexedDB, saveDecryptionContextToIndexedDB,
-	SelectorFactory
-} from '../src_ts/wasm';
+import { createEpir, SelectorFactory } from '../src_ts/wasm';
 
 export type DataType = {
 	epir: EpirBase | null,
