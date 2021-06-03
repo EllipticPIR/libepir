@@ -20,90 +20,69 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { Vue, Component, Prop } from 'vue-property-decorator';
 import { time } from '../src_ts/util';
 import { DecryptionContextBase, DEFAULT_MMAX, MG_SIZE } from '../src_ts/types';
 import { createDecryptionContext, loadDecryptionContextFromIndexedDB, saveDecryptionContextToIndexedDB } from '../src_ts/wasm';
-export default Vue.extend({
-	props: {
-		load: {
-			type: [Function, null],
-			default: null,
-		},
-		mmax: {
-			type: Number,
-			default: DEFAULT_MMAX,
-		},
-		reportInterval: {
-			type: Number,
-			default: 100 * 1000,
-		},
-		showProgress: {
-			type: Boolean,
-			default: true,
-		},
-		showLoadTime: {
-			type: Boolean,
-			default: false,
-		},
-		showComputeTime: {
-			type: Boolean,
-			default: false,
-		},
-		showSortTime: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	data() {
-		return {
-			pointsComputed: -1,
-			pointsComputing: false,
-			loadTime: -1,
-			computeTime: -1,
-			sortTime: -1,
-		};
-	},
+@Component
+export default class GenerateMG extends Vue {
+	@Prop({ type: Function, default: null })
+	public load!: ((...args: unknown[]) => unknown) | null;
+	@Prop({ type: Number, default: DEFAULT_MMAX })
+	public mmax!: number;
+	@Prop({ type: Number, default: 100 * 1000 })
+	public reportInterval!: number;
+	@Prop({ type: Boolean, default: true })
+	public showProgress!: boolean;
+	@Prop({ type: Boolean, default: false })
+	public showLoadTime!: boolean;
+	@Prop({ type: Boolean, default: false })
+	public showComputeTime!: boolean;
+	@Prop({ type: Boolean, default: false })
+	public showSortTime!: boolean;
+	pointsComputed: number = -1;
+	pointsComputing: boolean = false;
+	loadTime: number = -1;
+	computeTime: number = -1;
+	sortTime: number = -1;
 	async created() {
 		if(this.load) {
 			this.load(await this.loadFromIndexedDB());
 		}
-	},
-	methods: {
-		formatTime(ms: number): string {
-			if(ms < 0) return '(not executed)';
-			return ms.toLocaleString() + ' ms';
-		},
-		async loadFromIndexedDB(): Promise<DecryptionContext | null> {
-			const beginMG = time();
-			const decCtx = await loadDecryptionContextFromIndexedDB();
-			if(!decCtx) return null;
-			const mmax = Math.floor(decCtx.getMG().byteLength / MG_SIZE);
-			if(this.mmax != mmax) {
-				return null;
+	}
+	formatTime(ms: number): string {
+		if(ms < 0) return '(not executed)';
+		return ms.toLocaleString() + ' ms';
+	}
+	async loadFromIndexedDB(): Promise<DecryptionContextBase | null> {
+		const beginMG = time();
+		const decCtx = await loadDecryptionContextFromIndexedDB();
+		if(!decCtx) return null;
+		const mmax = Math.floor(decCtx.getMG().byteLength / MG_SIZE);
+		if(this.mmax != mmax) {
+			return null;
+		}
+		this.pointsComputed = mmax;
+		this.loadTime = time() - beginMG;
+		return decCtx;
+	}
+	async generate(): Promise<DecryptionContextBase> {
+		const beginCompute = time();
+		this.pointsComputed = 0;
+		this.pointsComputing = true;
+		const decCtx = await createDecryptionContext({ cb: (pointsComputed: number) => {
+			this.pointsComputed = pointsComputed;
+			const progress = 100 * pointsComputed / this.mmax;
+			if(pointsComputed === this.mmax) {
+				this.computeTime = time() - beginCompute;
 			}
-			this.pointsComputed = mmax;
-			this.loadTime = time() - beginMG;
-			return decCtx;
-		},
-		async generate(): Promise<DecryptionContext> {
-			const beginCompute = time();
-			this.pointsComputed = 0;
-			this.pointsComputing = true;
-			const decCtx = await createDecryptionContext({ cb: (pointsComputed: number) => {
-				this.pointsComputed = pointsComputed;
-				const progress = 100 * pointsComputed / this.mmax;
-				if(pointsComputed === this.mmax) {
-					this.computeTime = time() - beginCompute;
-				}
-			}, interval: this.reportInterval }, this.mmax);
-			this.sortTime = time() - beginCompute - this.computeTime;
-			saveDecryptionContextToIndexedDB(decCtx);
-			this.loadTime = time() - beginCompute;
-			this.pointsComputing = false;
-			return decCtx;
-		},
-	},
-});
+		}, interval: this.reportInterval }, this.mmax);
+		this.sortTime = time() - beginCompute - this.computeTime;
+		saveDecryptionContextToIndexedDB(decCtx);
+		this.loadTime = time() - beginCompute;
+		this.pointsComputing = false;
+		return decCtx;
+	}
+}
 </script>
 
