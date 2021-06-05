@@ -45,12 +45,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 
 # ./libepir.so
 add_library(epir SHARED ${EPIR_SOURCES})
-target_link_libraries(epir "-lsodium")
+target_link_libraries(epir libsodium.a)
 
 # ./libepir.a
 add_library(epir_static STATIC ${EPIR_SOURCES})
 set_target_properties(epir_static PROPERTIES OUTPUT_NAME epir)
-target_link_libraries(epir_static "-lsodium")
+target_link_libraries(epir_static libsodium.a)
 
 # ./epir_genm
 add_executable(epir_genm epir_genm.cpp epir.h common.h epir.hpp)
