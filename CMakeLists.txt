@@ -56,6 +56,7 @@ else()
 	include(GNUInstallDirs)
 	install(
 		FILES ${CMAKE_CURRENT_BINARY_DIR}/epir/bin/epir_genm
+		PERMISSIONS OWNER_EXECUTE GROUP_EXECUTE WORLD_EXECUTE
 		DESTINATION ${CMAKE_INSTALL_BINDIR})
 	install(
 		FILES ${CMAKE_CURRENT_BINARY_DIR}/epir/include/epir.h ${CMAKE_CURRENT_BINARY_DIR}/epir/include/epir.hpp
