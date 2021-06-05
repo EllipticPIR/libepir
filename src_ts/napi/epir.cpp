@@ -96,12 +96,12 @@ class SelectorCreateWorker : public ArrayBufferPromiseWorker {
 		const std::vector<uint64_t> index_counts;
 		const uint64_t idx;
 		std::vector<unsigned char> r;
-		const epir_selector_create_fn *selector_create;
+		epir_selector_create_fn *selector_create;
 	public:
 		SelectorCreateWorker(napi_env env,
 			const std::array<unsigned char, 32> key, const std::vector<uint64_t> &index_counts, const uint64_t idx,
 			const std::vector<unsigned char> &r,
-			const epir_selector_create_fn *selector_create) :
+			epir_selector_create_fn *selector_create) :
 			ArrayBufferPromiseWorker(env),
 			key(key), index_counts(index_counts), idx(idx), r(r),
 			selector_create(selector_create) {

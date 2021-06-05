@@ -65,7 +65,6 @@ class PromiseWorker : public Napi::AsyncWorker {
 			Napi::HandleScope scope(this->Env());
 			this->_deferred.Resolve(this->Env().Undefined());
 		}
-		virtual void OnExecute() {}
 };
 
 class ArrayBufferPromiseWorker : public PromiseWorker {
@@ -80,7 +79,6 @@ class ArrayBufferPromiseWorker : public PromiseWorker {
 			memcpy(data.Data(), this->data.data(), this->data.size());
 			this->_deferred.Resolve(data.ArrayBuffer());
 		}
-		virtual void OnExecute() {}
 };
 
 #endif
