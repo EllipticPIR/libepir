@@ -67,7 +67,7 @@ namespace EllipticPIR {
 	
 	class Selector : public std::vector<unsigned char> {
 		public:
-			Selector(const size_t len) : std::vector<unsigned char>(len) {}
+			Selector(const size_t len) : std::vector<unsigned char>(len * EPIR_CIPHER_SIZE) {}
 	};
 	
 	class Encryptor {
