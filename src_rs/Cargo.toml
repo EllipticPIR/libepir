@@ -12,6 +12,7 @@ criterion = "0.3"
 [dependencies]
 sha2 = "0.9"
 rand_core = { version = "0.5", features = ["getrandom"] }
+rayon = "1.5"
 curve25519-dalek = { version = "3", features = [] }
 
 [[bench]]

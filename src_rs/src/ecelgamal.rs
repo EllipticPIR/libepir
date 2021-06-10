@@ -1,6 +1,7 @@
 #[allow(unused_imports)]
 use std::convert::{TryFrom, TryInto};
 use std::io::Read;
+use rayon::prelude::*;
 use rand_core::OsRng;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::edwards::EdwardsPoint;
@@ -10,17 +11,17 @@ use curve25519_dalek::constants::ED25519_BASEPOINT_TABLE;
 use curve25519_dalek::constants::ED25519_BASEPOINT_POINT;
 
 /// The byte length of a scalar.
-const SCALAR_SIZE: usize = 32;
+pub const SCALAR_SIZE: usize = 32;
 /// The byte length of a point.
-const POINT_SIZE : usize = 32;
+pub const POINT_SIZE : usize = 32;
 /// The byte length of a ciphertext.
-const CIPHER_SIZE: usize = 2 * POINT_SIZE;
+pub const CIPHER_SIZE: usize = 2 * POINT_SIZE;
 /// log_2(DEFAULT_MMAX).
-const DEFAULT_MMAX_MOD: u8 = 24;
+pub const DEFAULT_MMAX_MOD: u8 = 24;
 /// The maximum number of entries in `mG.bin`.
-const DEFAULT_MMAX: u32 = 1 << DEFAULT_MMAX_MOD;
+pub const DEFAULT_MMAX: u32 = 1 << DEFAULT_MMAX_MOD;
 /// The default data directory name.
-const DEFAULT_DATA_DIR: &str = ".EllipticPIR";
+pub const DEFAULT_DATA_DIR: &str = ".EllipticPIR";
 
 /// The default path to mG.bin.
 pub fn mg_default_path() -> Result<String, std::env::VarError> {
@@ -250,9 +251,7 @@ impl DecryptionContext {
             let mut buf = [0u8; 36];
             let result = reader.read_exact(&mut buf);
             if let Err(_) = result {
-                return Ok(DecryptionContext {
-                    mgs,
-                });
+                return Ok(mgs.into());
             };
             let mut point = [0; POINT_SIZE];
             point.copy_from_slice(&buf[0..32]);
@@ -323,6 +322,14 @@ impl From<DecryptionContext> for Vec<u8> {
             vec.push(ser);
         }
         vec.concat()
+    }
+}
+
+impl From<Vec<MGEntry>> for DecryptionContext {
+    fn from(mgs: Vec<MGEntry>) -> Self {
+        DecryptionContext {
+            mgs,
+        }
     }
 }
 
