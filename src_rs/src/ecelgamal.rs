@@ -4,7 +4,8 @@ use rand_core::OsRng;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::edwards::EdwardsPoint;
 use curve25519_dalek::edwards::CompressedEdwardsY;
-use curve25519_dalek::edwards::EdwardsBasepointTable;
+use curve25519_dalek::constants::EIGHT_TORSION;
+use curve25519_dalek::constants::ED25519_BASEPOINT_TABLE;
 use curve25519_dalek::constants::ED25519_BASEPOINT_POINT;
 
 /// The byte length of a scalar.
@@ -60,21 +61,8 @@ impl PartialEq for Cipher {
     }
 }
 
-/// A context need to encrypt a message.
-pub struct EncryptionContext {
-    table: EdwardsBasepointTable,
-}
-
-impl EncryptionContext {
-    pub fn new() -> Self {
-        Self {
-            table: EdwardsBasepointTable::create(&ED25519_BASEPOINT_POINT),
-        }
-    }
-}
-
 pub trait Encrypt {
-    fn encrypt(&self, enc_ctx: &EncryptionContext, msg: &Scalar, r: Option<&Scalar>) -> Cipher;
+    fn encrypt(&self, msg: &Scalar, r: Option<&Scalar>) -> Cipher;
 }
 
 /// A private key.
@@ -100,14 +88,14 @@ impl From<[u8; SCALAR_SIZE]> for PrivateKey {
 }
 
 impl Encrypt for PrivateKey {
-    fn encrypt(&self, enc_ctx: &EncryptionContext, msg: &Scalar, r: Option<&Scalar>) -> Cipher {
+    fn encrypt(&self, msg: &Scalar, r: Option<&Scalar>) -> Cipher {
         let rr = match r {
             Some(r) => *r,
             None => random_scalar(),
         };
         Cipher{
-            c1: enc_ctx.table.basepoint_mul(&rr).compress(),
-            c2: enc_ctx.table.basepoint_mul(&(&rr * self.scalar + msg)).compress(),
+            c1: ED25519_BASEPOINT_TABLE.basepoint_mul(&rr).compress(),
+            c2: ED25519_BASEPOINT_TABLE.basepoint_mul(&(&rr * self.scalar + msg)).compress(),
         }
     }
 }
@@ -134,7 +122,7 @@ pub struct PublicKey {
 impl PublicKey {
     pub fn new(privkey: &PrivateKey) -> Self {
         Self {
-            point: privkey.scalar * ED25519_BASEPOINT_POINT,
+            point: ED25519_BASEPOINT_TABLE.basepoint_mul(&privkey.scalar),
         }
     }
 }
@@ -157,14 +145,14 @@ impl PartialEq for PublicKey {
 }
 
 impl Encrypt for PublicKey {
-    fn encrypt(&self, enc_ctx: &EncryptionContext, msg: &Scalar, r: Option<&Scalar>) -> Cipher {
+    fn encrypt(&self, msg: &Scalar, r: Option<&Scalar>) -> Cipher {
         let rr = match r {
             Some(r) => *r,
             None => random_scalar(),
         };
         Cipher{
-            c1: enc_ctx.table.basepoint_mul(&rr).compress(),
-            c2: (&rr * self.point + enc_ctx.table.basepoint_mul(msg)).compress(),
+            c1: ED25519_BASEPOINT_TABLE.basepoint_mul(&rr).compress(),
+            c2: (&rr * self.point + ED25519_BASEPOINT_TABLE.basepoint_mul(msg)).compress(),
         }
     }
 }
@@ -178,7 +166,7 @@ impl std::fmt::Display for PublicKey {
 }
 
 #[derive(Clone)]
-struct MGEntry {
+pub struct MGEntry {
     point: [u8; POINT_SIZE],
     scalar: u32,
 }
@@ -196,6 +184,26 @@ impl MGEntry {
     }
 }
 
+impl PartialEq for MGEntry {
+    fn eq(&self, other: &Self) -> bool {
+        self.point == other.point
+    }
+}
+
+impl Eq for MGEntry {}
+
+impl PartialOrd for MGEntry {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.point.partial_cmp(&other.point)
+    }
+}
+
+impl Ord for MGEntry {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.point.cmp(&other.point)
+    }
+}
+
 /// A decryption context.
 #[derive(Clone)]
 pub struct DecryptionContext {
@@ -203,6 +211,36 @@ pub struct DecryptionContext {
 }
 
 impl DecryptionContext {
+    pub fn generate_no_sort<F>(mmax: u32, mut cb: F) -> Vec<MGEntry>
+        where F: FnMut(u32)
+    {
+        let one = ED25519_BASEPOINT_POINT;
+        let mut result = Vec::new();
+        let mut point = EIGHT_TORSION[0];
+        let mut points_computed = 0;
+        for scalar in 0..mmax {
+            result.push(MGEntry {
+                point: point.compress().to_bytes(),
+                scalar,
+            });
+            points_computed += 1;
+            cb(points_computed);
+            point += one;
+        }
+        result
+    }
+    pub fn generate_sort(mgs: &mut Vec<MGEntry>) {
+        mgs.sort_unstable();
+    }
+    pub fn generate<F>(mmax: u32, cb: F) -> Self
+        where F: FnMut(u32)
+    {
+        let mut mgs = Self::generate_no_sort(mmax, cb);
+        Self::generate_sort(&mut mgs);
+        Self {
+            mgs,
+        }
+    }
     pub fn load_from_file(path: Option<&str>) -> Result<Self, Box<dyn std::error::Error>> {
         let file = std::fs::File::open(path.unwrap_or(&mg_default_path()?))?;
         let mut reader = std::io::BufReader::new(file);
@@ -228,12 +266,12 @@ impl DecryptionContext {
             });
         }
     }
-    pub fn interpolation_search(&self, mg: &CompressedEdwardsY) -> Option<u32> {
+    pub fn interpolation_search(&self, mg: &[u8; 32]) -> Option<u32> {
         let mut imin = 0;
         let mut imax = self.mgs.len() - 1;
         let mut left = self.mgs[0].load_u32();
         let mut right = self.mgs[self.mgs.len() - 1].load_u32();
-        let me = load_u32(mg.as_bytes());
+        let me = load_u32(mg);
         while imin <= imax {
             if left >= right {
                 return None;
@@ -242,10 +280,10 @@ impl DecryptionContext {
             if imid < imin || imid > imax {
                 return None;
             }
-            if self.mgs[imid].point == *mg.as_bytes() {
+            if self.mgs[imid].point == *mg {
                 return Some(self.mgs[imid].scalar);
             }
-            if self.mgs[imid].point < *mg.as_bytes() {
+            if self.mgs[imid].point < *mg {
                 imin = imid + 1;
                 left = self.mgs[imid].load_u32();
             } else {
@@ -268,13 +306,29 @@ impl DecryptionContext {
     }
     pub fn decrypt_cipher(&self, privkey: &PrivateKey, c: &Cipher) -> Result<u32, ()> {
         let mg = Self::decrypt_to_mg(privkey, c)?;
-        self.interpolation_search(&mg).ok_or(())
+        self.interpolation_search(mg.as_bytes()).ok_or(())
+    }
+}
+
+impl From<DecryptionContext> for Vec<u8> {
+    fn from(dec_ctx: DecryptionContext) -> Self {
+        let mut vec = Vec::new();
+        for mg_entry in dec_ctx.mgs.iter() {
+            let mut ser = Vec::from(mg_entry.point);
+            ser.push(((mg_entry.scalar >>  0) & 0xff) as u8);
+            ser.push(((mg_entry.scalar >>  8) & 0xff) as u8);
+            ser.push(((mg_entry.scalar >> 16) & 0xff) as u8);
+            ser.push(((mg_entry.scalar >> 24) & 0xff) as u8);
+            vec.push(ser);
+        }
+        vec.concat()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sha2::{Digest, Sha256};
     const PRIVKEY: [u8; SCALAR_SIZE] = [
         0x7e, 0xf6, 0xad, 0xd2, 0xbe, 0xd5, 0x9a, 0x79,
         0xba, 0x6e, 0xdc, 0xfb, 0xa4, 0x8f, 0xde, 0x7a,
@@ -311,7 +365,7 @@ mod tests {
         0xb6, 0x53, 0x39, 0xbd, 0xc0, 0xe4, 0x17, 0x97,
     ];
     const SMALL_MMAX_MOD: u8 = 16;
-    const SMALL_MMAX: usize = 1 << SMALL_MMAX_MOD;
+    const SMALL_MMAX: u32 = 1 << SMALL_MMAX_MOD;
     const MG_HASH_SMALL: [u8; 32] = [
         0x8c, 0x55, 0x49, 0x7e, 0x28, 0xd5, 0xea, 0x75,
         0x15, 0xdd, 0x32, 0xb3, 0x98, 0x34, 0x0b, 0xfa,
@@ -329,54 +383,36 @@ mod tests {
     }
     #[test]
     fn encrypt_normal() {
-        let enc_ctx = EncryptionContext::new();
         let pubkey = PublicKey::new(&PRIVKEY.into());
-        let cipher = pubkey.encrypt(&enc_ctx, &MSG.into(), Some(&Scalar::from_bits(R)));
+        let cipher = pubkey.encrypt(&MSG.into(), Some(&Scalar::from_bits(R)));
         assert_eq!(cipher, CIPHER.into());
     }
     #[test]
     fn encrypt_fast() {
-        let enc_ctx = EncryptionContext::new();
         let privkey = PrivateKey::from(PRIVKEY);
-        let cipher = privkey.encrypt(&enc_ctx, &MSG.into(), Some(&Scalar::from_bits(R)));
+        let cipher = privkey.encrypt(&MSG.into(), Some(&Scalar::from_bits(R)));
         assert_eq!(cipher, CIPHER.into());
     }
-    /*
+    fn sha256sum(buf: &Vec<u8>) -> [u8; 32] {
+        Sha256::digest(buf).into()
+    }
     #[test]
-    fn mg_generate_no_sort() {
-        let points_computed = 0;
+    fn mg_generate() {
+        let mut points_computed = 0;
         let dec_ctx = DecryptionContext::generate(SMALL_MMAX, |points_computed_test| {
             points_computed += 1;
             assert_eq!(points_computed_test, points_computed);
         });
+        assert_eq!(sha256sum(&dec_ctx.into()), MG_HASH_SMALL);
     }
-    */
-/*
-TEST(ECElGamalTest, mG_generate_no_sort) {
-	size_t points_computed = 0;
-	epir_mG_generate_no_sort(mG_test.data(), mG_test.size(), [](const size_t points_computed_test, void *data) {
-		size_t *points_computed = (size_t*)data;
-		(*points_computed)++;
-		EXPECT_EQ(points_computed_test, *points_computed);
-	}, &points_computed);
-}
-TEST(ECElGamalTest, mG_generate_sort) {
-	epir_mG_sort(mG_test.data(), mG_test.size());
-	ASSERT_PRED2(SameHash<epir_mG_t>, mG_test, mG_hash_small);
-}
-TEST(ECElGamalTest, mG_generate) {
-	epir_mG_generate(mG_test.data(), mG_test.size(), NULL, NULL);
-	ASSERT_PRED2(SameHash<epir_mG_t>, mG_test, mG_hash_small);
-}
-TEST(ECElGamalTest, mG_interpolation_search) {
-	#pragma omp parallel for
-	for(size_t i=0; i<mG_test.size(); i++) {
-		epir_mG_t mG = mG_test[i];
-		const int32_t scalar_test = epir_mG_interpolation_search(mG.point, mG_test.data(), mG_test.size());
-		EXPECT_EQ(scalar_test, (int32_t)mG.scalar);
-	}
-}
-*/
+    #[test]
+    fn mg_interpolation_search() {
+        let dec_ctx = DecryptionContext::generate(SMALL_MMAX, |_| {});
+        for i in 0..SMALL_MMAX {
+            let scalar = dec_ctx.interpolation_search(&dec_ctx.mgs[i as usize].point);
+            assert_eq!(scalar, Some(dec_ctx.mgs[i as usize].scalar));
+        }
+    }
     #[test]
     fn mg_default_path() {
         assert_eq!(super::mg_default_path().unwrap(), std::env::var("HOME").unwrap() + "/.EllipticPIR/mG.bin");
@@ -425,9 +461,8 @@ TEST(ECElGamalTest, mG_load_default) {
     }
     #[test]
     fn random_encrypt_normal() {
-        let enc_ctx = EncryptionContext::new();
         let pubkey = PublicKey::new(&PRIVKEY.into());
-        let cipher = pubkey.encrypt(&enc_ctx, &MSG.into(), None);
+        let cipher = pubkey.encrypt(&MSG.into(), None);
         init_dec_ctx();
         unsafe {
             let decrypted = DEC_CTX.decrypt_cipher(&PRIVKEY.into(), &cipher);
@@ -436,9 +471,8 @@ TEST(ECElGamalTest, mG_load_default) {
     }
     #[test]
     fn random_encrypt_fast() {
-        let enc_ctx = EncryptionContext::new();
         let privkey = PrivateKey::from(PRIVKEY);
-        let cipher = privkey.encrypt(&enc_ctx, &MSG.into(), None);
+        let cipher = privkey.encrypt(&MSG.into(), None);
         init_dec_ctx();
         unsafe {
             let decrypted = DEC_CTX.decrypt_cipher(&PRIVKEY.into(), &cipher);
