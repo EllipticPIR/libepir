@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use std::convert::{TryFrom, TryInto};
 use std::io::Read;
 use rand_core::OsRng;
@@ -17,7 +18,7 @@ const CIPHER_SIZE: usize = 2 * POINT_SIZE;
 /// log_2(DEFAULT_MMAX).
 const DEFAULT_MMAX_MOD: u8 = 24;
 /// The maximum number of entries in `mG.bin`.
-const DEFAULT_MMAX: usize = 1 << DEFAULT_MMAX_MOD;
+const DEFAULT_MMAX: u32 = 1 << DEFAULT_MMAX_MOD;
 /// The default data directory name.
 const DEFAULT_DATA_DIR: &str = ".EllipticPIR";
 
@@ -211,14 +212,14 @@ pub struct DecryptionContext {
 }
 
 impl DecryptionContext {
-    pub fn generate_no_sort<F>(mmax: u32, mut cb: F) -> Vec<MGEntry>
+    pub fn generate_no_sort<F>(mmax: Option<u32>, mut cb: F) -> Vec<MGEntry>
         where F: FnMut(u32)
     {
         let one = ED25519_BASEPOINT_POINT;
         let mut result = Vec::new();
         let mut point = EIGHT_TORSION[0];
         let mut points_computed = 0;
-        for scalar in 0..mmax {
+        for scalar in 0..mmax.unwrap_or(DEFAULT_MMAX) {
             result.push(MGEntry {
                 point: point.compress().to_bytes(),
                 scalar,
@@ -232,7 +233,7 @@ impl DecryptionContext {
     pub fn generate_sort(mgs: &mut Vec<MGEntry>) {
         mgs.sort_unstable();
     }
-    pub fn generate<F>(mmax: u32, cb: F) -> Self
+    pub fn generate<F>(mmax: Option<u32>, cb: F) -> Self
         where F: FnMut(u32)
     {
         let mut mgs = Self::generate_no_sort(mmax, cb);
@@ -358,12 +359,6 @@ mod tests {
         0x28, 0x4f, 0xf7, 0xed, 0x95, 0xc6, 0xa4, 0xe9,
         0x67, 0xf5, 0xe7, 0xae, 0x22, 0xc9, 0x33, 0xcb,
     ];
-    const MG_HASH: [u8; 32] = [
-        0x1c, 0x09, 0xf4, 0x62, 0xf1, 0xb5, 0x8f, 0xc1,
-        0x40, 0xc9, 0x3c, 0xda, 0x6f, 0xec, 0x88, 0x85,
-        0x08, 0x44, 0xe3, 0xf0, 0x04, 0xb7, 0x24, 0x87,
-        0xb6, 0x53, 0x39, 0xbd, 0xc0, 0xe4, 0x17, 0x97,
-    ];
     const SMALL_MMAX_MOD: u8 = 16;
     const SMALL_MMAX: u32 = 1 << SMALL_MMAX_MOD;
     const MG_HASH_SMALL: [u8; 32] = [
@@ -399,7 +394,7 @@ mod tests {
     #[test]
     fn mg_generate() {
         let mut points_computed = 0;
-        let dec_ctx = DecryptionContext::generate(SMALL_MMAX, |points_computed_test| {
+        let dec_ctx = DecryptionContext::generate(Some(SMALL_MMAX), |points_computed_test| {
             points_computed += 1;
             assert_eq!(points_computed_test, points_computed);
         });
@@ -407,7 +402,7 @@ mod tests {
     }
     #[test]
     fn mg_interpolation_search() {
-        let dec_ctx = DecryptionContext::generate(SMALL_MMAX, |_| {});
+        let dec_ctx = DecryptionContext::generate(Some(SMALL_MMAX), |_| {});
         for i in 0..SMALL_MMAX {
             let scalar = dec_ctx.interpolation_search(&dec_ctx.mgs[i as usize].point);
             assert_eq!(scalar, Some(dec_ctx.mgs[i as usize].scalar));
@@ -417,23 +412,6 @@ mod tests {
     fn mg_default_path() {
         assert_eq!(super::mg_default_path().unwrap(), std::env::var("HOME").unwrap() + "/.EllipticPIR/mG.bin");
     }
-/*
-TEST(ECElGamalTest, mG_load_default) {
-	// Write mG.bin to /tmp/mG.bin.
-	const std::string path = "/tmp/mG.bin";
-	std::ofstream ofs(std::string(path), std::ios::binary | std::ios::out);
-	ASSERT_FALSE(ofs.fail());
-	ofs.write((const char*)mG_test.data(), sizeof(epir_mG_t) * mG_test.size());
-	ofs.close();
-	// Load.
-	static std::vector<epir_mG_t> mG_test2(mG_test.size());
-	const size_t elems_read = epir_mG_load(mG_test2.data(), mG_test.size(), path.c_str());
-	EXPECT_EQ(elems_read, mG_test.size());
-	EXPECT_PRED2(SameHash<epir_mG_t>, mG_test2, mG_hash_small);
-	// Delete.
-	EXPECT_TRUE(std::filesystem::remove(path));
-}
-*/
     static mut DEC_CTX: DecryptionContext = DecryptionContext { mgs: Vec::new(), };
     static DEC_CTX_INIT: std::sync::Once = std::sync::Once::new();
     fn init_dec_ctx() {
