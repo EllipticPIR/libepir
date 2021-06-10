@@ -1,4 +1,5 @@
 use std::convert::{TryFrom, TryInto};
+use std::io::Read;
 use rand_core::OsRng;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::edwards::EdwardsPoint;
@@ -176,6 +177,99 @@ impl std::fmt::Display for PublicKey {
     }
 }
 
+struct MGEntry {
+    point: [u8; POINT_SIZE],
+    scalar: u32,
+}
+
+fn load_u32(bytes: &[u8]) -> u32 {
+    ((bytes[0] as u32) << 24) |
+    ((bytes[1] as u32) << 16) |
+    ((bytes[2] as u32) <<  8) |
+    ((bytes[3] as u32) <<  0)
+}
+
+impl MGEntry {
+    fn load_u32(&self) -> u32 {
+        load_u32(&self.point)
+    }
+}
+
+/// A decryption context.
+pub struct DecryptionContext {
+    mgs: Vec<MGEntry>,
+}
+
+impl DecryptionContext {
+    pub fn load_from_file(path: Option<&str>) -> Result<Self, Box<dyn std::error::Error>> {
+        let file = std::fs::File::open(path.unwrap_or(&mg_default_path()?))?;
+        let mut reader = std::io::BufReader::new(file);
+        let mut mgs = Vec::new();
+        loop {
+            let mut buf = [0u8; 36];
+            let result = reader.read_exact(&mut buf);
+            if let Err(_) = result {
+                return Ok(DecryptionContext {
+                    mgs,
+                });
+            };
+            let mut point = [0; POINT_SIZE];
+            point.copy_from_slice(&buf[0..32]);
+            let scalar =
+                ((buf[32] as u32) <<  0) |
+                ((buf[33] as u32) <<  8) |
+                ((buf[34] as u32) << 16) |
+                ((buf[35] as u32) << 24);
+            mgs.push(MGEntry {
+                point,
+                scalar,
+            });
+        }
+    }
+    pub fn interpolation_search(&self, mg: &CompressedEdwardsY) -> Option<u32> {
+        let mut imin = 0;
+        let mut imax = self.mgs.len() - 1;
+        let mut left = self.mgs[0].load_u32();
+        let mut right = self.mgs[self.mgs.len() - 1].load_u32();
+        let me = load_u32(mg.as_bytes());
+        while imin <= imax {
+            if left >= right {
+                return None;
+            }
+            let imid = imin + (imax - imin) * ((me - left) as usize) / ((right - left) as usize);
+            if imid < imin || imid > imax {
+                return None;
+            }
+            if self.mgs[imid].point == *mg.as_bytes() {
+                return Some(self.mgs[imid].scalar);
+            }
+            if self.mgs[imid].point < *mg.as_bytes() {
+                imin = imid + 1;
+                left = self.mgs[imid].load_u32();
+            } else {
+                imax = imid - 1;
+                right = self.mgs[imid].load_u32();
+            }
+        }
+        return None;
+    }
+    pub fn decrypt_to_mg(privkey: &PrivateKey, c: &Cipher) -> Result<CompressedEdwardsY, ()> {
+        let c1 = match c.c1.decompress() {
+            Some(c1) => c1,
+            None => return Err(()),
+        };
+        let c2 = match c.c2.decompress() {
+            Some(c2) => c2,
+            None => return Err(()),
+        };
+        Ok((c2 - privkey.scalar * c1).compress())
+    }
+    pub fn decrypt_cipher(&self, privkey: &PrivateKey, c: &Cipher) -> Result<u32, ()> {
+        let mg = Self::decrypt_to_mg(privkey, c)?;
+        self.interpolation_search(&mg).ok_or(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -191,7 +285,7 @@ mod tests {
         0x48, 0xee, 0x02, 0x19, 0x99, 0xfb, 0x7f, 0x21,
         0xca, 0x1f, 0x84, 0xb8, 0xfe, 0x73, 0xd7, 0xe8,
     ];
-    const MSG: u64 = (0x12345678 & (DEFAULT_MMAX - 1)) as u64;
+    const MSG: u32 = (0x12345678 & (DEFAULT_MMAX - 1)) as u32;
     const R: [u8; SCALAR_SIZE] = [
         0x42, 0xff, 0x2d, 0x98, 0x4a, 0xe5, 0xa2, 0x8f,
         0x7d, 0x02, 0x69, 0x87, 0xc7, 0x10, 0x9a, 0x7b,
@@ -291,26 +385,35 @@ TEST(ECElGamalTest, mG_load_default) {
 	// Delete.
 	EXPECT_TRUE(std::filesystem::remove(path));
 }
-TEST(ECElGamalTest, decrypt_success) {
-	const int32_t decrypted = epir_ecelgamal_decrypt(privkey, cipher, mG.data(), EPIR_DEFAULT_MG_MAX);
-	ASSERT_EQ(decrypted, (int32_t)msg);
-}
-TEST(ECElGamalTest, decrypt_fail) {
-	const int32_t decrypted = epir_ecelgamal_decrypt(pubkey, cipher, mG.data(), EPIR_DEFAULT_MG_MAX);
-	ASSERT_EQ(decrypted, -1);
-}
-TEST(ECElGamalTest, random_encrypt_normal) {
-	unsigned char cipher_test[EPIR_CIPHER_SIZE];
-	epir_ecelgamal_encrypt(cipher_test, pubkey, msg, NULL);
-	const int32_t decrypted = epir_ecelgamal_decrypt(privkey, cipher, mG.data(), EPIR_DEFAULT_MG_MAX);
-	ASSERT_EQ(decrypted, (int32_t)msg);
-}
-TEST(ECElGamalTest, random_encrypt_fast) {
-	unsigned char cipher_test[EPIR_CIPHER_SIZE];
-	epir_ecelgamal_encrypt_fast(cipher_test, privkey, msg, NULL);
-	const int32_t decrypted = epir_ecelgamal_decrypt(privkey, cipher, mG.data(), EPIR_DEFAULT_MG_MAX);
-	ASSERT_EQ(decrypted, (int32_t)msg);
-}
-#endif
 */
+    #[test]
+    fn decrypt_success() {
+        let dec_ctx = DecryptionContext::load_from_file(None).unwrap();
+        let decrypted = dec_ctx.decrypt_cipher(&PRIVKEY.into(), &CIPHER.into());
+        assert_eq!(decrypted, Ok(MSG));
+    }
+    #[test]
+    fn decrypt_fail() {
+        let dec_ctx = DecryptionContext::load_from_file(None).unwrap();
+        let decrypted = dec_ctx.decrypt_cipher(&PUBKEY.into(), &CIPHER.into());
+        assert_eq!(decrypted, Err(()));
+    }
+    #[test]
+    fn random_encrypt_normal() {
+        let enc_ctx = EncryptionContext::new();
+        let pubkey = PublicKey::new(&PRIVKEY.into());
+        let cipher = pubkey.encrypt(&enc_ctx, &MSG.into(), None);
+        let dec_ctx = DecryptionContext::load_from_file(None).unwrap();
+        let decrypted = dec_ctx.decrypt_cipher(&PRIVKEY.into(), &cipher);
+        assert_eq!(decrypted, Ok(MSG));
+    }
+    #[test]
+    fn random_encrypt_fast() {
+        let enc_ctx = EncryptionContext::new();
+        let privkey = PrivateKey::from(PRIVKEY);
+        let cipher = privkey.encrypt(&enc_ctx, &MSG.into(), None);
+        let dec_ctx = DecryptionContext::load_from_file(None).unwrap();
+        let decrypted = dec_ctx.decrypt_cipher(&PRIVKEY.into(), &cipher);
+        assert_eq!(decrypted, Ok(MSG));
+    }
 }
