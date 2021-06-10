@@ -29,7 +29,6 @@ jobs:
       uses: visvirial/sccache-action@v1.0.0
 
     - name: Build
-      working-directory: ${{github.workspace}}/src_rs
       run: cargo build --verbose
 
     - name: Install stable toolchain
@@ -39,10 +38,8 @@ jobs:
         override: true
 
     - name: Run cargo-tarpaulin
-      working-directory: ${{github.workspace}}/src_rs
       uses: actions-rs/tarpaulin@v0.1
 
     - name: Upload to codecov.io
-      working-directory: ${{github.workspace}}/src_rs
       uses: codecov/codecov-action@v1
 
