@@ -6,11 +6,23 @@ use curve25519_dalek::edwards::CompressedEdwardsY;
 use curve25519_dalek::edwards::EdwardsBasepointTable;
 use curve25519_dalek::constants::ED25519_BASEPOINT_POINT;
 
+/// The byte length of a scalar.
 const SCALAR_SIZE: usize = 32;
+/// The byte length of a point.
 const POINT_SIZE : usize = 32;
+/// The byte length of a ciphertext.
 const CIPHER_SIZE: usize = 2 * POINT_SIZE;
+/// log_2(DEFAULT_MMAX).
 const DEFAULT_MMAX_MOD: u8 = 24;
+/// The maximum number of entries in `mG.bin`.
 const DEFAULT_MMAX: usize = 1 << DEFAULT_MMAX_MOD;
+/// The default data directory name.
+const DEFAULT_DATA_DIR: &str = ".EllipticPIR";
+
+/// The default path to mG.bin.
+pub fn mg_default_path() -> Result<String, std::env::VarError> {
+    Ok(std::env::var("HOME")? + "/" + DEFAULT_DATA_DIR + "/mG.bin")
+}
 
 fn format_as_hex(f: &mut std::fmt::Formatter<'_>, bytes: &[u8]) -> std::fmt::Result {
     for i in 0..bytes.len() {
@@ -19,16 +31,35 @@ fn format_as_hex(f: &mut std::fmt::Formatter<'_>, bytes: &[u8]) -> std::fmt::Res
     Ok(())
 }
 
+/// Get a random Scalar.
 pub fn random_scalar() -> Scalar {
     let mut csprng = OsRng;
     Scalar::random(&mut csprng)
 }
 
+/// Ciphertext.
+#[derive(Debug)]
 pub struct Cipher {
     c1: CompressedEdwardsY,
     c2: CompressedEdwardsY,
 }
 
+impl From<[u8; CIPHER_SIZE]> for Cipher {
+    fn from(buf: [u8; CIPHER_SIZE]) -> Self {
+        Self {
+            c1: CompressedEdwardsY::from_slice(&buf[0..POINT_SIZE]),
+            c2: CompressedEdwardsY::from_slice(&buf[POINT_SIZE..CIPHER_SIZE]),
+        }
+    }
+}
+
+impl PartialEq for Cipher {
+    fn eq(&self, other: &Self) -> bool {
+        (self.c1 == other.c1) && (self.c2 == other.c2)
+    }
+}
+
+/// A context need to encrypt a message.
 pub struct EncryptionContext {
     table: EdwardsBasepointTable,
 }
@@ -45,6 +76,7 @@ pub trait Encrypt {
     fn encrypt(&self, enc_ctx: &EncryptionContext, msg: &Scalar, r: Option<&Scalar>) -> Cipher;
 }
 
+/// A private key.
 #[derive(Debug)]
 pub struct PrivateKey {
     scalar: Scalar,
@@ -92,6 +124,7 @@ impl std::fmt::Display for PrivateKey {
     }
 }
 
+/// A public key.
 #[derive(Debug)]
 pub struct PublicKey {
     point: EdwardsPoint,
@@ -198,48 +231,21 @@ mod tests {
         let pubkey = PublicKey::new(&PRIVKEY.into());
         assert_eq!(pubkey, PUBKEY.try_into().unwrap());
     }
+    #[test]
+    fn encrypt_normal() {
+        let enc_ctx = EncryptionContext::new();
+        let pubkey = PublicKey::new(&PRIVKEY.into());
+        let cipher = pubkey.encrypt(&enc_ctx, &MSG.into(), Some(&Scalar::from_bits(R)));
+        assert_eq!(cipher, CIPHER.into());
+    }
+    #[test]
+    fn encrypt_fast() {
+        let enc_ctx = EncryptionContext::new();
+        let privkey = PrivateKey::from(PRIVKEY);
+        let cipher = privkey.encrypt(&enc_ctx, &MSG.into(), Some(&Scalar::from_bits(R)));
+        assert_eq!(cipher, CIPHER.into());
+    }
 /*
-// For selector tests.
-
-static const uint64_t index_counts[] = { 1000, 1000, 1000 };
-static const uint8_t n_indexes = 3;
-static const uint64_t ciphers_count = 3000ULL;
-static const uint64_t idx = 12345678;
-static const uint64_t rows[] = { idx / 1'000'000ULL, (idx % 1'000'000ULL) / 1'000ULL, (idx % 1'000ULL) };
-static const unsigned char selector_hash[] = {
-	0xda, 0x20, 0x9d, 0x4f, 0x85, 0xad, 0x0d, 0xb2,
-	0x68, 0x45, 0x6f, 0x0d, 0x4e, 0x9e, 0x90, 0x7f,
-	0x8f, 0x87, 0x31, 0xa6, 0x69, 0x5d, 0xa5, 0x5f,
-	0x1f, 0x3d, 0x19, 0x2f, 0x59, 0xac, 0xe9, 0x0c
-};
-
-#define DIMENSION (3)
-#define PACKING   (3)
-#define ELEM_SIZE (32)
-*/
-
-/*
-TEST(ECElGamalTest, create_public_key) {
-	unsigned char pubkey_test[EPIR_POINT_SIZE];
-	epir_pubkey_from_privkey(pubkey_test, privkey);
-	ASSERT_PRED2(SamePoint, pubkey_test, pubkey);
-}
-
-TEST(ECElGamalTest, encrypt_normal) {
-	unsigned char cipher_test[EPIR_CIPHER_SIZE];
-	epir_ecelgamal_encrypt(cipher_test, pubkey, msg, r);
-	ASSERT_PRED2(SameCipher, cipher_test, cipher);
-}
-
-TEST(ECElGamalTest, encrypt_fast) {
-	unsigned char cipher_test[EPIR_CIPHER_SIZE];
-	epir_ecelgamal_encrypt_fast(cipher_test, privkey, msg, r);
-	ASSERT_PRED2(SameCipher, cipher_test, cipher);
-}
-
-#ifdef TEST_USING_MG
-static std::vector<epir_mG_t> mG_test(MG_SMALL_MMAX);
-
 TEST(ECElGamalTest, mG_generate_no_sort) {
 	size_t points_computed = 0;
 	epir_mG_generate_no_sort(mG_test.data(), mG_test.size(), [](const size_t points_computed_test, void *data) {
@@ -248,17 +254,14 @@ TEST(ECElGamalTest, mG_generate_no_sort) {
 		EXPECT_EQ(points_computed_test, *points_computed);
 	}, &points_computed);
 }
-
 TEST(ECElGamalTest, mG_generate_sort) {
 	epir_mG_sort(mG_test.data(), mG_test.size());
 	ASSERT_PRED2(SameHash<epir_mG_t>, mG_test, mG_hash_small);
 }
-
 TEST(ECElGamalTest, mG_generate) {
 	epir_mG_generate(mG_test.data(), mG_test.size(), NULL, NULL);
 	ASSERT_PRED2(SameHash<epir_mG_t>, mG_test, mG_hash_small);
 }
-
 TEST(ECElGamalTest, mG_interpolation_search) {
 	#pragma omp parallel for
 	for(size_t i=0; i<mG_test.size(); i++) {
@@ -267,13 +270,12 @@ TEST(ECElGamalTest, mG_interpolation_search) {
 		EXPECT_EQ(scalar_test, (int32_t)mG.scalar);
 	}
 }
-
-TEST(ECElGamalTest, mG_default_path) {
-	char path_default[epir_mG_default_path_length() + 1];
-	epir_mG_default_path(path_default, epir_mG_default_path_length() + 1);
-	EXPECT_EQ(std::string(path_default), std::string(getenv("HOME")) + "/" + EPIR_DEFAULT_DATA_DIR + "/mG.bin");
-}
-
+*/
+    #[test]
+    fn mg_default_path() {
+        assert_eq!(super::mg_default_path().unwrap(), std::env::var("HOME").unwrap() + "/.EllipticPIR/mG.bin");
+    }
+/*
 TEST(ECElGamalTest, mG_load_default) {
 	// Write mG.bin to /tmp/mG.bin.
 	const std::string path = "/tmp/mG.bin";
@@ -289,24 +291,20 @@ TEST(ECElGamalTest, mG_load_default) {
 	// Delete.
 	EXPECT_TRUE(std::filesystem::remove(path));
 }
-
 TEST(ECElGamalTest, decrypt_success) {
 	const int32_t decrypted = epir_ecelgamal_decrypt(privkey, cipher, mG.data(), EPIR_DEFAULT_MG_MAX);
 	ASSERT_EQ(decrypted, (int32_t)msg);
 }
-
 TEST(ECElGamalTest, decrypt_fail) {
 	const int32_t decrypted = epir_ecelgamal_decrypt(pubkey, cipher, mG.data(), EPIR_DEFAULT_MG_MAX);
 	ASSERT_EQ(decrypted, -1);
 }
-
 TEST(ECElGamalTest, random_encrypt_normal) {
 	unsigned char cipher_test[EPIR_CIPHER_SIZE];
 	epir_ecelgamal_encrypt(cipher_test, pubkey, msg, NULL);
 	const int32_t decrypted = epir_ecelgamal_decrypt(privkey, cipher, mG.data(), EPIR_DEFAULT_MG_MAX);
 	ASSERT_EQ(decrypted, (int32_t)msg);
 }
-
 TEST(ECElGamalTest, random_encrypt_fast) {
 	unsigned char cipher_test[EPIR_CIPHER_SIZE];
 	epir_ecelgamal_encrypt_fast(cipher_test, privkey, msg, NULL);
@@ -314,12 +312,5 @@ TEST(ECElGamalTest, random_encrypt_fast) {
 	ASSERT_EQ(decrypted, (int32_t)msg);
 }
 #endif
-
-int main(int argc, char *argv[]) {
-	::testing::InitGoogleTest(&argc, argv);
-	const size_t elems_read = epir_mG_load(mG.data(), EPIR_DEFAULT_MG_MAX, NULL);
-	EXPECT_EQ(elems_read, (size_t)EPIR_DEFAULT_MG_MAX);
-	return RUN_ALL_TESTS();
-}
 */
 }
