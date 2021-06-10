@@ -177,6 +177,7 @@ impl std::fmt::Display for PublicKey {
     }
 }
 
+#[derive(Clone)]
 struct MGEntry {
     point: [u8; POINT_SIZE],
     scalar: u32,
@@ -196,6 +197,7 @@ impl MGEntry {
 }
 
 /// A decryption context.
+#[derive(Clone)]
 pub struct DecryptionContext {
     mgs: Vec<MGEntry>,
 }
@@ -339,6 +341,16 @@ mod tests {
         let cipher = privkey.encrypt(&enc_ctx, &MSG.into(), Some(&Scalar::from_bits(R)));
         assert_eq!(cipher, CIPHER.into());
     }
+    /*
+    #[test]
+    fn mg_generate_no_sort() {
+        let points_computed = 0;
+        let dec_ctx = DecryptionContext::generate(SMALL_MMAX, |points_computed_test| {
+            points_computed += 1;
+            assert_eq!(points_computed_test, points_computed);
+        });
+    }
+    */
 /*
 TEST(ECElGamalTest, mG_generate_no_sort) {
 	size_t points_computed = 0;
@@ -386,34 +398,51 @@ TEST(ECElGamalTest, mG_load_default) {
 	EXPECT_TRUE(std::filesystem::remove(path));
 }
 */
+    static mut DEC_CTX: DecryptionContext = DecryptionContext { mgs: Vec::new(), };
+    static DEC_CTX_INIT: std::sync::Once = std::sync::Once::new();
+    fn init_dec_ctx() {
+        unsafe {
+            DEC_CTX_INIT.call_once(|| {
+                DEC_CTX = DecryptionContext::load_from_file(None).unwrap();
+            });
+        }
+    }
     #[test]
     fn decrypt_success() {
-        let dec_ctx = DecryptionContext::load_from_file(None).unwrap();
-        let decrypted = dec_ctx.decrypt_cipher(&PRIVKEY.into(), &CIPHER.into());
-        assert_eq!(decrypted, Ok(MSG));
+        init_dec_ctx();
+        unsafe {
+            let decrypted = DEC_CTX.decrypt_cipher(&PRIVKEY.into(), &CIPHER.into());
+            assert_eq!(decrypted, Ok(MSG));
+        }
     }
     #[test]
     fn decrypt_fail() {
-        let dec_ctx = DecryptionContext::load_from_file(None).unwrap();
-        let decrypted = dec_ctx.decrypt_cipher(&PUBKEY.into(), &CIPHER.into());
-        assert_eq!(decrypted, Err(()));
+        init_dec_ctx();
+        unsafe {
+            let decrypted = DEC_CTX.decrypt_cipher(&PUBKEY.into(), &CIPHER.into());
+            assert_eq!(decrypted, Err(()));
+        }
     }
     #[test]
     fn random_encrypt_normal() {
         let enc_ctx = EncryptionContext::new();
         let pubkey = PublicKey::new(&PRIVKEY.into());
         let cipher = pubkey.encrypt(&enc_ctx, &MSG.into(), None);
-        let dec_ctx = DecryptionContext::load_from_file(None).unwrap();
-        let decrypted = dec_ctx.decrypt_cipher(&PRIVKEY.into(), &cipher);
-        assert_eq!(decrypted, Ok(MSG));
+        init_dec_ctx();
+        unsafe {
+            let decrypted = DEC_CTX.decrypt_cipher(&PRIVKEY.into(), &cipher);
+            assert_eq!(decrypted, Ok(MSG));
+        }
     }
     #[test]
     fn random_encrypt_fast() {
         let enc_ctx = EncryptionContext::new();
         let privkey = PrivateKey::from(PRIVKEY);
         let cipher = privkey.encrypt(&enc_ctx, &MSG.into(), None);
-        let dec_ctx = DecryptionContext::load_from_file(None).unwrap();
-        let decrypted = dec_ctx.decrypt_cipher(&PRIVKEY.into(), &cipher);
-        assert_eq!(decrypted, Ok(MSG));
+        init_dec_ctx();
+        unsafe {
+            let decrypted = DEC_CTX.decrypt_cipher(&PRIVKEY.into(), &cipher);
+            assert_eq!(decrypted, Ok(MSG));
+        }
     }
 }
