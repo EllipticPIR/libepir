@@ -63,7 +63,7 @@ pub trait Encrypt {
 }
 
 /// A private key.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct PrivateKey {
     scalar: Scalar,
 }
@@ -94,12 +94,6 @@ impl Encrypt for PrivateKey {
     }
 }
 
-impl PartialEq for PrivateKey {
-    fn eq(&self, other: &Self) -> bool {
-        self.scalar == other.scalar
-    }
-}
-
 impl std::fmt::Display for PrivateKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let bytes = self.scalar.as_bytes();
@@ -108,7 +102,7 @@ impl std::fmt::Display for PrivateKey {
 }
 
 /// A public key.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct PublicKey {
     point: EdwardsPoint,
 }
@@ -129,12 +123,6 @@ impl TryFrom<[u8; POINT_SIZE]> for PublicKey {
             Some(point) => Ok(Self { point }),
             None => Err(()),
         }
-    }
-}
-
-impl PartialEq for PublicKey {
-    fn eq(&self, other: &Self) -> bool {
-        self.point == other.point
     }
 }
 
@@ -389,12 +377,14 @@ mod tests {
         0x55, 0x31, 0x75, 0x4a, 0xf5, 0x93, 0x76, 0x34,
         0x6c, 0x8b, 0x52, 0x84, 0xee, 0xf2, 0x52, 0x07,
     ];
+    const PRIVKEY_STR: &str = "7ef6add2bed59a79ba6edcfba48fde7a5531754af59376346c8b5284eef25207";
     const PUBKEY: [u8; POINT_SIZE] = [
         0x9c, 0x76, 0x82, 0x3d, 0xbd, 0xb9, 0xbf, 0x04,
         0x8f, 0xc5, 0xc2, 0xaf, 0x00, 0x0e, 0x28, 0xa1,
         0x48, 0xee, 0x02, 0x19, 0x99, 0xfb, 0x7f, 0x21,
         0xca, 0x1f, 0x84, 0xb8, 0xfe, 0x73, 0xd7, 0xe8,
     ];
+    const PUBKEY_STR: &str = "9c76823dbdb9bf048fc5c2af000e28a148ee021999fb7f21ca1f84b8fe73d7e8";
     const MSG: u32 = (0x12345678 & (DEFAULT_MMAX - 1)) as u32;
     const R: [u8; SCALAR_SIZE] = [
         0x42, 0xff, 0x2d, 0x98, 0x4a, 0xe5, 0xa2, 0x8f,
@@ -426,13 +416,25 @@ mod tests {
         PrivateKey::new(&mut rng);
     }
     #[test]
+    fn display_private_key() {
+        let privkey = PrivateKey::from(PRIVKEY);
+        let privkey_str = format!("{}", privkey);
+        assert_eq!(privkey_str, PRIVKEY_STR);
+    }
+    #[test]
     fn create_public_key() {
         let pubkey = PublicKey::new(&PRIVKEY.into());
         assert_eq!(pubkey, PUBKEY.try_into().unwrap());
     }
     #[test]
+    fn display_public_key() {
+        let pubkey: PublicKey = PUBKEY.try_into().unwrap();
+        let pubkey_str = format!("{}", pubkey);
+        assert_eq!(pubkey_str, PUBKEY_STR);
+    }
+    #[test]
     fn encrypt_normal() {
-        let pubkey = PublicKey::new(&PRIVKEY.into());
+        let pubkey: PublicKey = PUBKEY.try_into().unwrap();
         let mut rng = ConstRng::new(vec![Scalar::from_bits(R)]);
         let cipher = pubkey.encrypt(&MSG.into(), &mut rng);
         assert_eq!(cipher, CIPHER.into());
@@ -493,7 +495,7 @@ mod tests {
     }
     #[test]
     fn random_encrypt_normal() {
-        let pubkey = PublicKey::new(&PRIVKEY.into());
+        let pubkey: PublicKey = PUBKEY.try_into().unwrap();
         let mut rng: DefaultRng = Default::default();
         let cipher = pubkey.encrypt(&MSG.into(), &mut rng);
         init_dec_ctx();
