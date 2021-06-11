@@ -2,6 +2,7 @@ libepir - EllipticPIR client library
 ====================================
 
 ![CMake](https://github.com/EllipticPIR/libepir/actions/workflows/cmake.yml/badge.svg)
+[![Rust](https://github.com/EllipticPIR/libepir/actions/workflows/rust.yml/badge.svg)](https://github.com/EllipticPIR/libepir/actions/workflows/rust.yml)
 ![Node.js CI](https://github.com/EllipticPIR/libepir/actions/workflows/node.js.yml/badge.svg)
 [![codecov](https://codecov.io/gh/EllipticPIR/libepir/branch/master/graph/badge.svg?token=SUZFQ09J2O)](https://codecov.io/gh/EllipticPIR/libepir)
 
@@ -13,7 +14,8 @@ This library contains cryptographic functions which are required
 to encrypt a query (a selector) to the EllipticPIR server
 and to decrypt a reply from the EllipticPIR server.
 
-This repository provides native C library and bindings for C++, JavaScript and TypeScript programming languages.
+This repository provides native C library implementation and bindings for C++,
+native Rust implementation and JavaScript and TypeScript programming languages.
 
 C / C++
 -------
@@ -44,6 +46,35 @@ $ epir_genm
 Include [epir.h](./src_c/epir.h) (C) or [epir.hpp](./src_c/epir.hpp) (C++) in your source code.
 
 For general usage, see [./src\_c/bench\_\*.(c|cpp)](./src_c) files.
+
+Rust
+----
+
+### Install
+
+#### cargo
+
+```bash
+cargo install epir
+```
+
+#### git
+
+```bash
+$ git clone https://github.com/EllipticPIR/libepir.git
+$ cd libepir
+$ cargo build
+```
+
+### Generate mG.bin
+
+```bash
+$ cargo run --bin gen_mg
+```
+
+### Usage
+
+Visit [docs.rs/epir](https://docs.rs/epir) for usage.
 
 Node.js / TypeScript
 --------------------
