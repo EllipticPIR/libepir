@@ -1,6 +1,7 @@
 use std::time::Instant;
 use std::path::Path;
-use epir::ecelgamal::{mg_default_path, DEFAULT_MMAX_MOD, DecryptionContext};
+use epir::*;
+use epir::ecelgamal::*;
 
 pub fn main() {
     let path_default = mg_default_path().expect("Failed to determine default mG.bin path.");

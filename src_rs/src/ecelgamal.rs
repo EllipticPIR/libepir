@@ -11,24 +11,6 @@ use curve25519_dalek::constants::ED25519_BASEPOINT_TABLE;
 use curve25519_dalek::constants::ED25519_BASEPOINT_POINT;
 use crate::*;
 
-/// The byte length of a scalar.
-pub const SCALAR_SIZE: usize = 32;
-/// The byte length of a point.
-pub const POINT_SIZE : usize = 32;
-/// The byte length of a ciphertext.
-pub const CIPHER_SIZE: usize = 2 * POINT_SIZE;
-/// log_2(DEFAULT_MMAX).
-pub const DEFAULT_MMAX_MOD: u8 = 24;
-/// The maximum number of entries in `mG.bin`.
-pub const DEFAULT_MMAX: u32 = 1 << DEFAULT_MMAX_MOD;
-/// The default data directory name.
-pub const DEFAULT_DATA_DIR: &str = ".EllipticPIR";
-
-/// The default path to mG.bin.
-pub fn mg_default_path() -> Result<String, std::env::VarError> {
-    Ok(std::env::var("HOME")? + "/" + DEFAULT_DATA_DIR + "/mG.bin")
-}
-
 fn format_as_hex(f: &mut std::fmt::Formatter<'_>, bytes: &[u8]) -> std::fmt::Result {
     for i in 0..bytes.len() {
         write!(f, "{:02x}", bytes[i])?;
@@ -43,8 +25,8 @@ pub struct Cipher {
     c2: CompressedEdwardsY,
 }
 
-impl From<[u8; CIPHER_SIZE]> for Cipher {
-    fn from(buf: [u8; CIPHER_SIZE]) -> Self {
+impl From<&[u8; CIPHER_SIZE]> for Cipher {
+    fn from(buf: &[u8; CIPHER_SIZE]) -> Self {
         Self {
             c1: CompressedEdwardsY::from_slice(&buf[0..POINT_SIZE]),
             c2: CompressedEdwardsY::from_slice(&buf[POINT_SIZE..CIPHER_SIZE]),
@@ -55,6 +37,16 @@ impl From<[u8; CIPHER_SIZE]> for Cipher {
 impl PartialEq for Cipher {
     fn eq(&self, other: &Self) -> bool {
         (self.c1 == other.c1) && (self.c2 == other.c2)
+    }
+}
+
+impl From<&Cipher> for [u8; CIPHER_SIZE] {
+    fn from(cipher: &Cipher) -> [u8; CIPHER_SIZE] {
+        let mut buf = [0u8; CIPHER_SIZE];
+        let (l, r) = buf.split_at_mut(POINT_SIZE);
+        l.copy_from_slice(cipher.c1.as_bytes());
+        r.copy_from_slice(cipher.c2.as_bytes());
+        buf
     }
 }
 
@@ -115,10 +107,10 @@ impl PublicKey {
     }
 }
 
-impl TryFrom<[u8; POINT_SIZE]> for PublicKey {
+impl TryFrom<&[u8; POINT_SIZE]> for PublicKey {
     type Error = ();
-    fn try_from(buf: [u8; POINT_SIZE]) -> Result<Self, Self::Error> {
-        let point = CompressedEdwardsY::from_slice(&buf).decompress();
+    fn try_from(buf: &[u8; POINT_SIZE]) -> Result<Self, Self::Error> {
+        let point = CompressedEdwardsY::from_slice(buf).decompress();
         match point {
             Some(point) => Ok(Self { point }),
             None => Err(()),
@@ -203,13 +195,12 @@ impl DecryptionContext {
         }
         let tg = points[n_threads - 1] + one;
         let (tx, rx) = channel();
-        let mut handles = Vec::new();
         for thread_id in 0..n_threads {
             let mut point = points[thread_id].clone();
             let tg = tg.clone();
             let tx = tx.clone();
             let mmax = mmax;
-            let handle = std::thread::spawn(move || {
+            std::thread::spawn(move || {
                 let mut scalar = thread_id as u32;
                 tx.send(MGEntry {
                     point: point.compress().to_bytes(),
@@ -227,7 +218,6 @@ impl DecryptionContext {
                     }).unwrap();
                 }
             });
-            handles.push(handle);
         }
         let mut result = Vec::new();
         let mut pc = 0;
@@ -371,20 +361,6 @@ impl From<Vec<MGEntry>> for DecryptionContext {
 mod tests {
     use super::*;
     use crate::tests::*;
-    const PRIVKEY: [u8; SCALAR_SIZE] = [
-        0x7e, 0xf6, 0xad, 0xd2, 0xbe, 0xd5, 0x9a, 0x79,
-        0xba, 0x6e, 0xdc, 0xfb, 0xa4, 0x8f, 0xde, 0x7a,
-        0x55, 0x31, 0x75, 0x4a, 0xf5, 0x93, 0x76, 0x34,
-        0x6c, 0x8b, 0x52, 0x84, 0xee, 0xf2, 0x52, 0x07,
-    ];
-    const PRIVKEY_STR: &str = "7ef6add2bed59a79ba6edcfba48fde7a5531754af59376346c8b5284eef25207";
-    const PUBKEY: [u8; POINT_SIZE] = [
-        0x9c, 0x76, 0x82, 0x3d, 0xbd, 0xb9, 0xbf, 0x04,
-        0x8f, 0xc5, 0xc2, 0xaf, 0x00, 0x0e, 0x28, 0xa1,
-        0x48, 0xee, 0x02, 0x19, 0x99, 0xfb, 0x7f, 0x21,
-        0xca, 0x1f, 0x84, 0xb8, 0xfe, 0x73, 0xd7, 0xe8,
-    ];
-    const PUBKEY_STR: &str = "9c76823dbdb9bf048fc5c2af000e28a148ee021999fb7f21ca1f84b8fe73d7e8";
     const MSG: u32 = (0x12345678 & (DEFAULT_MMAX - 1)) as u32;
     const R: [u8; SCALAR_SIZE] = [
         0x42, 0xff, 0x2d, 0x98, 0x4a, 0xe5, 0xa2, 0x8f,
@@ -424,27 +400,27 @@ mod tests {
     #[test]
     fn create_public_key() {
         let pubkey = PublicKey::new(&PRIVKEY.into());
-        assert_eq!(pubkey, PUBKEY.try_into().unwrap());
+        assert_eq!(pubkey, (&PUBKEY).try_into().unwrap());
     }
     #[test]
     fn display_public_key() {
-        let pubkey: PublicKey = PUBKEY.try_into().unwrap();
+        let pubkey: PublicKey = (&PUBKEY).try_into().unwrap();
         let pubkey_str = format!("{}", pubkey);
         assert_eq!(pubkey_str, PUBKEY_STR);
     }
     #[test]
     fn encrypt_normal() {
-        let pubkey: PublicKey = PUBKEY.try_into().unwrap();
+        let pubkey: PublicKey = (&PUBKEY).try_into().unwrap();
         let mut rng = ConstRng::new(vec![Scalar::from_bits(R)]);
         let cipher = pubkey.encrypt(&MSG.into(), &mut rng);
-        assert_eq!(cipher, CIPHER.into());
+        assert_eq!(cipher, (&CIPHER).into());
     }
     #[test]
     fn encrypt_fast() {
         let privkey = PrivateKey::from(PRIVKEY);
         let mut rng = ConstRng::new(vec![Scalar::from_bits(R)]);
         let cipher = privkey.encrypt(&MSG.into(), &mut rng);
-        assert_eq!(cipher, CIPHER.into());
+        assert_eq!(cipher, (&CIPHER).into());
     }
     #[test]
     fn mg_generate() {
@@ -481,7 +457,7 @@ mod tests {
     fn decrypt_success() {
         init_dec_ctx();
         unsafe {
-            let decrypted = DEC_CTX.decrypt_cipher(&PRIVKEY.into(), &CIPHER.into());
+            let decrypted = DEC_CTX.decrypt_cipher(&PRIVKEY.into(), &(&CIPHER).into());
             assert_eq!(decrypted, Ok(MSG));
         }
     }
@@ -489,13 +465,13 @@ mod tests {
     fn decrypt_fail() {
         init_dec_ctx();
         unsafe {
-            let decrypted = DEC_CTX.decrypt_cipher(&PUBKEY.into(), &CIPHER.into());
+            let decrypted = DEC_CTX.decrypt_cipher(&PUBKEY.into(), &(&CIPHER).into());
             assert_eq!(decrypted, Err(()));
         }
     }
     #[test]
     fn random_encrypt_normal() {
-        let pubkey: PublicKey = PUBKEY.try_into().unwrap();
+        let pubkey: PublicKey = (&PUBKEY).try_into().unwrap();
         let mut rng: DefaultRng = Default::default();
         let cipher = pubkey.encrypt(&MSG.into(), &mut rng);
         init_dec_ctx();
