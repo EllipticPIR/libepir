@@ -21,6 +21,7 @@ pub fn mg_default_path() -> Result<String, std::env::VarError> {
 
 pub mod ecelgamal;
 pub mod selector;
+pub mod reply;
 
 pub trait Rng {
     fn next(&mut self) -> Scalar;
@@ -40,6 +41,7 @@ impl Rng for DefaultRng {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ecelgamal::*;
     use sha2::{Digest, Sha256};
     pub const PRIVKEY: [u8; SCALAR_SIZE] = [
         0x7e, 0xf6, 0xad, 0xd2, 0xbe, 0xd5, 0x9a, 0x79,
@@ -55,6 +57,15 @@ mod tests {
         0xca, 0x1f, 0x84, 0xb8, 0xfe, 0x73, 0xd7, 0xe8,
     ];
     pub const PUBKEY_STR: &str = "9c76823dbdb9bf048fc5c2af000e28a148ee021999fb7f21ca1f84b8fe73d7e8";
+    pub static mut DEC_CTX: Option<DecryptionContext> = None;
+    static DEC_CTX_INIT: std::sync::Once = std::sync::Once::new();
+    pub fn init_dec_ctx() {
+        unsafe {
+            DEC_CTX_INIT.call_once(|| {
+                DEC_CTX = Some(DecryptionContext::load_from_file(None).unwrap());
+            });
+        }
+    }
     pub fn sha256sum(buf: &Vec<u8>) -> [u8; 32] {
         Sha256::digest(buf).into()
     }

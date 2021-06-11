@@ -19,7 +19,7 @@ fn format_as_hex(f: &mut std::fmt::Formatter<'_>, bytes: &[u8]) -> std::fmt::Res
 }
 
 /// Ciphertext.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Cipher {
     c1: CompressedEdwardsY,
     c2: CompressedEdwardsY,
@@ -444,20 +444,11 @@ mod tests {
     fn mg_default_path() {
         assert_eq!(super::mg_default_path().unwrap(), std::env::var("HOME").unwrap() + "/.EllipticPIR/mG.bin");
     }
-    static mut DEC_CTX: DecryptionContext = DecryptionContext { mgs: Vec::new(), };
-    static DEC_CTX_INIT: std::sync::Once = std::sync::Once::new();
-    fn init_dec_ctx() {
-        unsafe {
-            DEC_CTX_INIT.call_once(|| {
-                DEC_CTX = DecryptionContext::load_from_file(None).unwrap();
-            });
-        }
-    }
     #[test]
     fn decrypt_success() {
         init_dec_ctx();
         unsafe {
-            let decrypted = DEC_CTX.decrypt_cipher(&PRIVKEY.into(), &(&CIPHER).into());
+            let decrypted = DEC_CTX.as_ref().unwrap().decrypt_cipher(&PRIVKEY.into(), &(&CIPHER).into());
             assert_eq!(decrypted, Ok(MSG));
         }
     }
@@ -465,7 +456,7 @@ mod tests {
     fn decrypt_fail() {
         init_dec_ctx();
         unsafe {
-            let decrypted = DEC_CTX.decrypt_cipher(&PUBKEY.into(), &(&CIPHER).into());
+            let decrypted = DEC_CTX.as_ref().unwrap().decrypt_cipher(&PUBKEY.into(), &(&CIPHER).into());
             assert_eq!(decrypted, Err(()));
         }
     }
@@ -476,7 +467,7 @@ mod tests {
         let cipher = pubkey.encrypt(&MSG.into(), &mut rng);
         init_dec_ctx();
         unsafe {
-            let decrypted = DEC_CTX.decrypt_cipher(&PRIVKEY.into(), &cipher);
+            let decrypted = DEC_CTX.as_ref().unwrap().decrypt_cipher(&PRIVKEY.into(), &cipher);
             assert_eq!(decrypted, Ok(MSG));
         }
     }
@@ -487,7 +478,7 @@ mod tests {
         let cipher = privkey.encrypt(&MSG.into(), &mut rng);
         init_dec_ctx();
         unsafe {
-            let decrypted = DEC_CTX.decrypt_cipher(&PRIVKEY.into(), &cipher);
+            let decrypted = DEC_CTX.as_ref().unwrap().decrypt_cipher(&PRIVKEY.into(), &cipher);
             assert_eq!(decrypted, Ok(MSG));
         }
     }

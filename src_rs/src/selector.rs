@@ -57,7 +57,7 @@ pub struct Selector {
 }
 
 impl Selector {
-    pub fn create<E, R>(e: &E, ic: &IndexCount, idx: u32, rng: &mut R) -> Self
+    pub fn create<E, R>(key: &E, ic: &IndexCount, idx: u32, rng: &mut R) -> Self
         where E: Encrypt, R: Rng
     {
         let choice = Choice::create(ic, idx);
@@ -66,7 +66,7 @@ impl Selector {
             ciphers.push(Vec::with_capacity(ic.indexes[dim] as usize));
             for row in 0..ic.indexes[dim] {
                 let msg = if choice.choices[dim][row as usize] { 1u8 } else { 0u8 };
-                let cipher = e.encrypt(&msg.into(), rng);
+                let cipher = key.encrypt(&msg.into(), rng);
                 ciphers[dim].push(cipher);
             }
         }
@@ -105,9 +105,6 @@ mod tests {
         0x8f, 0x87, 0x31, 0xa6, 0x69, 0x5d, 0xa5, 0x5f,
         0x1f, 0x3d, 0x19, 0x2f, 0x59, 0xac, 0xe9, 0x0c
     ];
-    const DIMENSION: u8 = 3;
-    const PACKING: u8 = 3;
-    const ELEM_SIZE: u8 = 32;
     #[test]
     fn ciphers() {
         let ic = IndexCount::new(&INDEX_COUNT);
