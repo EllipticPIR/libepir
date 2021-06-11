@@ -48,7 +48,7 @@ fn bench_generate(c: &mut Criterion) {
     group.sample_size(10);
     group.bench_function("no_sort", |b| {
         b.iter(|| {
-            mgs = DecryptionContext::generate_no_sort(Some(MMAX), |_| {});
+            mgs = DecryptionContext::generate_no_sort(Some(MMAX), None::<fn(_)>);
         })
     });
     group.sample_size(100);

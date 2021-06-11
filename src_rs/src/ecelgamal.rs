@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use std::convert::{TryFrom, TryInto};
 use std::io::Read;
-use rayon::prelude::*;
+use std::sync::mpsc::channel;
 use rand_core::OsRng;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::edwards::EdwardsPoint;
@@ -167,7 +167,7 @@ impl std::fmt::Display for PublicKey {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct MGEntry {
     point: [u8; POINT_SIZE],
     scalar: u32,
@@ -213,29 +213,72 @@ pub struct DecryptionContext {
 }
 
 impl DecryptionContext {
-    pub fn generate_no_sort<F>(mmax: Option<u32>, mut cb: F) -> Vec<MGEntry>
-        where F: FnMut(u32)
+    pub fn generate_no_sort<CB>(mmax: Option<u32>, cb: Option<CB>) -> Vec<MGEntry>
+        where CB: FnMut(u32) -> ()
     {
+        let mmax = mmax.unwrap_or(DEFAULT_MMAX);
         let one = ED25519_BASEPOINT_POINT;
-        let mut result = Vec::new();
-        let mut point = EIGHT_TORSION[0];
-        let mut points_computed = 0;
-        for scalar in 0..mmax.unwrap_or(DEFAULT_MMAX) {
-            result.push(MGEntry {
-                point: point.compress().to_bytes(),
-                scalar,
+        let n_threads = num_cpus::get();
+        let mut points = Vec::new();
+        points.push(EIGHT_TORSION[0]);
+        for i in 1..n_threads {
+            points.push(points[i - 1] + one);
+        }
+        let tg = points[n_threads - 1] + one;
+        let (tx, rx) = channel();
+        let mut handles = Vec::new();
+        for thread_id in 0..n_threads {
+            let mut point = points[thread_id].clone();
+            let tg = tg.clone();
+            let tx = tx.clone();
+            let mmax = mmax;
+            let handle = std::thread::spawn(move || {
+                let mut scalar = thread_id as u32;
+                tx.send(MGEntry {
+                    point: point.compress().to_bytes(),
+                    scalar,
+                }).unwrap();
+                loop {
+                    scalar += n_threads as u32;
+                    if scalar >= mmax {
+                        break;
+                    }
+                    point += tg;
+                    tx.send(MGEntry {
+                        point: point.compress().to_bytes(),
+                        scalar,
+                    }).unwrap();
+                }
             });
-            points_computed += 1;
-            cb(points_computed);
-            point += one;
+            handles.push(handle);
+        }
+        let mut result = Vec::new();
+        let mut pc = 0;
+        if let Some(mut func) = cb {
+            for entry in rx {
+                result.push(entry);
+                pc += 1;
+                func(pc);
+                if pc == mmax {
+                    break;
+                }
+            }
+        } else {
+            for entry in rx {
+                result.push(entry);
+                pc += 1;
+                if pc == mmax {
+                    break;
+                }
+            }
         }
         result
     }
     pub fn generate_sort(mgs: &mut Vec<MGEntry>) {
         mgs.sort_unstable();
     }
-    pub fn generate<F>(mmax: Option<u32>, cb: F) -> Self
-        where F: FnMut(u32)
+    pub fn generate<CB>(mmax: Option<u32>, cb: Option<CB>) -> Self
+        where CB: FnMut(u32) -> ()
     {
         let mut mgs = Self::generate_no_sort(mmax, cb);
         Self::generate_sort(&mut mgs);
@@ -401,15 +444,16 @@ mod tests {
     #[test]
     fn mg_generate() {
         let mut points_computed = 0;
-        let dec_ctx = DecryptionContext::generate(Some(SMALL_MMAX), |points_computed_test| {
+        let dec_ctx = DecryptionContext::generate(Some(SMALL_MMAX), Some(|pc: u32| {
             points_computed += 1;
-            assert_eq!(points_computed_test, points_computed);
-        });
+            assert_eq!(pc, points_computed);
+        }));
+        assert_eq!(points_computed, SMALL_MMAX);
         assert_eq!(sha256sum(&dec_ctx.into()), MG_HASH_SMALL);
     }
     #[test]
     fn mg_interpolation_search() {
-        let dec_ctx = DecryptionContext::generate(Some(SMALL_MMAX), |_| {});
+        let dec_ctx = DecryptionContext::generate(Some(SMALL_MMAX), None::<fn(_)>);
         for i in 0..SMALL_MMAX {
             let scalar = dec_ctx.interpolation_search(&dec_ctx.mgs[i as usize].point);
             assert_eq!(scalar, Some(dec_ctx.mgs[i as usize].scalar));

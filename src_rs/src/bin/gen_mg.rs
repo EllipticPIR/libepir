@@ -22,11 +22,11 @@ pub fn main() {
         return;
     }
     let begin_compute = Instant::now();
-    let mut mgs = DecryptionContext::generate_no_sort(Some(mmax), |pc| {
+    let mut mgs = DecryptionContext::generate_no_sort(Some(mmax), Some(|pc| {
         if pc % 1000_000 == 0 {
             println!("{:8} of {:8} points computed ({:3.2}%)", pc, mmax, 100f64 * (pc as f64 / mmax as f64));
         }
-    });
+    }));
     println!("Computation done in {}ms.", begin_compute.elapsed().as_millis());
     let begin_sort = Instant::now();
     DecryptionContext::generate_sort(&mut mgs);
