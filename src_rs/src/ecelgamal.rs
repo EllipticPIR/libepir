@@ -3,6 +3,7 @@ use std::convert::{TryFrom, TryInto};
 use std::io::Read;
 use std::sync::mpsc::channel;
 use rand_core::OsRng;
+use rayon::prelude::*;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::edwards::EdwardsPoint;
 use curve25519_dalek::edwards::CompressedEdwardsY;
@@ -275,7 +276,7 @@ impl DecryptionContext {
         result
     }
     pub fn generate_sort(mgs: &mut Vec<MGEntry>) {
-        mgs.sort_unstable();
+        mgs.par_sort_unstable();
     }
     pub fn generate<CB>(mmax: Option<u32>, cb: Option<CB>) -> Self
         where CB: FnMut(u32) -> ()
