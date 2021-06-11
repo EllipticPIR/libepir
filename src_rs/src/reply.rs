@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use crate::*;
 use crate::ecelgamal::*;
 
@@ -62,8 +63,11 @@ impl Reply {
         let mut reply = self.clone();
         let mut ser = Vec::new();
         for dim in 0..dimension {
-            for i in 0..reply.ciphers.len() {
-                let decrypted = dec_ctx.decrypt_cipher(privkey, &reply.ciphers[i])?;
+            let decrypteds: Vec<Result<u32, ()>> = reply.ciphers.par_iter().map(|cipher| {
+                dec_ctx.decrypt(privkey, &cipher)
+            }).collect();
+            for i in 0..decrypteds.len() {
+                let decrypted = decrypteds[i]?;
                 for p in 0..packing {
                     ser.push(((decrypted >> (8 * p)) & 0xff) as u8);
                 }

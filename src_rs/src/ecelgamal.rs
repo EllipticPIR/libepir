@@ -328,7 +328,7 @@ impl DecryptionContext {
         };
         Ok((c2 - privkey.scalar * c1).compress())
     }
-    pub fn decrypt_cipher(&self, privkey: &PrivateKey, c: &Cipher) -> Result<u32, ()> {
+    pub fn decrypt(&self, privkey: &PrivateKey, c: &Cipher) -> Result<u32, ()> {
         let mg = Self::decrypt_to_mg(privkey, c)?;
         self.interpolation_search(mg.as_bytes()).ok_or(())
     }
@@ -448,7 +448,7 @@ mod tests {
     fn decrypt_success() {
         init_dec_ctx();
         unsafe {
-            let decrypted = DEC_CTX.as_ref().unwrap().decrypt_cipher(&PRIVKEY.into(), &(&CIPHER).into());
+            let decrypted = DEC_CTX.as_ref().unwrap().decrypt(&PRIVKEY.into(), &(&CIPHER).into());
             assert_eq!(decrypted, Ok(MSG));
         }
     }
@@ -456,7 +456,7 @@ mod tests {
     fn decrypt_fail() {
         init_dec_ctx();
         unsafe {
-            let decrypted = DEC_CTX.as_ref().unwrap().decrypt_cipher(&PUBKEY.into(), &(&CIPHER).into());
+            let decrypted = DEC_CTX.as_ref().unwrap().decrypt(&PUBKEY.into(), &(&CIPHER).into());
             assert_eq!(decrypted, Err(()));
         }
     }
@@ -467,7 +467,7 @@ mod tests {
         let cipher = pubkey.encrypt(&MSG.into(), &mut rng);
         init_dec_ctx();
         unsafe {
-            let decrypted = DEC_CTX.as_ref().unwrap().decrypt_cipher(&PRIVKEY.into(), &cipher);
+            let decrypted = DEC_CTX.as_ref().unwrap().decrypt(&PRIVKEY.into(), &cipher);
             assert_eq!(decrypted, Ok(MSG));
         }
     }
@@ -478,7 +478,7 @@ mod tests {
         let cipher = privkey.encrypt(&MSG.into(), &mut rng);
         init_dec_ctx();
         unsafe {
-            let decrypted = DEC_CTX.as_ref().unwrap().decrypt_cipher(&PRIVKEY.into(), &cipher);
+            let decrypted = DEC_CTX.as_ref().unwrap().decrypt(&PRIVKEY.into(), &cipher);
             assert_eq!(decrypted, Ok(MSG));
         }
     }

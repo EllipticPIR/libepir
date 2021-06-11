@@ -37,7 +37,7 @@ fn bench_decrypt(c: &mut Criterion) {
     let dec_ctx = DecryptionContext::load_from_file(None).unwrap();
     c.bench_function("decrypt", |b| {
         b.iter(|| {
-            dec_ctx.decrypt_cipher(&privkey, &cipher).unwrap();
+            dec_ctx.decrypt(&privkey, &cipher).unwrap();
         })
     });
 }
