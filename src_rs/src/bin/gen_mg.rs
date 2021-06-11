@@ -1,4 +1,3 @@
-use std::io::Write;
 use std::time::Instant;
 use std::path::Path;
 use epir::ecelgamal::{mg_default_path, DEFAULT_MMAX_MOD, DecryptionContext};
@@ -31,9 +30,8 @@ pub fn main() {
     let begin_sort = Instant::now();
     DecryptionContext::generate_sort(&mut mgs);
     println!("Points sorted in {}ms.", begin_sort.elapsed().as_millis());
-    let dec_ctx = DecryptionContext::from(mgs);
     let begin_write = Instant::now();
-    let mut file = std::fs::File::create(&path).expect("Failed to open mG.bin for write.");
-    file.write_all(&Vec::from(dec_ctx)[..]).expect("Failed to write to mG.bin.");
+    let dec_ctx = DecryptionContext::from(mgs);
+    dec_ctx.save_to_file(Some(&path)).expect("Failed to write to a file.");
     println!("Output written in {}ms.", begin_write.elapsed().as_millis());
 }

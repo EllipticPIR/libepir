@@ -1,6 +1,6 @@
 #[allow(unused_imports)]
 use std::convert::{TryFrom, TryInto};
-use std::io::Read;
+use std::io::{Read, Write};
 use std::sync::mpsc::channel;
 use rand_core::OsRng;
 use rayon::prelude::*;
@@ -309,6 +309,20 @@ impl DecryptionContext {
                 scalar,
             });
         }
+    }
+    pub fn save_to_file(&self, path: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+        let file = std::fs::File::create(path.unwrap_or(&mg_default_path()?))?;
+        let mut writer = std::io::BufWriter::new(file);
+        for entry in self.mgs.iter() {
+            writer.write(&entry.point)?;
+            writer.write(&[
+                ((entry.scalar >>  0) & 0xff) as u8,
+                ((entry.scalar >>  8) & 0xff) as u8,
+                ((entry.scalar >> 16) & 0xff) as u8,
+                ((entry.scalar >> 24) & 0xff) as u8,
+            ])?;
+        }
+        Ok(())
     }
     pub fn interpolation_search(&self, mg: &[u8; 32]) -> Option<u32> {
         let mut imin = 0;
