@@ -20,3 +20,8 @@ curve25519-dalek = { version = "3", features = [] }
 name = "ecelgamal"
 path = "src/benches/ecelgamal.rs"
 harness = false
+
+[[bench]]
+name = "selector"
+path = "src/benches/selector.rs"
+harness = false

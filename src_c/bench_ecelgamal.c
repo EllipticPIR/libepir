@@ -39,9 +39,24 @@ int main(int argc, char *argv[]) {
 	}
 	
 	unsigned char ciphers[LOOP][EPIR_CIPHER_SIZE];
-	PRINT_MEASUREMENT(true, "Ciphertext encrypted in %.0fms.\n",
+	
+	PRINT_MEASUREMENT(true, "Ciphertext encrypted (normal) in %.0fms.\n",
 		for(size_t i=0; i<LOOP; i++) {
-			//epir_ecelgamal_encrypt(ciphers[i], pubkey, msg[i], NULL);
+			epir_ecelgamal_encrypt(ciphers[i], pubkey, msg[i], NULL);
+		}
+	);
+	
+	PRINT_MEASUREMENT(true, "Ciphertext decrypted in %.0fms.\n",
+		for(size_t i=0; i<LOOP; i++) {
+			int32_t decrypted = epir_ecelgamal_decrypt(privkey, ciphers[i], mG, EPIR_DEFAULT_MG_MAX);
+			if(decrypted != (int32_t)msg[i]) {
+				printf("Decryption error occured! (msg=%d, decrypted=%d)\n", msg[i], decrypted);
+			}
+		}
+	);
+	
+	PRINT_MEASUREMENT(true, "Ciphertext encrypted (fast) in %.0fms.\n",
+		for(size_t i=0; i<LOOP; i++) {
 			epir_ecelgamal_encrypt_fast(ciphers[i], privkey, msg[i], NULL);
 		}
 	);

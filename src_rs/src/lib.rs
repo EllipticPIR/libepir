@@ -38,6 +38,25 @@ impl Rng for DefaultRng {
     }
 }
 
+pub struct ConstRng {
+    scalars: Vec<Scalar>,
+    index: usize,
+}
+impl ConstRng {
+    pub fn new(scalars: Vec<Scalar>) -> Self {
+        Self {
+            scalars,
+            index: 0,
+        }
+    }
+}
+impl Rng for ConstRng {
+    fn next(&mut self) -> Scalar {
+        self.index += 1;
+        self.scalars[self.index - 1]
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -68,24 +87,6 @@ mod tests {
     }
     pub fn sha256sum(buf: &Vec<u8>) -> [u8; 32] {
         Sha256::digest(buf).into()
-    }
-    pub struct ConstRng {
-        scalars: Vec<Scalar>,
-        index: usize,
-    }
-    impl ConstRng {
-        pub fn new(scalars: Vec<Scalar>) -> Self {
-            Self {
-                scalars,
-                index: 0,
-            }
-        }
-    }
-    impl Rng for ConstRng {
-        fn next(&mut self) -> Scalar {
-            self.index += 1;
-            self.scalars[self.index - 1]
-        }
     }
     pub struct XorShift {
         x: u32,

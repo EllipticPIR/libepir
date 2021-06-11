@@ -1,5 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 
+use epir::*;
 use epir::ecelgamal::*;
 
 fn bench_load_mg(c: &mut Criterion) {
@@ -14,23 +15,25 @@ fn bench_load_mg(c: &mut Criterion) {
 }
 
 fn bench_encrypt(c: &mut Criterion) {
-    let privkey = PrivateKey::new();
+    let mut rng: DefaultRng = Default::default();
+    let privkey = PrivateKey::new(&mut rng);
     let pubkey = PublicKey::new(&privkey);
     c.bench_function("encrypt_normal", |b| {
         b.iter(|| {
-            pubkey.encrypt(&1234u32.into(), None);
+            pubkey.encrypt(&1234u32.into(), &mut rng);
         })
     });
     c.bench_function("encrypt_fast", |b| {
         b.iter(|| {
-            privkey.encrypt(&1234u32.into(), None);
+            privkey.encrypt(&1234u32.into(), &mut rng);
         })
     });
 }
 
 fn bench_decrypt(c: &mut Criterion) {
-    let privkey = PrivateKey::new();
-    let cipher = privkey.encrypt(&1234u32.into(), None);
+    let mut rng: DefaultRng = Default::default();
+    let privkey = PrivateKey::new(&mut rng);
+    let cipher = privkey.encrypt(&1234u32.into(), &mut rng);
     let dec_ctx = DecryptionContext::load_from_file(None).unwrap();
     c.bench_function("decrypt", |b| {
         b.iter(|| {

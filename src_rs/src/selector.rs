@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use crate::*;
 use crate::ecelgamal::*;
 
@@ -58,18 +59,25 @@ pub struct Selector {
 
 impl Selector {
     pub fn create<E, R>(key: &E, ic: &IndexCount, idx: u32, rng: &mut R) -> Self
-        where E: Encrypt, R: Rng
+        where E: Encrypt + Sync, R: Rng + Sync + Send
     {
         let choice = Choice::create(ic, idx);
-        let mut ciphers = Vec::with_capacity(ic.indexes.len());
+        let mut entries = Vec::new();
         for dim in 0..ic.indexes.len() {
-            ciphers.push(Vec::with_capacity(ic.indexes[dim] as usize));
-            for row in 0..ic.indexes[dim] {
-                let msg = if choice.choices[dim][row as usize] { 1u8 } else { 0u8 };
-                let cipher = key.encrypt(&msg.into(), rng);
-                ciphers[dim].push(cipher);
+            entries.push(Vec::new());
+            for i in 0..ic.indexes[dim] {
+                entries[dim].push((choice.choices[dim][i as usize], rng.next()));
             }
         }
+        let ciphers = entries.par_iter().map(|entries| {
+            entries.par_iter().map(|entry| {
+                let choice = entry.0;
+                let scalar = entry.1;
+                let mut rng = ConstRng::new(vec![scalar]);
+                let msg = if choice { 1u8 } else { 0u8 };
+                key.encrypt(&msg.into(), &mut rng)
+            }).collect()
+        }).collect();
         Self {
             ciphers,
         }
@@ -94,12 +102,12 @@ mod tests {
     use std::convert::TryInto;
     use super::*;
     use crate::tests::*;
-    const INDEX_COUNT: [u32; 3] = [1000, 1000, 1000];
-    const CIPHERS_COUNT: u32 = 3000;
-    const ELEMENTS_COUNT: u32 = 1_000_000_000;
-    const IDX: u32 = 12345678;
-    const ROWS: [u32; 3] = [IDX / 1_000_000, (IDX % 1_000_000) / 1_000, IDX % 1_000];
-    const SELECTOR_HASH: [u8; 32] = [
+    pub const INDEX_COUNT: [u32; 3] = [1000, 1000, 1000];
+    pub const CIPHERS_COUNT: u32 = 3000;
+    pub const ELEMENTS_COUNT: u32 = 1_000_000_000;
+    pub const IDX: u32 = 12345678;
+    pub const ROWS: [u32; 3] = [IDX / 1_000_000, (IDX % 1_000_000) / 1_000, IDX % 1_000];
+    pub const SELECTOR_HASH: [u8; 32] = [
         0xda, 0x20, 0x9d, 0x4f, 0x85, 0xad, 0x0d, 0xb2,
         0x68, 0x45, 0x6f, 0x0d, 0x4e, 0x9e, 0x90, 0x7f,
         0x8f, 0x87, 0x31, 0xa6, 0x69, 0x5d, 0xa5, 0x5f,
