@@ -2,7 +2,6 @@
 use std::convert::{TryFrom, TryInto};
 use std::io::{Read, Write};
 use std::sync::mpsc::channel;
-use rand_core::OsRng;
 use rayon::prelude::*;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::edwards::EdwardsPoint;
@@ -10,6 +9,7 @@ use curve25519_dalek::edwards::CompressedEdwardsY;
 use curve25519_dalek::constants::EIGHT_TORSION;
 use curve25519_dalek::constants::ED25519_BASEPOINT_TABLE;
 use curve25519_dalek::constants::ED25519_BASEPOINT_POINT;
+use crate::*;
 
 /// The byte length of a scalar.
 pub const SCALAR_SIZE: usize = 32;
@@ -36,12 +36,6 @@ fn format_as_hex(f: &mut std::fmt::Formatter<'_>, bytes: &[u8]) -> std::fmt::Res
     Ok(())
 }
 
-/// Get a random Scalar.
-pub fn random_scalar() -> Scalar {
-    let mut csprng = OsRng;
-    Scalar::random(&mut csprng)
-}
-
 /// Ciphertext.
 #[derive(Debug)]
 pub struct Cipher {
@@ -65,7 +59,7 @@ impl PartialEq for Cipher {
 }
 
 pub trait Encrypt {
-    fn encrypt(&self, msg: &Scalar, r: Option<&Scalar>) -> Cipher;
+    fn encrypt<R: Rng>(&self, msg: &Scalar, rng: &mut R) -> Cipher;
 }
 
 /// A private key.
@@ -75,9 +69,9 @@ pub struct PrivateKey {
 }
 
 impl PrivateKey {
-    pub fn new() -> Self {
+    pub fn new<R: Rng>(rng: &mut R) -> Self {
         Self {
-            scalar: random_scalar(),
+            scalar: rng.next(),
         }
     }
 }
@@ -91,14 +85,11 @@ impl From<[u8; SCALAR_SIZE]> for PrivateKey {
 }
 
 impl Encrypt for PrivateKey {
-    fn encrypt(&self, msg: &Scalar, r: Option<&Scalar>) -> Cipher {
-        let rr = match r {
-            Some(r) => *r,
-            None => random_scalar(),
-        };
+    fn encrypt<R: Rng>(&self, msg: &Scalar, rng: &mut R) -> Cipher {
+        let r = rng.next();
         Cipher{
-            c1: ED25519_BASEPOINT_TABLE.basepoint_mul(&rr).compress(),
-            c2: ED25519_BASEPOINT_TABLE.basepoint_mul(&(&rr * self.scalar + msg)).compress(),
+            c1: ED25519_BASEPOINT_TABLE.basepoint_mul(&r).compress(),
+            c2: ED25519_BASEPOINT_TABLE.basepoint_mul(&(&r * self.scalar + msg)).compress(),
         }
     }
 }
@@ -148,14 +139,11 @@ impl PartialEq for PublicKey {
 }
 
 impl Encrypt for PublicKey {
-    fn encrypt(&self, msg: &Scalar, r: Option<&Scalar>) -> Cipher {
-        let rr = match r {
-            Some(r) => *r,
-            None => random_scalar(),
-        };
+    fn encrypt<R: Rng>(&self, msg: &Scalar, rng: &mut R) -> Cipher {
+        let r = rng.next();
         Cipher{
-            c1: ED25519_BASEPOINT_TABLE.basepoint_mul(&rr).compress(),
-            c2: (&rr * self.point + ED25519_BASEPOINT_TABLE.basepoint_mul(msg)).compress(),
+            c1: ED25519_BASEPOINT_TABLE.basepoint_mul(&r).compress(),
+            c2: (&r * self.point + ED25519_BASEPOINT_TABLE.basepoint_mul(msg)).compress(),
         }
     }
 }
@@ -394,7 +382,7 @@ impl From<Vec<MGEntry>> for DecryptionContext {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sha2::{Digest, Sha256};
+    use crate::tests::*;
     const PRIVKEY: [u8; SCALAR_SIZE] = [
         0x7e, 0xf6, 0xad, 0xd2, 0xbe, 0xd5, 0x9a, 0x79,
         0xba, 0x6e, 0xdc, 0xfb, 0xa4, 0x8f, 0xde, 0x7a,
@@ -434,7 +422,8 @@ mod tests {
     ];
     #[test]
     fn create_private_key() {
-        PrivateKey::new();
+        let mut rng: DefaultRng = Default::default();
+        PrivateKey::new(&mut rng);
     }
     #[test]
     fn create_public_key() {
@@ -444,17 +433,16 @@ mod tests {
     #[test]
     fn encrypt_normal() {
         let pubkey = PublicKey::new(&PRIVKEY.into());
-        let cipher = pubkey.encrypt(&MSG.into(), Some(&Scalar::from_bits(R)));
+        let mut rng = ConstRng::new(vec![Scalar::from_bits(R)]);
+        let cipher = pubkey.encrypt(&MSG.into(), &mut rng);
         assert_eq!(cipher, CIPHER.into());
     }
     #[test]
     fn encrypt_fast() {
         let privkey = PrivateKey::from(PRIVKEY);
-        let cipher = privkey.encrypt(&MSG.into(), Some(&Scalar::from_bits(R)));
+        let mut rng = ConstRng::new(vec![Scalar::from_bits(R)]);
+        let cipher = privkey.encrypt(&MSG.into(), &mut rng);
         assert_eq!(cipher, CIPHER.into());
-    }
-    fn sha256sum(buf: &Vec<u8>) -> [u8; 32] {
-        Sha256::digest(buf).into()
     }
     #[test]
     fn mg_generate() {
@@ -506,7 +494,8 @@ mod tests {
     #[test]
     fn random_encrypt_normal() {
         let pubkey = PublicKey::new(&PRIVKEY.into());
-        let cipher = pubkey.encrypt(&MSG.into(), None);
+        let mut rng: DefaultRng = Default::default();
+        let cipher = pubkey.encrypt(&MSG.into(), &mut rng);
         init_dec_ctx();
         unsafe {
             let decrypted = DEC_CTX.decrypt_cipher(&PRIVKEY.into(), &cipher);
@@ -516,7 +505,8 @@ mod tests {
     #[test]
     fn random_encrypt_fast() {
         let privkey = PrivateKey::from(PRIVKEY);
-        let cipher = privkey.encrypt(&MSG.into(), None);
+        let mut rng: DefaultRng = Default::default();
+        let cipher = privkey.encrypt(&MSG.into(), &mut rng);
         init_dec_ctx();
         unsafe {
             let decrypted = DEC_CTX.decrypt_cipher(&PRIVKEY.into(), &cipher);
