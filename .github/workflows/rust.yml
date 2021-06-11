@@ -31,6 +31,18 @@ jobs:
     - name: Build
       run: cargo build --verbose
 
+    - name: Cache mG.bin
+      id: cache-mG
+      uses: actions/cache@v2
+      with:
+        path: ~/.EllipticPIR
+        key: mG.bin
+
+    - name: Generate mG.bin on cache misses
+      if: steps.cache-mG.outputs.cache-hit != 'true'
+      shell: bash
+      run: cargo run --bin gen_mg --release
+
     - name: Install stable toolchain
       uses: actions-rs/toolchain@v1
       with:
