@@ -28,3 +28,8 @@ harness = false
 name = "selector"
 path = "src/benches/selector.rs"
 harness = false
+
+[[bench]]
+name = "reply"
+path = "src/benches/reply.rs"
+harness = false
