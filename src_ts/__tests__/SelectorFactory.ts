@@ -1,7 +1,6 @@
 
-import { DecryptionContextBase, SelectorFactoryBase, CIPHER_SIZE, MG_DEFAULT_PATH } from '../types';
-import { createDecryptionContext, SelectorFactory } from '../addon';
-import { privkey, pubkey, idx } from './addon';
+import { DecryptionContextBase, DecryptionContextCreateFunction, SelectorFactoryBase, CIPHER_SIZE, MG_DEFAULT_PATH } from '../types';
+import { privkey, pubkey, idx } from './main';
 
 export const checkSelector = (
 	decCtx: DecryptionContextBase, privkey: ArrayBuffer, indexCounts: number[], idx: number, selector: ArrayBuffer): boolean => {
@@ -28,7 +27,9 @@ const INDEX_COUNTS = [100, 100, 100];
 const CAPACITIES = [1000, 10];
 
 export const runTests = (
-	createSelectorFactory: (isFast: boolean, key: ArrayBuffer, capacities?: number[]) => SelectorFactoryBase): void => {
+		createSelectorFactory: (isFast: boolean, key: ArrayBuffer, capacities?: number[]) => SelectorFactoryBase,
+		createDecryptionContext: DecryptionContextCreateFunction,
+	): void => {
 	
 	const decCtxPromise = createDecryptionContext(MG_DEFAULT_PATH);
 	
@@ -71,8 +72,4 @@ export const runTests = (
 		expect(checkSelector(decCtx, privkey.buffer, INDEX_COUNTS, idx, selector)).toBe(true);
 	});
 };
-
-if(require.main === null) {
-	runTests((isFast: boolean, key: ArrayBuffer, capacities?: number[]) => new SelectorFactory(isFast, key, capacities));
-}
 

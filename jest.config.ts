@@ -6,7 +6,7 @@ export default {
 		'<rootDir>/src_ts',
 	],
 	testMatch: [
-		'**/__tests__/**/*.+(ts|tsx|js)',
+		'**/__tests__/node/*.+(ts|tsx|js)',
 		'**/?(*.)+(spec|test).+(ts|tsx|js)',
 	],
 	testPathIgnorePatterns: [
@@ -18,6 +18,7 @@ export default {
 	setupFilesAfterEnv: ['./src_ts/__tests__/crypto.setup.ts'],
 	collectCoverageFrom: [
 		'src_ts/**/*.ts',
+		'!src_ts/**/__tests__/**/*.ts',
 		'!src_ts/index.ts',
 	],
 };

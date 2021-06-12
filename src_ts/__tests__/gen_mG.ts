@@ -1,7 +1,6 @@
 
 import { DecryptionContextCreateFunction } from '../types';
-import { createDecryptionContext } from '../addon';
-import { sha256sum } from './addon';
+import { sha256sum } from './main';
 
 const MMAX = 1 << 16;
 
@@ -42,8 +41,4 @@ export const runTests = (createDecryptionContext: DecryptionContextCreateFunctio
 		}, 30 * 1000);
 	});
 };
-
-if(require.main === null) {
-	runTests(createDecryptionContext);
-}
 

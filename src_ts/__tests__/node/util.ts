@@ -1,11 +1,11 @@
 
 import crypto from 'crypto';
 
-import { SCALAR_SIZE } from '../types';
+import { SCALAR_SIZE } from '../../types';
 import {
 	time, arrayBufferConcat, arrayBufferCompare, arrayBufferToHex, hexToArrayBuffer, checkIsHex,
 	getRandomBytes, isCanonical, getRandomScalar, getRandomScalars, getRandomScalarsConcat
-} from '../util';
+} from '../../util';
 
 let getRandomValues: ((buf: Uint8Array) => void) = (buf: Uint8Array) => {
 	for(let i=0; i<buf.length; i++) {

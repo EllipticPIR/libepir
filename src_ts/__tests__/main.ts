@@ -8,7 +8,6 @@ import {
 	CIPHER_SIZE,
 	MG_DEFAULT_PATH
 } from '../types';
-import { createEpir, createDecryptionContext } from '../addon';
 
 export let x: number;
 export let y: number;
@@ -208,8 +207,4 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 		}, 30 * 1000);
 	});
 };
-
-if(require.main === null) {
-	runTests(createEpir, createDecryptionContext);
-}
 

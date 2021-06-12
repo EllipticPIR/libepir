@@ -1,7 +1,7 @@
 
-import { run as runECElGamal } from '../bench_ecelgamal';
-import { run as runSelector } from '../bench_selector';
-import { run as runReply } from '../bench_reply';
+import { run as runECElGamal } from '../../bench_ecelgamal';
+import { run as runSelector } from '../../bench_selector';
+import { run as runReply } from '../../bench_reply';
 
 describe('bench', () => {
 	test.concurrent.each([

@@ -1,6 +1,6 @@
 
-import { runTests } from './addon';
-import { createEpir, createDecryptionContext } from '../wasm';
+import { runTests } from '../reply';
+import { createEpir, createDecryptionContext } from '../../wasm';
 
 // For WebAssembly tests, we have tests which uses max CPU cores (x2 for main threads and worker threads).
 const testsWithWorkersCount = 4;

@@ -1,7 +1,7 @@
 
 require('fake-indexeddb/auto');
 
-import { loadDecryptionContextFromIndexedDB, saveDecryptionContextToIndexedDB, createDecryptionContext } from '../wasm';
+import { loadDecryptionContextFromIndexedDB, saveDecryptionContextToIndexedDB, createDecryptionContext } from '../../wasm';
 
 require('fake-indexeddb/lib/FDBFactory');
 

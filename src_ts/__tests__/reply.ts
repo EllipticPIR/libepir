@@ -4,8 +4,7 @@ import {
 	DecryptionContextCreateFunction,
 	MG_DEFAULT_PATH
 } from '../types';
-import { createEpir, createDecryptionContext } from '../addon';
-import { generateRandomScalars, xorshift_init, xorshift, privkey, pubkey } from './addon';
+import { generateRandomScalars, xorshift_init, xorshift, privkey, pubkey } from './main';
 
 export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext: DecryptionContextCreateFunction): void => {
 	
@@ -65,8 +64,4 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 	});
 	
 };
-
-if(require.main === null) {
-	runTests(createEpir, createDecryptionContext);
-}
 
