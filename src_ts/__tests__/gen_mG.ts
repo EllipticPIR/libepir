@@ -13,13 +13,13 @@ const mGHashSmall = new Uint8Array([
 
 export const runTests = (createDecryptionContext: DecryptionContextCreateFunction): void => {
 	describe('Generate mG', () => {
-		test('without callback', async () => {
+		it('without callback', async () => {
 			const decCtx = await createDecryptionContext(undefined, MMAX);
 			const mG = decCtx.getMG();
 			expect(sha256sum(mG)).toEqual(mGHashSmall);
 		});
 		const INTERVAL = 1000;
-		test(`with callback (interval: ${INTERVAL.toLocaleString()})`, async () => {
+		it(`with callback (interval: ${INTERVAL.toLocaleString()})`, async () => {
 			let pointsComputed = 0;
 			const decCtx = await createDecryptionContext({ cb: (pointsComputedTest: number) => {
 				pointsComputed = Math.min(MMAX, pointsComputed + INTERVAL);
@@ -29,7 +29,7 @@ export const runTests = (createDecryptionContext: DecryptionContextCreateFunctio
 			const mG = decCtx.getMG();
 			expect(sha256sum(mG)).toEqual(mGHashSmall);
 		}, 30 * 1000);
-		test('with callback (interval: 1)', async () => {
+		it('with callback (interval: 1)', async () => {
 			let pointsComputed = 0;
 			const decCtx = await createDecryptionContext({ cb: (pointsComputedTest: number) => {
 				pointsComputed++;

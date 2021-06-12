@@ -25,17 +25,17 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 			return elem.buffer;
 		};
 		
-		test('get a reply size', async () => {
+		it('get a reply size', async () => {
 			const epir = await epirPromise;
 			expect(epir.computeReplySize(DIMENSION, PACKING, ELEM_SIZE)).toBe(320896);
 		});
 		
-		test('get a reply random count', async () => {
+		it('get a reply random count', async () => {
 			const epir = await epirPromise;
 			expect(epir.computeReplyRCount(DIMENSION, PACKING, ELEM_SIZE)).toBe(5260);
 		});
 		
-		test('decrypt a reply (deterministic, success)', async () => {
+		it('decrypt a reply (deterministic, success)', async () => {
 			const epir = await epirPromise;
 			const decCtx = await decCtxPromise;
 			const elem = generateElem();
@@ -45,7 +45,7 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 			expect(decrypted.slice(0, ELEM_SIZE)).toEqual(elem);
 		}, 30 * 1000);
 		
-		test('decrypt a reply (random, success)', async () => {
+		it('decrypt a reply (random, success)', async () => {
 			const epir = await epirPromise;
 			const decCtx = await decCtxPromise;
 			const elem = generateElem();
@@ -54,7 +54,7 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 			expect(decrypted.slice(0, ELEM_SIZE)).toEqual(elem);
 		}, 30 * 1000);
 		
-		test('decrypt a reply (random, fail)', async () => {
+		it('decrypt a reply (random, fail)', async () => {
 			const epir = await epirPromise;
 			const decCtx = await decCtxPromise;
 			const elem = generateElem();

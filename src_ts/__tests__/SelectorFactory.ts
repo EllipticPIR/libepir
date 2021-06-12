@@ -33,7 +33,7 @@ export const runTests = (
 	
 	const decCtxPromise = createDecryptionContext(MG_DEFAULT_PATH);
 	
-	test('normal', async () => {
+	it('normal', async () => {
 		const decCtx = await decCtxPromise;
 		const selectorFactory = createSelectorFactory(false, pubkey.buffer, CAPACITIES);
 		await selectorFactory.fill();
@@ -41,7 +41,7 @@ export const runTests = (
 		expect(checkSelector(decCtx, privkey.buffer, INDEX_COUNTS, idx, selector)).toBe(true);
 	});
 	
-	test('fast', async () => {
+	it('fast', async () => {
 		const decCtx = await decCtxPromise;
 		const selectorFactory = createSelectorFactory(true, privkey.buffer, CAPACITIES);
 		await selectorFactory.fill();
@@ -49,13 +49,13 @@ export const runTests = (
 		expect(checkSelector(decCtx, privkey.buffer, INDEX_COUNTS, idx, selector)).toBe(true);
 	});
 	
-	test('insufficient', async () => {
+	it('insufficient', async () => {
 		const selectorFactory = createSelectorFactory(true, privkey.buffer, [100, 10]);
 		await selectorFactory.fill();
 		expect(() => { selectorFactory.create(INDEX_COUNTS, idx) }).toThrow(/^Insufficient ciphers cache\.$/);
 	});
 	
-	test('fill twice', async () => {
+	it('fill twice', async () => {
 		const decCtx = await decCtxPromise;
 		const selectorFactory = createSelectorFactory(true, privkey.buffer, CAPACITIES);
 		await selectorFactory.fill();
@@ -64,7 +64,7 @@ export const runTests = (
 		expect(checkSelector(decCtx, privkey.buffer, INDEX_COUNTS, idx, selector)).toBe(true);
 	});
 	
-	test('don\'t refill', async () => {
+	it('don\'t refill', async () => {
 		const decCtx = await decCtxPromise;
 		const selectorFactory = createSelectorFactory(true, privkey.buffer, CAPACITIES);
 		await selectorFactory.fill();
