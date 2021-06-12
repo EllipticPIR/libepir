@@ -74,7 +74,7 @@ jobs:
       run: npm run em:build
 
     - name: Install wasm-pack
-      run: cargo install wasm-pack
+      run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
     - name: Build WebAssembly (Rust)
       run: npm run wasm:build
