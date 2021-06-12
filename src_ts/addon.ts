@@ -26,7 +26,13 @@ declare class DecryptionContext implements DecryptionContextBase {
 export const createDecryptionContext: DecryptionContextCreateFunction = async (
 	param?: DecryptionContextParameter, mmax: number = DEFAULT_MMAX) => {
 	const napi = await new Promise<DecryptionContext>((resolve) => {
-		if((typeof param === 'undefined') || (typeof param === 'string') || (param instanceof ArrayBuffer)) {
+		if(
+			(typeof param === 'undefined') ||
+			(typeof param === 'string') ||
+			(param instanceof ArrayBuffer) ||
+			// hack: Napi's ArrayBuffer is different from JS's ArrayBuffer...
+			(param.constructor.name == 'ArrayBuffer')
+		) {
 			resolve(new epir_napi.DecryptionContext(param, mmax));
 		} else {
 			// We ensure that all the JS callbacks are called.
