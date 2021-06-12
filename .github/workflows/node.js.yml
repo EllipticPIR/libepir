@@ -73,8 +73,14 @@ jobs:
         version: ${{ env.EM_VERSION }}
         actions-cache-folder: ${{ env.EM_CACHE_DIR }}
 
-    - name: Build WebAssembly
+    - name: Build WebAssembly (Emscripten)
       run: npm run em:build
+
+    - name: Install wasm-pack
+      run: cargo install wasm-pack
+
+    - name: Build WebAssembly (Rust)
+      run: npm run wasm:build
 
     - name: Test
       run: npm test -- --maxWorkers=2
