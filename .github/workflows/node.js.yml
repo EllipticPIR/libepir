@@ -58,9 +58,6 @@ jobs:
         export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
         npm ci
 
-    - name: Build
-      run: npm run build --if-present
-
     - name: Cache emsdk-cache
       uses: actions/cache@v2
       with:
@@ -81,6 +78,9 @@ jobs:
 
     - name: Build WebAssembly (Rust)
       run: npm run wasm:build
+
+    - name: Build
+      run: npm run build --if-present
 
     - name: Test
       run: npm test -- --maxWorkers=2
