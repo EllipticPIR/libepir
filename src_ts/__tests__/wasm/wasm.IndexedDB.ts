@@ -5,20 +5,16 @@ import { loadDecryptionContextFromIndexedDB, saveDecryptionContextToIndexedDB, c
 
 require('fake-indexeddb/lib/FDBFactory');
 
-// For WebAssembly tests, we have tests which uses max CPU cores (x2 for main threads and worker threads).
-const testsWithWorkersCount = 2;
-process.setMaxListeners(testsWithWorkersCount * 2 * navigator.hardwareConcurrency);
-
 describe('IndexedDB', () => {
-	test('load (fail)', async () => {
+	it('load (fail)', async () => {
 		const decCtx = await loadDecryptionContextFromIndexedDB();
 		expect(decCtx).toBe(null);
 	});
-	test('save', async () => {
+	it('save', async () => {
 		const decCtx = await createDecryptionContext(undefined, 1 << 8);
 		await saveDecryptionContextToIndexedDB(decCtx);
 	});
-	test('load (success)', async () => {
+	it('load (success)', async () => {
 		const decCtx = await loadDecryptionContextFromIndexedDB();
 		expect(decCtx).not.toBe(null);
 	});
