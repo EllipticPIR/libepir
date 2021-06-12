@@ -107,6 +107,12 @@ impl PublicKey {
     }
 }
 
+impl From<&PublicKey> for [u8; POINT_SIZE] {
+    fn from(pubkey: &PublicKey) -> [u8; POINT_SIZE] {
+        pubkey.point.compress().to_bytes()
+    }
+}
+
 impl TryFrom<&[u8; POINT_SIZE]> for PublicKey {
     type Error = ();
     fn try_from(buf: &[u8; POINT_SIZE]) -> Result<Self, Self::Error> {

@@ -22,6 +22,7 @@ pub fn mg_default_path() -> Result<String, std::env::VarError> {
 pub mod ecelgamal;
 pub mod selector;
 pub mod reply;
+pub mod wasm;
 
 pub trait Rng {
     fn next(&mut self) -> Scalar;

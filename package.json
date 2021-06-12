@@ -17,6 +17,7 @@
     "em:mkdir": "mkdir -p build_em",
     "em:cmake": "cd build_em && EM_NODE_JS=$(which node) emcmake cmake -DCMAKE_INSTALL_PREFIX=../dist ..",
     "em:make": "cd build_em && EM_NODE_JS=$(which node) emmake make -j$(node -e 'console.log(require(\"os\").cpus().length)') all install",
+    "wasm:build": "cd src_rs && wasm-pack build --target nodejs",
     "nuxt:serve": "nuxt dev",
     "nuxt:build": "nuxt build",
     "nuxt:generate": "rm -rf ./build_nuxt && nuxt generate",

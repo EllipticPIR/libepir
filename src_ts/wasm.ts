@@ -19,6 +19,7 @@ import { arrayBufferConcat, getRandomScalar, getRandomScalarsConcat } from './ut
 import EPIRWorker from './wasm.worker.ts';
 import { createLibEpirHelper, LibEpirHelper } from './wasm.libepir';
 import { SelectorFactory } from './wasm.SelectorFactory';
+import * as wasm from '../src_rs/pkg/epir';
 
 export class DecryptionContext implements DecryptionContextBase {
 	
@@ -258,29 +259,15 @@ export class Epir implements EpirBase {
 	}
 	
 	createPubkey(privkey: ArrayBuffer): ArrayBuffer {
-		const pubkey_ = this.helper.malloc(POINT_SIZE);
-		this.helper.call('pubkey_from_privkey', pubkey_, privkey);
-		const pubkey = this.helper.slice(pubkey_, POINT_SIZE);
-		this.helper.free(pubkey_);
-		return pubkey;
-	}
-	
-	encrypt_(
-		key: ArrayBuffer, msg: number, r: ArrayBuffer | undefined,
-		encrypt: string): ArrayBuffer {
-		const cipher_ = this.helper.malloc(CIPHER_SIZE);
-		this.helper.call(encrypt, cipher_, key, msg&0xffffffff, Math.floor(msg/0x100000000), r ? r : getRandomScalar());
-		const cipher = this.helper.slice(cipher_, CIPHER_SIZE);
-		this.helper.free(cipher_);
-		return cipher;
+		return wasm.create_pubkey(new Uint8Array(privkey)).buffer;
 	}
 	
 	encrypt(pubkey: ArrayBuffer, msg: number, r?: ArrayBuffer): ArrayBuffer {
-		return this.encrypt_(pubkey, msg, r, 'ecelgamal_encrypt');
+		return wasm.encrypt(new Uint8Array(pubkey), msg, new Uint8Array(r ? r : getRandomScalar())).buffer;
 	}
 	
 	encryptFast(privkey: ArrayBuffer, msg: number, r?: ArrayBuffer): ArrayBuffer {
-		return this.encrypt_(privkey, msg, r, 'ecelgamal_encrypt_fast');
+		return wasm.encrypt_fast(new Uint8Array(privkey), msg, new Uint8Array(r ? r : getRandomScalar())).buffer;
 	}
 	
 	ciphers_or_elements_count(index_counts: number[], count: string): number {
