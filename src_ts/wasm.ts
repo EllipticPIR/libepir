@@ -270,22 +270,12 @@ export class Epir implements EpirBase {
 		return wasm.encrypt_fast(new Uint8Array(privkey), msg, new Uint8Array(r ? r : getRandomScalar())).buffer;
 	}
 	
-	ciphers_or_elements_count(index_counts: number[], count: string): number {
-		const ic_ = this.helper.malloc(8 * index_counts.length);
-		for(let i=0; i<index_counts.length; i++) {
-			this.helper.store64(ic_ + 8 * i, index_counts[i]);
-		}
-		const c = this.helper.call(count, ic_, index_counts.length) as number;
-		this.helper.free(ic_);
-		return c;
-	}
-	
 	ciphersCount(index_counts: number[]): number {
-		return this.ciphers_or_elements_count(index_counts, 'selector_ciphers_count');
+		return wasm.ciphers_count(new Uint32Array(index_counts));
 	}
 	
 	elementsCount(index_counts: number[]): number {
-		return this.ciphers_or_elements_count(index_counts, 'selector_elements_count');
+		return wasm.elements_count(new Uint32Array(index_counts));
 	}
 	
 	create_choice(index_counts: number[], idx: number): ArrayBuffer {
@@ -343,21 +333,17 @@ export class Epir implements EpirBase {
 	
 	// For testing.
 	computeReplySize(dimension: number, packing: number, elem_size: number): number {
-		return this.helper.call('reply_size', dimension, packing, elem_size) as number;
+		return wasm.reply_size(dimension, packing, elem_size);
 	}
 	
 	computeReplyRCount(dimension: number, packing: number, elem_size: number): number {
-		return this.helper.call('reply_r_count', dimension, packing, elem_size) as number;
+		return wasm.reply_r_count(dimension, packing, elem_size);
 	}
 	
 	computeReplyMock(pubkey: ArrayBuffer, dimension: number, packing: number, elem: ArrayBuffer, r?: ArrayBuffer): ArrayBuffer {
 		const rrc = this.computeReplyRCount(dimension, packing, elem.byteLength);
-		const rs = this.computeReplySize(dimension, packing, elem.byteLength);
-		const reply_ = this.helper.malloc(rs);
-		this.helper.call('reply_mock', reply_, pubkey, dimension, packing, elem, elem.byteLength, r ? r : getRandomScalarsConcat(rrc));
-		const reply = this.helper.slice(reply_, rs);
-		this.helper.free(reply_);
-		return reply;
+		const rr = new Uint8Array(r ? r : getRandomScalarsConcat(rrc));
+		return wasm.reply_mock(new Uint8Array(pubkey), dimension, packing, new Uint8Array(elem), rr).buffer;
 	}
 	
 }
