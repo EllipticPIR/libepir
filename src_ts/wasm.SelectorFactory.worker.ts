@@ -3,6 +3,8 @@ import { arrayBufferConcat } from './util';
 import { SCALAR_SIZE, CIPHER_SIZE } from './types';
 import { createLibEpirHelper, LibEpirHelper } from './wasm.libepir';
 
+/* @@JEST_WEBWORKER_SEPARATOR@@ */
+
 const worker: Worker = self as unknown as Worker;
 
 const execute = async (

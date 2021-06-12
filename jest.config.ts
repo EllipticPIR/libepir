@@ -1,5 +1,6 @@
 
 export default {
+	preset: 'ts-jest',
 	testEnvironment: 'jsdom',
 	roots: [
 		'<rootDir>/src_ts',
@@ -13,7 +14,6 @@ export default {
 	],
 	transform: {
 		'^.+\\.worker.[t|j]sx?$': 'workerloader-jest-transformer',
-		'^.+\\.(ts|tsx)$': 'ts-jest',
 	},
 	setupFilesAfterEnv: ['./src_ts/__tests__/crypto.setup.ts'],
 	collectCoverageFrom: [

@@ -3,6 +3,8 @@ import { MG_SIZE } from './types';
 import { createLibEpirHelper, LibEpirHelper } from './wasm.libepir';
 import { arrayBufferConcat } from './util';
 
+/* @@JEST_WEBWORKER_SEPARATOR@@ */
+
 const worker: Worker = self as unknown as Worker;
 
 // For mG.bin generation.
