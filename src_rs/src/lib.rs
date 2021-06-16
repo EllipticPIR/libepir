@@ -120,11 +120,11 @@ mod tests {
     }
     impl Rng for XorShiftRng {
         fn next(&mut self) -> Scalar {
-            let mut buf = [0u8; 32];
-            for i in 0..32 {
+            let mut buf = [0u8; SCALAR_SIZE];
+            for i in 0..SCALAR_SIZE {
                 buf[i] = (self.xorshift.next() & 0xff) as u8;
             }
-            buf[31] &= 0x1fu8;
+            buf[SCALAR_SIZE - 1] &= 0x1fu8;
             Scalar::from_bits(buf)
         }
     }
