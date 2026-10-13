@@ -361,6 +361,9 @@ inline void epir_selector_create_fast(
 int epir_reply_decrypt(
 	unsigned char *reply, const size_t reply_size, const unsigned char *privkey,
 	const uint8_t dimension, const uint8_t packing, const epir_mG_t *mG, const size_t mmax) {
+	if(packing < 1 || packing > EPIR_CIPHER_SIZE) {
+		return -1;
+	}
 	size_t mid_count = reply_size / EPIR_CIPHER_SIZE;
 	for(uint8_t phase=0; phase<dimension; phase++) {
 		bool success = true;
