@@ -167,8 +167,10 @@ Napi::Value ReplyXSize(
 	CHECK_IS_NUMBER(info[0], "dimension");
 	CHECK_IS_NUMBER(info[1], "packing");
 	CHECK_IS_NUMBER(info[2], "elemSize");
-	const uint8_t dimension = info[0].As<Napi::Number>().Uint32Value();
-	const uint8_t packing = info[1].As<Napi::Number>().Uint32Value();
+	const uint32_t dimension = info[0].As<Napi::Number>().Uint32Value();
+	const uint32_t packing = info[1].As<Napi::Number>().Uint32Value();
+	CHECK_DIMENSION_RANGE(dimension, true);
+	CHECK_PACKING_RANGE(packing);
 	const size_t elem_size = info[2].As<Napi::Number>().Int64Value();
 	return Napi::Number::New(env, func(dimension, packing, elem_size));
 }
@@ -194,8 +196,10 @@ Napi::Value ReplyMock(const Napi::CallbackInfo &info) {
 	CHECK_IS_ARRAY_BUFFER(info[3], 0);
 	// Read arguments.
 	const uint8_t *pubkey = READ_ARRAY_BUFFER(info[0]);
-	const uint8_t dimension = info[1].As<Napi::Number>().Uint32Value();
-	const uint8_t packing = info[2].As<Napi::Number>().Uint32Value();
+	const uint32_t dimension = info[1].As<Napi::Number>().Uint32Value();
+	const uint32_t packing = info[2].As<Napi::Number>().Uint32Value();
+	CHECK_DIMENSION_RANGE(dimension, true);
+	CHECK_PACKING_RANGE(packing);
 	const uint8_t *elem = READ_ARRAY_BUFFER(info[3]);
 	const size_t elem_size = info[3].As<Napi::ArrayBuffer>().ByteLength();
 	const uint8_t *r = (info.Length() >= 5) ? READ_ARRAY_BUFFER(info[4]) : NULL;

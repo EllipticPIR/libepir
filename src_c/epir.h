@@ -57,6 +57,12 @@ extern "C" {
  * The default file name of mG.bin.
  */
 #define EPIR_DEFAULT_MG_FILE ("mG.bin")
+/**
+ * The maximum packing count.
+ * A decrypted ciphertext is a non-negative `int32_t`, so at most 3 bytes can be packed into one ciphertext.
+ * Every function taking a `packing` argument requires `1 <= packing <= EPIR_PACKING_MAX`.
+ */
+#define EPIR_PACKING_MAX (3)
 
 /**
  * Generate a new private key.
@@ -261,11 +267,14 @@ epir_selector_create_fn epir_selector_create_fast;
  *                   On failure, this data is destroyed and cannot be reused.
  * @param reply_size The number of bytes of `reply`.
  * @param privkey    The private key to use with decryption.
- * @param dimension  Dimension.
- * @param packing    Packing count.
+ * @param dimension  Dimension. Must be at least 1.
+ * @param packing    Packing count. Must be in the range [1, EPIR_PACKING_MAX].
  * @param mG         The pre-computed values of [O, P, 2P, ..].
  * @param mmax       The number of points in `mG`.
- * @return           The number of bytes decrypted will be returned. On the decryption failure, a negative value will be returned.
+ * @return           The number of bytes decrypted will be returned.
+ *                   A negative value will be returned if the decryption fails,
+ *                   if `dimension` or `packing` is out of range,
+ *                   or if the decrypted size does not fit in an `int`.
  */
 int epir_reply_decrypt(
 	unsigned char *reply, const size_t reply_size, const unsigned char *privkey,
@@ -274,18 +283,24 @@ int epir_reply_decrypt(
 /**
  * Compute the size of reply from given parameters.
  * @param dimension Dimension.
- * @param packing Packing.
+ * @param packing Packing. Must be in the range [1, EPIR_PACKING_MAX].
  * @param elem_size The number of bytes of database elements.
+ * @return The reply size in bytes, or 0 if `packing` is out of range.
  */
 EMSCRIPTEN_KEEPALIVE
 size_t epir_reply_size(const uint8_t dimension, const uint8_t packing, const size_t elem_size);
 
 /**
  * Compute the number of randomness used in `epir_reply_mock[_fast]()`.
+ * Returns 0 if `packing` is out of range [1, EPIR_PACKING_MAX].
  */
 EMSCRIPTEN_KEEPALIVE
 size_t epir_reply_r_count(const uint8_t dimension, const uint8_t packing, const size_t elem_size);
 
+/**
+ * Generates a sample server reply.
+ * Does nothing if `packing` is out of range [1, EPIR_PACKING_MAX].
+ */
 typedef void (epir_reply_mock_fn)(
 	unsigned char *reply,
 	const unsigned char *privkey,

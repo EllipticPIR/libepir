@@ -6,6 +6,8 @@ export const CIPHER_SIZE = 2 * POINT_SIZE;
 export const DEFAULT_MMAX_MOD = 24;
 export const DEFAULT_MMAX = 1 << DEFAULT_MMAX_MOD;
 
+export const PACKING_MAX = 3;
+
 export const MG_SIZE = 36;
 export const GE25519_P3_SIZE = 4 * 40;
 

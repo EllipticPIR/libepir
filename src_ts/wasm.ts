@@ -12,6 +12,7 @@ import {
 	SCALAR_SIZE,
 	POINT_SIZE,
 	CIPHER_SIZE,
+	PACKING_MAX,
 	MG_SIZE,
 	GE25519_P3_SIZE
 } from './types';
@@ -50,6 +51,12 @@ export class DecryptionContext implements DecryptionContextBase {
 	}
 	
 	async decryptReply(privkey: ArrayBuffer, dimension: number, packing: number, reply: ArrayBuffer): Promise<ArrayBuffer> {
+		if(!Number.isInteger(dimension) || dimension < 1 || dimension > 0xff) {
+			throw new RangeError("The parameter 'dimension' is out of range.");
+		}
+		if(!Number.isInteger(packing) || packing < 1 || packing > PACKING_MAX) {
+			throw new RangeError("The parameter 'packing' is out of range.");
+		}
 		let midstate = reply;
 		for(let phase=0; phase<dimension; phase++) {
 			const decrypted = await this.decryptMany(midstate, privkey, packing);

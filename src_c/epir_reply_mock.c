@@ -3,7 +3,14 @@
 
 #define divide_up(a, b) (((a) / (b)) + (((a) % (b)) == 0 ? 0 : 1 ))
 
+static inline bool epir_packing_is_valid(const uint8_t packing) {
+	return (packing >= 1) && (packing <= EPIR_PACKING_MAX);
+}
+
 size_t epir_reply_size(const uint8_t dimension, const uint8_t packing, const size_t elem_size) {
+	if(!epir_packing_is_valid(packing)) {
+		return 0;
+	}
 	size_t target_size = elem_size;
 	for(uint8_t d=0; d<dimension; d++) {
 		target_size = EPIR_CIPHER_SIZE * divide_up(target_size, packing);
@@ -12,6 +19,9 @@ size_t epir_reply_size(const uint8_t dimension, const uint8_t packing, const siz
 }
 
 size_t epir_reply_r_count(const uint8_t dimension, const uint8_t packing, const size_t elem_size) {
+	if(!epir_packing_is_valid(packing)) {
+		return 0;
+	}
 	size_t r_count = 0;
 	size_t target_size = elem_size;
 	for(uint8_t d=0; d<dimension; d++) {
@@ -30,6 +40,9 @@ static inline void epir_reply_mock_(
 	const uint8_t dimension, const uint8_t packing,
 	const uint8_t *elem, const size_t elem_size, const unsigned char *r,
 	epir_ecelgamal_encrypt_fn encrypt) {
+	if(!epir_packing_is_valid(packing)) {
+		return;
+	}
 	const size_t reply_size_final = epir_reply_size(dimension, packing, elem_size);
 	unsigned char *midstate = (unsigned char*)malloc(reply_size_final);
 	memcpy(reply, elem, elem_size);
@@ -41,7 +54,7 @@ static inline void epir_reply_mock_(
 		for(size_t i=0; i<divide_up(reply_size, packing); i++) {
 			uint64_t msg = 0;
 			for(size_t j=0; (j<packing)&&(i*packing+j<reply_size); j++) {
-				msg |= reply[i * packing + j] << (8 * j);
+				msg |= (uint64_t)reply[i * packing + j] << (8 * j);
 			}
 			encrypt(
 				&midstate[i * EPIR_CIPHER_SIZE], key, msg,
