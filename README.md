@@ -110,6 +110,12 @@ It starts its Web Workers with `new Worker(new URL('./wasm.worker.ts', import.me
 and imports WebAssembly modules as ES modules, so the bundler must support both
 (e.g. Vite with [vite-plugin-wasm](https://github.com/Menci/vite-plugin-wasm), as in [./nuxt.config.mts](./nuxt.config.mts)).
 
+`Epir`, `DecryptionContext`, `SelectorFactory` and the mG generation share one pool of Web Workers.
+Each worker holds one instance of the WebAssembly module, so the pool size bounds the WebAssembly memory a page uses.
+The default size is `min(navigator.hardwareConcurrency, DEFAULT_MAX_WORKERS)` (= 16); to change it, call
+`setDefaultWorkerCount(n)` before using the library, or pass a `WorkerPool` (or a worker count, for a dedicated pool)
+to the constructors. A failing worker rejects the pending promises instead of leaving them unresolved.
+
 FAQs
 ----
 

@@ -1,54 +1,50 @@
 
 import { arrayBufferConcat, getRandomScalarsConcat } from './util';
 import { SelectorFactoryBase, DEFAULT_CAPACITIES, CIPHER_SIZE } from './types';
-
-const createSelectorFactoryWorker = (): Worker =>
-	new Worker(new URL('./wasm.SelectorFactory.worker.ts', import.meta.url), { type: 'module' });
+import { WorkerPool, resolveWorkerPool } from './wasm.workers';
 
 export class SelectorFactory implements SelectorFactoryBase {
-	
-	workers: Worker[][] = [[], []];
+
+	readonly pool: WorkerPool;
 	ciphers: ArrayBuffer[][] = [[], []];
-	
+
+	/**
+	 * @param workers The worker pool to use, or a worker count to create a dedicated pool.
+	 *                Defaults to the pool shared with Epir and DecryptionContext.
+	 */
 	constructor(
 		public readonly isFast: boolean, public readonly key: ArrayBuffer,
 		/* istanbul ignore next */
 		public readonly capacities: number[] = DEFAULT_CAPACITIES,
-		nThreads = navigator.hardwareConcurrency) {
-		for(let i=0; i<nThreads; i++) {
-			this.workers[0][i] = createSelectorFactoryWorker();
-			this.workers[1][i] = createSelectorFactoryWorker();
-		}
+		workers?: WorkerPool | number) {
+		this.pool = resolveWorkerPool(workers);
 	}
-	
+
 	async fill(): Promise<void> {
+		const nWorkers = this.pool.size;
 		const promises = this.capacities.map((capacity, msg) => {
 			const needs = capacity - this.ciphers[msg].length;
-			const ciphersPerWorker = Math.floor(needs / this.workers[msg].length);
-			return Promise.all(this.workers[msg].map((worker, workerId) => {
-				const nCiphers = (workerId == this.workers[msg].length - 1 ?
-					needs - (this.workers[msg].length - 1) * ciphersPerWorker : ciphersPerWorker);
-				return new Promise<void>((resolve) => {
-					if(nCiphers <= 0) {
-						resolve();
-						return;
+			const ciphersPerWorker = Math.floor(needs / nWorkers);
+			const tasks: Promise<void>[] = [];
+			for(let workerId=0; workerId<nWorkers; workerId++) {
+				const nCiphers = (workerId == nWorkers - 1 ?
+					needs - (nWorkers - 1) * ciphersPerWorker : ciphersPerWorker);
+				if(nCiphers <= 0) continue;
+				const random = getRandomScalarsConcat(nCiphers);
+				tasks.push(this.pool.run(workerId, {
+					method: 'selector_factory_fill', isFast: this.isFast, key: this.key, msg: msg, count: nCiphers, random: random,
+				}, [random]).then((res) => {
+					const ciphers: ArrayBuffer = res.ciphers;
+					for(let i=0; i*CIPHER_SIZE<ciphers.byteLength; i++) {
+						this.ciphers[msg].push(ciphers.slice(i * CIPHER_SIZE, (i + 1) * CIPHER_SIZE));
 					}
-					worker.onmessage = (ev) => {
-						for(let i=0; i*CIPHER_SIZE<ev.data.ciphers.byteLength; i++) {
-							this.ciphers[ev.data.msg].push(ev.data.ciphers.slice(i * CIPHER_SIZE, (i + 1) * CIPHER_SIZE));
-						}
-						resolve();
-					};
-					const random = getRandomScalarsConcat(nCiphers);
-					worker.postMessage({
-						isFast: this.isFast, key: this.key, msg: msg, count: nCiphers, random: random,
-					}, [random]);
-				});
-			}));
+				}));
+			}
+			return Promise.all(tasks);
 		});
 		await Promise.all(promises);
 	}
-	
+
 	create(indexCounts: number[], idx: number, refill = true): ArrayBuffer {
 		let prod = indexCounts.reduce((acc, v) => acc * v, 1);
 		const ret: ArrayBuffer[] = [];
@@ -65,9 +61,11 @@ export class SelectorFactory implements SelectorFactoryBase {
 			}
 		}
 		const concat = arrayBufferConcat(ret);
-		if(refill) this.fill();
+		if(refill) {
+			this.fill().catch((e) => console.error('SelectorFactory: failed to refill the cache:', e));
+		}
 		return concat;
 	}
-	
+
 }
 
