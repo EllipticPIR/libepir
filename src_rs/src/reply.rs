@@ -6,7 +6,16 @@ fn divide_up(a: usize, b: usize) -> usize {
     (a / b) + (if a % b == 0 { 0 } else { 1 })
 }
 
+/// Returns true if `packing` is in the range [1, PACKING_MAX].
+pub fn packing_is_valid(packing: u8) -> bool {
+    packing >= 1 && packing <= PACKING_MAX
+}
+
+/// Computes the size of a reply. Returns 0 if `packing` is out of range.
 pub fn reply_size(dimension: u8, packing: u8, elem_size: usize) -> usize {
+    if !packing_is_valid(packing) {
+        return 0;
+    }
     let mut target_size = elem_size;
     for _ in 0..dimension {
         target_size = CIPHER_SIZE * divide_up(target_size, packing as usize);
@@ -14,7 +23,11 @@ pub fn reply_size(dimension: u8, packing: u8, elem_size: usize) -> usize {
     target_size
 }
 
+/// Computes the number of randomness used by `Reply::mock()`. Returns 0 if `packing` is out of range.
 pub fn reply_r_count(dimension: u8, packing: u8, elem_size: usize) -> usize {
+    if !packing_is_valid(packing) {
+        return 0;
+    }
     let mut r_count = 0;
     let mut target_size = elem_size;
     for _ in 0..dimension {
@@ -59,7 +72,12 @@ impl From<&Vec<u8>> for Reply {
 }
 
 impl Reply {
+    /// Decrypts a reply.
+    /// Returns `Err(())` if the decryption fails, or if `dimension` is 0 or `packing` is out of range.
     pub fn decrypt(&self, dec_ctx: &DecryptionContext, privkey: &PrivateKey, dimension: u8, packing: u8) -> Result<Vec<u8>, ()> {
+        if dimension == 0 || !packing_is_valid(packing) {
+            return Err(());
+        }
         let mut reply = self.clone();
         let mut ser = Vec::new();
         for dim in 0..dimension {
@@ -69,7 +87,7 @@ impl Reply {
             for i in 0..decrypteds.len() {
                 let decrypted = decrypteds[i]?;
                 for p in 0..packing {
-                    ser.push(((decrypted >> (8 * p)) & 0xff) as u8);
+                    ser.push(((decrypted >> (8 * (p as u32))) & 0xff) as u8);
                 }
             }
             if dim != dimension - 1 {
@@ -79,7 +97,12 @@ impl Reply {
         }
         Ok(ser)
     }
-    pub fn mock<E: Encrypt, R: Rng>(key: &E, dimension: u8, packing: u8, elem: &[u8], rng: &mut R) -> Self {
+    /// Generates a sample server reply.
+    /// Returns `Err(())` if `dimension` is 0 or `packing` is out of range.
+    pub fn mock<E: Encrypt, R: Rng>(key: &E, dimension: u8, packing: u8, elem: &[u8], rng: &mut R) -> Result<Self, ()> {
+        if dimension == 0 || !packing_is_valid(packing) {
+            return Err(());
+        }
         let mut ser = elem.to_vec();
         let mut ciphers = Vec::new();
         for dim in 0..dimension {
@@ -101,9 +124,9 @@ impl Reply {
                 ciphers: ciphers.clone(),
             }).into();
         }
-        Reply {
+        Ok(Reply {
             ciphers,
-        }
+        })
     }
 }
 
@@ -138,10 +161,10 @@ mod tests {
         let mut rng: DefaultRng = Default::default();
         if is_fast {
             let privkey = PrivateKey::from(PRIVKEY);
-            Reply::mock(&privkey, DIMENSION, PACKING, &elem, &mut rng)
+            Reply::mock(&privkey, DIMENSION, PACKING, &elem, &mut rng).unwrap()
         } else {
             let pubkey: PublicKey = (&PUBKEY).try_into().unwrap();
-            Reply::mock(&pubkey, DIMENSION, PACKING, &elem, &mut rng)
+            Reply::mock(&pubkey, DIMENSION, PACKING, &elem, &mut rng).unwrap()
         }
     }
     fn decrypt_success(is_fast: bool) {
@@ -177,5 +200,37 @@ mod tests {
     #[test]
     fn decrypt_fast_fail() {
         decrypt_fail(true);
+    }
+    #[test]
+    fn size_reject_invalid_packing() {
+        for packing in [0u8, PACKING_MAX + 1, 64, 255] {
+            assert_eq!(reply_size(DIMENSION, packing, ELEM_SIZE), 0, "packing={}", packing);
+            assert_eq!(reply_r_count(DIMENSION, packing, ELEM_SIZE), 0, "packing={}", packing);
+        }
+        assert!(reply_size(DIMENSION, PACKING_MAX, ELEM_SIZE) > 0);
+        assert!(reply_r_count(DIMENSION, PACKING_MAX, ELEM_SIZE) > 0);
+    }
+    #[test]
+    fn mock_reject_invalid_parameters() {
+        let privkey = PrivateKey::from(PRIVKEY);
+        let elem = generate_elem();
+        let mut rng: DefaultRng = Default::default();
+        for packing in [0u8, PACKING_MAX + 1, 64, 255] {
+            assert!(Reply::mock(&privkey, DIMENSION, packing, &elem, &mut rng).is_err(), "packing={}", packing);
+        }
+        assert!(Reply::mock(&privkey, 0, PACKING, &elem, &mut rng).is_err());
+    }
+    #[test]
+    fn decrypt_reject_invalid_parameters() {
+        let privkey = PrivateKey::from(PRIVKEY);
+        let reply = generate_reply(true);
+        init_dec_ctx();
+        unsafe {
+            let dec_ctx = DEC_CTX.as_ref().unwrap();
+            for packing in [0u8, PACKING_MAX + 1, 32, 64, 255] {
+                assert_eq!(reply.decrypt(dec_ctx, &privkey, DIMENSION, packing), Err(()), "packing={}", packing);
+            }
+            assert_eq!(reply.decrypt(dec_ctx, &privkey, 0, PACKING), Err(()));
+        }
     }
 }

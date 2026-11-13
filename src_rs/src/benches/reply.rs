@@ -15,7 +15,7 @@ fn reply(c: &mut Criterion) {
     let privkey = PrivateKey::new(&mut rng);
     let mut elem = [0u8; ELEM_SIZE];
     OsRng::default().fill_bytes(&mut elem);
-    let reply = Reply::mock(&privkey, DIMENSION, PACKING, &elem, &mut rng);
+    let reply = Reply::mock(&privkey, DIMENSION, PACKING, &elem, &mut rng).unwrap();
     let dec_ctx = DecryptionContext::load_from_file(None).unwrap();
     group.bench_function("decrypt", |b| {
         b.iter(|| {

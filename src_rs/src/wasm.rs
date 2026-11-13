@@ -57,24 +57,43 @@ pub fn elements_count(index_counts: Vec<u32>) -> u32 {
     ic.elements()
 }
 
-#[wasm_bindgen]
-pub fn reply_size(dimension: u8, packing: u8, elem_size: usize) -> usize {
-    crate::reply::reply_size(dimension, packing, elem_size)
+// JS numbers are taken as u32 and validated before narrowing to u8,
+// so that e.g. 256 is rejected instead of silently becoming 0.
+fn check_dimension(dimension: u32, allow_zero: bool) -> Result<u8, JsError> {
+    if (!allow_zero && dimension == 0) || dimension > u8::MAX as u32 {
+        return Err(JsError::new("The parameter 'dimension' is out of range."));
+    }
+    Ok(dimension as u8)
+}
+
+fn check_packing(packing: u32) -> Result<u8, JsError> {
+    if packing < 1 || packing > PACKING_MAX as u32 {
+        return Err(JsError::new("The parameter 'packing' is out of range."));
+    }
+    Ok(packing as u8)
 }
 
 #[wasm_bindgen]
-pub fn reply_r_count(dimension: u8, packing: u8, elem_size: usize) -> usize {
-    crate::reply::reply_r_count(dimension, packing, elem_size)
+pub fn reply_size(dimension: u32, packing: u32, elem_size: usize) -> Result<usize, JsError> {
+    Ok(crate::reply::reply_size(check_dimension(dimension, true)?, check_packing(packing)?, elem_size))
 }
 
 #[wasm_bindgen]
-pub fn reply_mock(pubkey_vec: Vec<u8>, dimension: u8, packing: u8, elem: Vec<u8>, r_vec: Vec<u8>) -> Vec<u8> {
+pub fn reply_r_count(dimension: u32, packing: u32, elem_size: usize) -> Result<usize, JsError> {
+    Ok(crate::reply::reply_r_count(check_dimension(dimension, true)?, check_packing(packing)?, elem_size))
+}
+
+#[wasm_bindgen]
+pub fn reply_mock(pubkey_vec: Vec<u8>, dimension: u32, packing: u32, elem: Vec<u8>, r_vec: Vec<u8>) -> Result<Vec<u8>, JsError> {
+    let dimension = check_dimension(dimension, false)?;
+    let packing = check_packing(packing)?;
     let pubkey = vec_to_pubkey(&pubkey_vec);
     let mut r = Vec::new();
     for i in 0..r_vec.len()/SCALAR_SIZE {
         r.push(Scalar::from_bits(vec_to_u8_32(&r_vec[i*SCALAR_SIZE..(i+1)*SCALAR_SIZE].to_vec())));
     }
     let mut rng = ConstRng::new(r);
-    let reply = Reply::mock(&pubkey, dimension, packing, &elem, &mut rng);
-    (&reply).into()
+    let reply = Reply::mock(&pubkey, dimension, packing, &elem, &mut rng)
+        .map_err(|_| JsError::new("Failed to generate a mock reply."))?;
+    Ok((&reply).into())
 }
