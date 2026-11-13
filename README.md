@@ -114,7 +114,8 @@ and imports WebAssembly modules as ES modules, so the bundler must support both
 Each worker holds one instance of the WebAssembly module, so the pool size bounds the WebAssembly memory a page uses.
 The default size is `min(navigator.hardwareConcurrency, DEFAULT_MAX_WORKERS)` (= 16); to change it, call
 `setDefaultWorkerCount(n)` before using the library, or pass a `WorkerPool` (or a worker count, for a dedicated pool)
-to the constructors. A failing worker rejects the pending promises instead of leaving them unresolved.
+to the constructors. When a worker fails, the requests pending on it are rejected and the worker is restarted once;
+if it fails again before answering any request, later requests to it are rejected at once instead of waiting forever.
 
 FAQs
 ----
