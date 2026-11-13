@@ -1,0 +1,11 @@
+{
+  // Used by ts-jest for the Node.js test suites.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "jest"],
+    "declaration": false,
+    "sourceMap": true
+  },
+  "include": ["src_ts/**/*", "@types/**/*"],
+  "exclude": ["dist", "build*", "src_ts/wasm*.ts", "src_ts/__tests__/wasm/**"]
+}

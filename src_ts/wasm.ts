@@ -17,21 +17,31 @@ import {
 	GE25519_P3_SIZE
 } from './types';
 import { arrayBufferConcat, getRandomScalar, getRandomScalarsConcat } from './util';
-import EPIRWorker from './wasm.worker.ts';
 import { createLibEpirHelper, LibEpirHelper } from './wasm.libepir';
 import { SelectorFactory } from './wasm.SelectorFactory';
 import * as wasm from '../src_rs/pkg/epir';
+
+// wasm-bindgen returns `Uint8Array<ArrayBufferLike>`; return its bytes as a plain ArrayBuffer.
+const toArrayBuffer = (u8: Uint8Array): ArrayBuffer => {
+	if(u8.buffer instanceof ArrayBuffer && u8.byteOffset === 0 && u8.byteLength === u8.buffer.byteLength) {
+		return u8.buffer;
+	}
+	return u8.slice().buffer;
+};
+
+const createEpirWorker = (): Worker =>
+	new Worker(new URL('./wasm.worker.ts', import.meta.url), { type: 'module' });
 
 export class DecryptionContext implements DecryptionContextBase {
 	
 	mG_: number;
 	mmax: number;
-	workers: EPIRWorker[] = [];
+	workers: Worker[] = [];
 	
 	constructor(public helper: LibEpirHelper, mG: ArrayBuffer, nThreads: number = navigator.hardwareConcurrency) {
 		this.mG_ = helper.malloc(mG);
 		this.mmax = mG.byteLength / MG_SIZE;
-		for(let t=0; t<nThreads; t++) this.workers.push(new EPIRWorker());
+		for(let t=0; t<nThreads; t++) this.workers.push(createEpirWorker());
 	}
 	
 	//finalize() {
@@ -145,9 +155,9 @@ const mGGeneratePrepare = (helper: LibEpirHelper, nThreads: number, mmax: number
 
 const mGGenerate = async (helper: LibEpirHelper, cb: undefined | DecryptionContextCallback, mmax: number): Promise<ArrayBuffer> => {
 	const nThreads = navigator.hardwareConcurrency;
-	const workers: EPIRWorker[] = [];
+	const workers: Worker[] = [];
 	for(let i=0; i<nThreads; i++) {
-		workers.push(new EPIRWorker());
+		workers.push(createEpirWorker());
 	}
 	const prepare = mGGeneratePrepare(helper, nThreads, mmax, cb);
 	const pointsComputed: number[] = [];
@@ -254,11 +264,11 @@ export { SelectorFactory };
 
 export class Epir implements EpirBase {
 	
-	workers: EPIRWorker[] = [];
+	workers: Worker[] = [];
 	
 	constructor(public helper: LibEpirHelper, nThreads: number = navigator.hardwareConcurrency) {
 		this.helper = helper;
-		for(let t=0; t<nThreads; t++) this.workers.push(new EPIRWorker());
+		for(let t=0; t<nThreads; t++) this.workers.push(createEpirWorker());
 	}
 	
 	createPrivkey(): ArrayBuffer {
@@ -266,15 +276,15 @@ export class Epir implements EpirBase {
 	}
 	
 	createPubkey(privkey: ArrayBuffer): ArrayBuffer {
-		return wasm.create_pubkey(new Uint8Array(privkey)).buffer;
+		return toArrayBuffer(wasm.create_pubkey(new Uint8Array(privkey)));
 	}
 	
 	encrypt(pubkey: ArrayBuffer, msg: number, r?: ArrayBuffer): ArrayBuffer {
-		return wasm.encrypt(new Uint8Array(pubkey), msg, new Uint8Array(r ? r : getRandomScalar())).buffer;
+		return toArrayBuffer(wasm.encrypt(new Uint8Array(pubkey), msg, new Uint8Array(r ? r : getRandomScalar())));
 	}
 	
 	encryptFast(privkey: ArrayBuffer, msg: number, r?: ArrayBuffer): ArrayBuffer {
-		return wasm.encrypt_fast(new Uint8Array(privkey), msg, new Uint8Array(r ? r : getRandomScalar())).buffer;
+		return toArrayBuffer(wasm.encrypt_fast(new Uint8Array(privkey), msg, new Uint8Array(r ? r : getRandomScalar())));
 	}
 	
 	ciphersCount(index_counts: number[]): number {
@@ -350,7 +360,7 @@ export class Epir implements EpirBase {
 	computeReplyMock(pubkey: ArrayBuffer, dimension: number, packing: number, elem: ArrayBuffer, r?: ArrayBuffer): ArrayBuffer {
 		const rrc = this.computeReplyRCount(dimension, packing, elem.byteLength);
 		const rr = new Uint8Array(r ? r : getRandomScalarsConcat(rrc));
-		return wasm.reply_mock(new Uint8Array(pubkey), dimension, packing, new Uint8Array(elem), rr).buffer;
+		return toArrayBuffer(wasm.reply_mock(new Uint8Array(pubkey), dimension, packing, new Uint8Array(elem), rr));
 	}
 	
 }

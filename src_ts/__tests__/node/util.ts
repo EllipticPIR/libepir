@@ -68,10 +68,10 @@ const notCanonical = new Uint8Array([
 
 describe('isCanonical', () => {
 	test('true', () => {
-		expect(isCanonical(zero)).toBe(true);
+		expect(isCanonical(zero.buffer)).toBe(true);
 	});
 	test('false', () => {
-		expect(isCanonical(notCanonical)).toBe(false);
+		expect(isCanonical(notCanonical.buffer)).toBe(false);
 	});
 });
 
@@ -85,7 +85,7 @@ describe('Random', () => {
 	test('getRandomScalar (fail for first)', async () => {
 		let i = 0;
 		const randoms: Uint8Array[] = [zero, one];
-		getRandomValues = global.self.crypto.getRandomValues;
+		getRandomValues = global.self.crypto.getRandomValues as unknown as typeof getRandomValues;
 		Object.defineProperty(global.self.crypto, 'getRandomValues', {
 			value: (buf: Uint8Array) => buf.set(randoms[i++]),
 		});

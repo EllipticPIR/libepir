@@ -25,6 +25,7 @@ if(EMSCRIPTEN)
 	target_link_libraries(libepir.js "-lsodium")
 	target_link_options(libepir.js PUBLIC
 		"SHELL:-s MODULARIZE"
+		"SHELL:-s EXPORT_ES6=1"
 		"SHELL:-s ALLOW_MEMORY_GROWTH=1"
 		"SHELL:-s ALLOW_TABLE_GROWTH=1"
 		"SHELL:-s SINGLE_FILE=1"

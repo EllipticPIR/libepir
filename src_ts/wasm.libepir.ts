@@ -3,7 +3,17 @@ import libepir from '../dist/libepir';
 
 export class LibEpirHelper {
 	
+	// Assigned in the constructor: with ES2022 class fields, field initializers run
+	// before parameter properties are assigned, so `free = this.libepir._free` would
+	// read an undefined `this.libepir`.
+	free: libepir.LibEpir['_free'];
+	addFunction: libepir.LibEpir['addFunction'];
+	removeFunction: libepir.LibEpir['removeFunction'];
+	
 	constructor(public libepir: libepir.LibEpir) {
+		this.free = libepir._free;
+		this.addFunction = libepir.addFunction;
+		this.removeFunction = libepir.removeFunction;
 	}
 	
 	store(offset: number, n: number, len: number): void {
@@ -34,11 +44,6 @@ export class LibEpirHelper {
 			return buf_;
 		}
 	}
-	
-	free = this.libepir._free;
-	
-	addFunction = this.libepir.addFunction;
-	removeFunction = this.libepir.removeFunction;
 	
 	call(func: string, ...params: (ArrayBuffer | number | null)[]): unknown {
 		const bufs: number[] = [];

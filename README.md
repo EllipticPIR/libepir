@@ -103,7 +103,12 @@ $ npm ci
 See [./src\_ts/types.ts](./src_ts/types.ts) for Node.js binding definitions.
 
 For general usage, see files under the [./src\_ts/\_\_tests\_\_](./src_ts/__tests__) directory and
-[./pages/index.vue](./pages/index.vue).
+[./app/pages/index.vue](./app/pages/index.vue).
+
+For browsers, import [./src\_ts/wasm.ts](./src_ts/wasm.ts) from your bundler.
+It starts its Web Workers with `new Worker(new URL('./wasm.worker.ts', import.meta.url), { type: 'module' })`
+and imports WebAssembly modules as ES modules, so the bundler must support both
+(e.g. Vite with [vite-plugin-wasm](https://github.com/Menci/vite-plugin-wasm), as in [./nuxt.config.mts](./nuxt.config.mts)).
 
 FAQs
 ----

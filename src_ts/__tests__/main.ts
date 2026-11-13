@@ -32,7 +32,7 @@ export const xorshift = (): number => {
 	return w;
 };
 
-export const sha256sum = (buf: ArrayBuffer): ArrayBuffer => {
+export const sha256sum = (buf: ArrayBuffer): Uint8Array => {
 	const hash = crypto.createHash('sha256');
 	hash.update(new Uint8Array(buf));
 	return new Uint8Array(Buffer.from(hash.digest('hex'), 'hex'));

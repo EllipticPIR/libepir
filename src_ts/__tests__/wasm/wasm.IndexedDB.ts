@@ -1,9 +1,7 @@
 
-require('fake-indexeddb/auto');
+import 'fake-indexeddb/auto';
 
 import { loadDecryptionContextFromIndexedDB, saveDecryptionContextToIndexedDB, createDecryptionContext } from '../../wasm';
-
-require('fake-indexeddb/lib/FDBFactory');
 
 describe('IndexedDB', () => {
 	it('load (fail)', async () => {
