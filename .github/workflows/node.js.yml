@@ -89,7 +89,16 @@ jobs:
       with:
         tool: wasm-pack
 
+    # Rust >= 1.82 enables reference-types for wasm32 by default, which
+    # webpack 4 (used by the Nuxt build) cannot parse.
+    - name: Install Rust 1.81 for WebAssembly
+      uses: dtolnay/rust-toolchain@1.81
+      with:
+        targets: wasm32-unknown-unknown
+
     - name: Build WebAssembly (Rust)
+      env:
+        RUSTUP_TOOLCHAIN: '1.81'
       run: npm run wasm:build
 
     - name: Build

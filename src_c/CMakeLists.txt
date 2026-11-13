@@ -95,13 +95,19 @@ if(BUILD_TESTING)
 	enable_testing()
 	
 	# Create coverage information.
+	# lcov >= 2 fails on exclude patterns that match nothing unless told otherwise.
+	set(LCOV_REMOVE_FLAGS "")
+	execute_process(COMMAND lcov --version OUTPUT_VARIABLE LCOV_VERSION_OUTPUT ERROR_QUIET)
+	if(LCOV_VERSION_OUTPUT MATCHES "version ([0-9]+)" AND CMAKE_MATCH_1 GREATER_EQUAL 2)
+		set(LCOV_REMOVE_FLAGS --ignore-errors unused)
+	endif()
 	add_custom_command(
 		OUTPUT coverage.info
 		COMMAND lcov -d CMakeFiles -c -o coverage.info
 	)
 	add_custom_command(
 		OUTPUT coverage.stripped.info
-		COMMAND lcov -r coverage.info *test* */sodium/* */googletest/* */c++/* -o coverage.stripped.info
+		COMMAND lcov ${LCOV_REMOVE_FLAGS} -r coverage.info *test* */sodium/* */googletest/* */c++/* -o coverage.stripped.info
 		DEPENDS coverage.info
 	)
 	add_custom_target(
