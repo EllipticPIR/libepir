@@ -43,7 +43,9 @@ jobs:
     - name: Generate mG.bin on cache misses
       if: steps.cache-mG.outputs.cache-hit != 'true'
       shell: bash
-      run: cargo run --bin gen_mg --release
+      run: |
+        mkdir -p ~/.EllipticPIR
+        cargo run --bin gen_mg --release
 
     - name: Install cargo-tarpaulin
       uses: taiki-e/install-action@v2
