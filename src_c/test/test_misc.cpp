@@ -1,6 +1,8 @@
 
 #include <gtest/gtest.h>
 
+#include <omp.h>
+
 #include "../epir.h"
 
 #include "test_common.hpp"
@@ -61,6 +63,37 @@ TEST(ReplyMockTest, reply_size) {
 TEST(ReplyMockTest, reply_r_count) {
 	const size_t reply_r_count = epir_reply_r_count(DIMENSION, PACKING, ELEM_SIZE);
 	ASSERT_EQ(reply_r_count, 5260ULL);
+}
+
+// With explicit randomness, the mock reply must not depend on the number of OpenMP threads.
+TEST(ReplyMockTest, mock_deterministic_across_threads) {
+	const size_t r_count = epir_reply_r_count(DIMENSION, PACKING, ELEM_SIZE);
+	std::vector<unsigned char> r(r_count * EPIR_SCALAR_SIZE);
+	xorshift_init();
+	for(size_t i=0; i<r_count; i++) {
+		for(size_t j=0; j<EPIR_SCALAR_SIZE; j++) {
+			r[i * EPIR_SCALAR_SIZE + j] = xorshift();
+		}
+		r[i * EPIR_SCALAR_SIZE + EPIR_SCALAR_SIZE - 1] &= 0x1f;
+	}
+	std::array<uint8_t, ELEM_SIZE> elem;
+	for(size_t i=0; i<ELEM_SIZE; i++) {
+		elem[i] = xorshift() & 0xff;
+	}
+	const size_t reply_size = epir_reply_size(DIMENSION, PACKING, ELEM_SIZE);
+	const int maxThreads = omp_get_max_threads();
+	omp_set_num_threads(1);
+	std::vector<uint8_t> expected(reply_size);
+	epir_reply_mock_fast(expected.data(), privkey, DIMENSION, PACKING, elem.data(), ELEM_SIZE, r.data());
+	for(const int nThreads : {2, 4, 8}) {
+		omp_set_num_threads(nThreads);
+		for(int trial=0; trial<3; trial++) {
+			std::vector<uint8_t> reply(reply_size);
+			epir_reply_mock_fast(reply.data(), privkey, DIMENSION, PACKING, elem.data(), ELEM_SIZE, r.data());
+			ASSERT_EQ(reply, expected) << "threads=" << nThreads << ", trial=" << trial;
+		}
+	}
+	omp_set_num_threads(maxThreads);
 }
 
 #ifdef TEST_USING_MG
