@@ -49,17 +49,21 @@ static inline void epir_reply_mock_(
 	size_t reply_size = elem_size;
 	size_t r_offset = 0;
 	for(size_t d=0; d<dimension; d++) {
-		const size_t midstate_size = EPIR_CIPHER_SIZE * divide_up(reply_size, packing);
+		const size_t n_ciphers = divide_up(reply_size, packing);
+		const size_t midstate_size = EPIR_CIPHER_SIZE * n_ciphers;
+		// The i-th ciphertext of this dimension always uses the (r_offset + i)-th randomness,
+		// independently of the thread scheduling.
 		#pragma omp parallel for
-		for(size_t i=0; i<divide_up(reply_size, packing); i++) {
+		for(size_t i=0; i<n_ciphers; i++) {
 			uint64_t msg = 0;
 			for(size_t j=0; (j<packing)&&(i*packing+j<reply_size); j++) {
 				msg |= (uint64_t)reply[i * packing + j] << (8 * j);
 			}
 			encrypt(
 				&midstate[i * EPIR_CIPHER_SIZE], key, msg,
-				r ? &r[(r_offset++) * EPIR_SCALAR_SIZE] : NULL);
+				r ? &r[(r_offset + i) * EPIR_SCALAR_SIZE] : NULL);
 		}
+		r_offset += n_ciphers;
 		memcpy(reply, midstate, midstate_size);
 		reply_size = midstate_size;
 	}
