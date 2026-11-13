@@ -8,6 +8,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
 
 jobs:
   build:
@@ -15,10 +17,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Cache ~/.cargo
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: ${{ env.HOME }}/.cargo
         key: cargo-${{ runner.os }}
@@ -26,14 +28,14 @@ jobs:
           cargo-
 
     - name: Configure sccache
-      uses: visvirial/sccache-action@v1.0.0
+      uses: mozilla-actions/sccache-action@v0.0.9
 
     - name: Build
       run: cargo build --verbose
 
     - name: Cache mG.bin
       id: cache-mG
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: ~/.EllipticPIR
         key: mG.bin
@@ -41,17 +43,18 @@ jobs:
     - name: Generate mG.bin on cache misses
       if: steps.cache-mG.outputs.cache-hit != 'true'
       shell: bash
-      run: cargo run --bin gen_mg --release
+      run: |
+        mkdir -p ~/.EllipticPIR
+        cargo run --bin gen_mg --release
 
-    - name: Install stable toolchain
-      uses: actions-rs/toolchain@v1
+    - name: Install cargo-tarpaulin
+      uses: taiki-e/install-action@v2
       with:
-        toolchain: stable
-        override: true
+        tool: cargo-tarpaulin
 
     - name: Run cargo-tarpaulin
-      uses: actions-rs/tarpaulin@v0.1
+      run: cargo tarpaulin --out Xml
 
     - name: Upload to codecov.io
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v5
 

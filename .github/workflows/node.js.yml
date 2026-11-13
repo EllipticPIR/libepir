@@ -24,21 +24,27 @@ jobs:
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v2
+      uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
 
+    # node-gyp 8 needs distutils, which was removed in Python 3.12.
+    - name: Use Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
     - name: Cache mG.bin
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: ~/.EllipticPIR
         key: mG.bin
 
     - name: Cache node modules
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       env:
         cache-name: cache-node-modules
       with:
@@ -51,7 +57,12 @@ jobs:
           ${{ runner.os }}-
 
     - name: ccache
-      uses: hendrikmuhs/ccache-action@v1
+      uses: hendrikmuhs/ccache-action@v1.2
+
+    # npm 6 (bundled with Node.js 12/14) cannot fetch a git dependency
+    # pinned to a commit that is not a branch head.
+    - name: Update npm
+      run: npm install -g npm@8
 
     - name: Install npm dependencies
       run: |
@@ -59,13 +70,13 @@ jobs:
         npm ci
 
     - name: Cache emsdk-cache
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: ${{ env.EM_CACHE_DIR }}
         key: emsdk-cache-${{ env.EM_VERSION }}-${{ runner.os }}
 
     - name: Setup emsdk
-      uses: mymindstorm/setup-emsdk@v9
+      uses: mymindstorm/setup-emsdk@v14
       with:
         version: ${{ env.EM_VERSION }}
         actions-cache-folder: ${{ env.EM_CACHE_DIR }}
@@ -74,9 +85,20 @@ jobs:
       run: npm run em:build
 
     - name: Install wasm-pack
-      run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      uses: taiki-e/install-action@v2
+      with:
+        tool: wasm-pack
+
+    # Rust >= 1.82 enables reference-types for wasm32 by default, which
+    # webpack 4 (used by the Nuxt build) cannot parse.
+    - name: Install Rust 1.81 for WebAssembly
+      uses: dtolnay/rust-toolchain@1.81
+      with:
+        targets: wasm32-unknown-unknown
 
     - name: Build WebAssembly (Rust)
+      env:
+        RUSTUP_TOOLCHAIN: '1.81'
       run: npm run wasm:build
 
     - name: Build
@@ -86,7 +108,7 @@ jobs:
       run: npm test -- --maxWorkers=2
 
     - name: Codecov
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v5
       with:
         name: node-${{ matrix.node-version }}
 
