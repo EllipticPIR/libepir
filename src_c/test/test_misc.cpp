@@ -175,6 +175,13 @@ TEST(ReplyTest, size_reject_invalid_packing) {
 	ASSERT_GT(epir_reply_r_count(3, EPIR_PACKING_MAX, 32), (size_t)0);
 }
 
+TEST(ReplyTest, size_reject_zero_dimension) {
+	ASSERT_EQ(epir_reply_size(0, 3, 32), (size_t)0);
+	ASSERT_EQ(epir_reply_r_count(0, 3, 32), (size_t)0);
+	ASSERT_GT(epir_reply_size(1, 3, 32), (size_t)0);
+	ASSERT_GT(epir_reply_r_count(1, 3, 32), (size_t)0);
+}
+
 #ifdef TEST_USING_MG
 TEST(ReplyTest, mock_reject_invalid_packing) {
 	// Must not touch the output buffer.
@@ -182,6 +189,7 @@ TEST(ReplyTest, mock_reject_invalid_packing) {
 	const std::array<uint8_t, ELEM_SIZE> elem = generateElem();
 	epir_reply_mock_fast(reply.data(), privkey, DIMENSION, 0, elem.data(), ELEM_SIZE, NULL);
 	epir_reply_mock_fast(reply.data(), privkey, DIMENSION, EPIR_PACKING_MAX + 1, elem.data(), ELEM_SIZE, NULL);
+	epir_reply_mock_fast(reply.data(), privkey, 0, PACKING, elem.data(), ELEM_SIZE, NULL);
 	for(const uint8_t b : reply) {
 		ASSERT_EQ(b, 0xAB);
 	}

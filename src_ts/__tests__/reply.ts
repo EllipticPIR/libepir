@@ -64,6 +64,23 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 			await expect(decCtx.decryptReply(pubkey.buffer, DIMENSION, PACKING, reply)).rejects.toMatch(/^Failed to decrypt\.$/);
 		}, 30 * 1000);
 		
+		it('reject a zero dimension when computing a reply size or a mock reply', async () => {
+			const epir = await epirPromise;
+			expect(() => epir.computeReplySize(0, PACKING, ELEM_SIZE)).toThrow(/dimension/);
+			expect(() => epir.computeReplyRCount(0, PACKING, ELEM_SIZE)).toThrow(/dimension/);
+			expect(() => epir.computeReplyMock(pubkey.buffer, 0, PACKING, generateElem(), new ArrayBuffer(0))).toThrow(/dimension/);
+		});
+		
+		it('reject a too short randomness for a mock reply', async () => {
+			const epir = await epirPromise;
+			const rCount = epir.computeReplyRCount(DIMENSION, PACKING, ELEM_SIZE);
+			const short = generateRandomScalars(rCount - 1);
+			expect(() => epir.computeReplyMock(pubkey.buffer, DIMENSION, PACKING, generateElem(), short)).toThrow(/'r'/);
+			// Exactly enough randomness is accepted.
+			const reply = epir.computeReplyMock(pubkey.buffer, DIMENSION, PACKING, generateElem(), generateRandomScalars(rCount));
+			expect(reply.byteLength).toBe(epir.computeReplySize(DIMENSION, PACKING, ELEM_SIZE));
+		});
+		
 		it('reject a zero packing when computing a reply size or a mock reply', async () => {
 			const epir = await epirPromise;
 			expect(() => epir.computeReplySize(DIMENSION, 0, ELEM_SIZE)).toThrow();

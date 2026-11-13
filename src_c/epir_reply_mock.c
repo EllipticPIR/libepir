@@ -3,12 +3,12 @@
 
 #define divide_up(a, b) (((a) / (b)) + (((a) % (b)) == 0 ? 0 : 1 ))
 
-static inline bool epir_packing_is_valid(const uint8_t packing) {
-	return (packing >= 1) && (packing <= EPIR_PACKING_MAX);
+static inline bool epir_reply_params_are_valid(const uint8_t dimension, const uint8_t packing) {
+	return (dimension >= 1) && (packing >= 1) && (packing <= EPIR_PACKING_MAX);
 }
 
 size_t epir_reply_size(const uint8_t dimension, const uint8_t packing, const size_t elem_size) {
-	if(!epir_packing_is_valid(packing)) {
+	if(!epir_reply_params_are_valid(dimension, packing)) {
 		return 0;
 	}
 	size_t target_size = elem_size;
@@ -19,7 +19,7 @@ size_t epir_reply_size(const uint8_t dimension, const uint8_t packing, const siz
 }
 
 size_t epir_reply_r_count(const uint8_t dimension, const uint8_t packing, const size_t elem_size) {
-	if(!epir_packing_is_valid(packing)) {
+	if(!epir_reply_params_are_valid(dimension, packing)) {
 		return 0;
 	}
 	size_t r_count = 0;
@@ -40,7 +40,7 @@ static inline void epir_reply_mock_(
 	const uint8_t dimension, const uint8_t packing,
 	const uint8_t *elem, const size_t elem_size, const unsigned char *r,
 	epir_ecelgamal_encrypt_fn encrypt) {
-	if(!epir_packing_is_valid(packing)) {
+	if(!epir_reply_params_are_valid(dimension, packing)) {
 		return;
 	}
 	const size_t reply_size_final = epir_reply_size(dimension, packing, elem_size);

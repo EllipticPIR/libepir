@@ -11,9 +11,9 @@ pub fn packing_is_valid(packing: u8) -> bool {
     packing >= 1 && packing <= PACKING_MAX
 }
 
-/// Computes the size of a reply. Returns 0 if `packing` is out of range.
+/// Computes the size of a reply. Returns 0 if `dimension` is 0 or `packing` is out of range.
 pub fn reply_size(dimension: u8, packing: u8, elem_size: usize) -> usize {
-    if !packing_is_valid(packing) {
+    if dimension == 0 || !packing_is_valid(packing) {
         return 0;
     }
     let mut target_size = elem_size;
@@ -23,9 +23,10 @@ pub fn reply_size(dimension: u8, packing: u8, elem_size: usize) -> usize {
     target_size
 }
 
-/// Computes the number of randomness used by `Reply::mock()`. Returns 0 if `packing` is out of range.
+/// Computes the number of randomness used by `Reply::mock()`.
+/// Returns 0 if `dimension` is 0 or `packing` is out of range.
 pub fn reply_r_count(dimension: u8, packing: u8, elem_size: usize) -> usize {
-    if !packing_is_valid(packing) {
+    if dimension == 0 || !packing_is_valid(packing) {
         return 0;
     }
     let mut r_count = 0;
@@ -209,6 +210,13 @@ mod tests {
         }
         assert!(reply_size(DIMENSION, PACKING_MAX, ELEM_SIZE) > 0);
         assert!(reply_r_count(DIMENSION, PACKING_MAX, ELEM_SIZE) > 0);
+    }
+    #[test]
+    fn size_reject_zero_dimension() {
+        assert_eq!(reply_size(0, PACKING, ELEM_SIZE), 0);
+        assert_eq!(reply_r_count(0, PACKING, ELEM_SIZE), 0);
+        assert!(reply_size(1, PACKING, ELEM_SIZE) > 0);
+        assert!(reply_r_count(1, PACKING, ELEM_SIZE) > 0);
     }
     #[test]
     fn mock_reject_invalid_parameters() {

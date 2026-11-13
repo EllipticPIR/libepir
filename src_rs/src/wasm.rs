@@ -59,8 +59,8 @@ pub fn elements_count(index_counts: Vec<u32>) -> u32 {
 
 // JS numbers are taken as u32 and validated before narrowing to u8,
 // so that e.g. 256 is rejected instead of silently becoming 0.
-fn check_dimension(dimension: u32, allow_zero: bool) -> Result<u8, JsError> {
-    if (!allow_zero && dimension == 0) || dimension > u8::MAX as u32 {
+fn check_dimension(dimension: u32) -> Result<u8, JsError> {
+    if dimension < 1 || dimension > u8::MAX as u32 {
         return Err(JsError::new("The parameter 'dimension' is out of range."));
     }
     Ok(dimension as u8)
@@ -75,19 +75,26 @@ fn check_packing(packing: u32) -> Result<u8, JsError> {
 
 #[wasm_bindgen]
 pub fn reply_size(dimension: u32, packing: u32, elem_size: usize) -> Result<usize, JsError> {
-    Ok(crate::reply::reply_size(check_dimension(dimension, true)?, check_packing(packing)?, elem_size))
+    Ok(crate::reply::reply_size(check_dimension(dimension)?, check_packing(packing)?, elem_size))
 }
 
 #[wasm_bindgen]
 pub fn reply_r_count(dimension: u32, packing: u32, elem_size: usize) -> Result<usize, JsError> {
-    Ok(crate::reply::reply_r_count(check_dimension(dimension, true)?, check_packing(packing)?, elem_size))
+    Ok(crate::reply::reply_r_count(check_dimension(dimension)?, check_packing(packing)?, elem_size))
 }
 
 #[wasm_bindgen]
 pub fn reply_mock(pubkey_vec: Vec<u8>, dimension: u32, packing: u32, elem: Vec<u8>, r_vec: Vec<u8>) -> Result<Vec<u8>, JsError> {
-    let dimension = check_dimension(dimension, false)?;
+    let dimension = check_dimension(dimension)?;
     let packing = check_packing(packing)?;
     let pubkey = vec_to_pubkey(&pubkey_vec);
+    // Reply::mock() takes one scalar per ciphertext; a short r_vec would make ConstRng panic.
+    let r_count = crate::reply::reply_r_count(dimension, packing, elem.len());
+    if r_vec.len() < r_count * SCALAR_SIZE {
+        return Err(JsError::new(&format!(
+            "The parameter 'r' is too short: {} bytes given, {} bytes ({} scalars) required.",
+            r_vec.len(), r_count * SCALAR_SIZE, r_count)));
+    }
     let mut r = Vec::new();
     for i in 0..r_vec.len()/SCALAR_SIZE {
         r.push(Scalar::from_bits(vec_to_u8_32(&r_vec[i*SCALAR_SIZE..(i+1)*SCALAR_SIZE].to_vec())));
