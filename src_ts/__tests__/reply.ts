@@ -2,7 +2,9 @@
 import {
 	EpirCreateFunction,
 	DecryptionContextCreateFunction,
-	MG_DEFAULT_PATH
+	MG_DEFAULT_PATH,
+	CIPHER_SIZE,
+	PACKING_MAX
 } from '../types';
 import { generateRandomScalars, xorshift_init, xorshift, privkey, pubkey } from './main';
 
@@ -61,6 +63,25 @@ export const runTests = (createEpir: EpirCreateFunction, createDecryptionContext
 			const reply = epir.computeReplyMock(pubkey.buffer, DIMENSION, PACKING, elem);
 			await expect(decCtx.decryptReply(pubkey.buffer, DIMENSION, PACKING, reply)).rejects.toMatch(/^Failed to decrypt\.$/);
 		}, 30 * 1000);
+		
+		it('reject a zero packing when computing a reply size or a mock reply', async () => {
+			const epir = await epirPromise;
+			expect(() => epir.computeReplySize(DIMENSION, 0, ELEM_SIZE)).toThrow();
+			expect(() => epir.computeReplyRCount(DIMENSION, 0, ELEM_SIZE)).toThrow();
+			expect(() => epir.computeReplyMock(pubkey.buffer, DIMENSION, 0, generateElem(), new ArrayBuffer(0))).toThrow();
+		});
+		
+		it('reject an out-of-range packing or dimension', async () => {
+			const decCtx = await decCtxPromise;
+			const reply = new ArrayBuffer(CIPHER_SIZE);
+			const decrypt = async (dimension: number, packing: number) => decCtx.decryptReply(privkey.buffer, dimension, packing, reply);
+			for(const packing of [0, PACKING_MAX + 1, 64, 256, 256 + PACKING, -1]) {
+				await expect(decrypt(DIMENSION, packing)).rejects.toThrow(/packing/);
+			}
+			for(const dimension of [0, 256, 256 + DIMENSION, -1]) {
+				await expect(decrypt(dimension, PACKING)).rejects.toThrow(/dimension/);
+			}
+		});
 	});
 	
 };

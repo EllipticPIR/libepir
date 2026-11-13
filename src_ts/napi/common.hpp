@@ -49,6 +49,15 @@ void checkIsArrayBuffer(const Napi::Value val, const size_t expectedLength);
 #define CHECK_IS_ARRAY_BUFFER(val, expectedLength) CHECK_IS_ARRAY_BUFFER_WITH_RETURN(val, expectedLength, DEFAULT_RETURN_ON_ERROR)
 #define CHECK_IS_ARRAY_BUFFER_NO_RETURN(val, expectedLength) CHECK_IS_ARRAY_BUFFER_WITH_RETURN(val, expectedLength, /**/)
 
+#define CHECK_DIMENSION_RANGE(dimension, allowZero) \
+	if((!(allowZero) && (dimension) == 0) || (dimension) > UINT8_MAX) { \
+		THROW_RANGE_ERROR("The parameter 'dimension' is out of range."); \
+	}
+#define CHECK_PACKING_RANGE(packing) \
+	if((packing) < 1 || (packing) > EPIR_PACKING_MAX) { \
+		THROW_RANGE_ERROR("The parameter 'packing' is out of range."); \
+	}
+
 #define READ_ARRAY_BUFFER(val) static_cast<uint8_t*>((val).As<Napi::ArrayBuffer>().Data())
 
 std::vector<uint64_t> readIndexCounts(const Napi::Env env, const Napi::Value &val);

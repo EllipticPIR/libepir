@@ -116,6 +116,43 @@ TEST(ReplyTest, decrypt_fast_success) {
 TEST(ReplyTest, decrypt_fast_fail) {
 	replyTestFail(true);
 }
+
+TEST(ReplyTest, decrypt_reject_invalid_parameters) {
+	const std::array<uint8_t, ELEM_SIZE> elem = generateElem();
+	const std::vector<uint8_t> replyOrig = generateReply(true, elem);
+	// Out-of-range packing (including values that used to overflow the shift or the buffer).
+	for(const uint8_t packing : {0, EPIR_PACKING_MAX + 1, EPIR_CIPHER_SIZE, EPIR_CIPHER_SIZE + 1, UINT8_MAX}) {
+		std::vector<uint8_t> reply = replyOrig;
+		ASSERT_EQ(epir_reply_decrypt(
+			reply.data(), reply.size(), privkey, DIMENSION, packing, mG.data(), EPIR_DEFAULT_MG_MAX), -1) << "packing=" << (int)packing;
+	}
+	// Zero dimension.
+	std::vector<uint8_t> reply = replyOrig;
+	ASSERT_EQ(epir_reply_decrypt(
+		reply.data(), reply.size(), privkey, 0, PACKING, mG.data(), EPIR_DEFAULT_MG_MAX), -1);
+}
+#endif
+
+TEST(ReplyTest, size_reject_invalid_packing) {
+	for(const uint8_t packing : {0, EPIR_PACKING_MAX + 1, UINT8_MAX}) {
+		ASSERT_EQ(epir_reply_size(3, packing, 32), (size_t)0) << "packing=" << (int)packing;
+		ASSERT_EQ(epir_reply_r_count(3, packing, 32), (size_t)0) << "packing=" << (int)packing;
+	}
+	ASSERT_GT(epir_reply_size(3, EPIR_PACKING_MAX, 32), (size_t)0);
+	ASSERT_GT(epir_reply_r_count(3, EPIR_PACKING_MAX, 32), (size_t)0);
+}
+
+#ifdef TEST_USING_MG
+TEST(ReplyTest, mock_reject_invalid_packing) {
+	// Must not touch the output buffer.
+	std::vector<uint8_t> reply(EPIR_CIPHER_SIZE, 0xAB);
+	const std::array<uint8_t, ELEM_SIZE> elem = generateElem();
+	epir_reply_mock_fast(reply.data(), privkey, DIMENSION, 0, elem.data(), ELEM_SIZE, NULL);
+	epir_reply_mock_fast(reply.data(), privkey, DIMENSION, EPIR_PACKING_MAX + 1, elem.data(), ELEM_SIZE, NULL);
+	for(const uint8_t b : reply) {
+		ASSERT_EQ(b, 0xAB);
+	}
+}
 #endif
 
 int main(int argc, char *argv[]) {

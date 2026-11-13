@@ -159,6 +159,9 @@ Napi::Value DecryptionContext::DecryptReply(const Napi::CallbackInfo& info) {
 	const unsigned char *privkey = READ_ARRAY_BUFFER(info[0]);
 	const uint32_t dimension = info[1].As<Napi::Number>().Uint32Value();
 	const uint32_t packing = info[2].As<Napi::Number>().Uint32Value();
+	// Validate before narrowing to uint8_t.
+	CHECK_DIMENSION_RANGE(dimension, false);
+	CHECK_PACKING_RANGE(packing);
 	const unsigned char *reply = READ_ARRAY_BUFFER(info[3]);
 	const size_t replySize = info[3].As<Napi::ArrayBuffer>().ByteLength();
 	// Decrypt.
