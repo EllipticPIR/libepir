@@ -282,24 +282,25 @@ int epir_reply_decrypt(
 
 /**
  * Compute the size of reply from given parameters.
- * @param dimension Dimension.
+ * @param dimension Dimension. Must be at least 1.
  * @param packing Packing. Must be in the range [1, EPIR_PACKING_MAX].
  * @param elem_size The number of bytes of database elements.
- * @return The reply size in bytes, or 0 if `packing` is out of range.
+ * @return The reply size in bytes, or 0 if `dimension` or `packing` is out of range.
  */
 EMSCRIPTEN_KEEPALIVE
 size_t epir_reply_size(const uint8_t dimension, const uint8_t packing, const size_t elem_size);
 
 /**
  * Compute the number of randomness used in `epir_reply_mock[_fast]()`.
- * Returns 0 if `packing` is out of range [1, EPIR_PACKING_MAX].
+ * Returns 0 if `dimension` is 0 or `packing` is out of range [1, EPIR_PACKING_MAX].
  */
 EMSCRIPTEN_KEEPALIVE
 size_t epir_reply_r_count(const uint8_t dimension, const uint8_t packing, const size_t elem_size);
 
 /**
  * Generates a sample server reply.
- * Does nothing if `packing` is out of range [1, EPIR_PACKING_MAX].
+ * Does nothing if `dimension` is 0 or `packing` is out of range [1, EPIR_PACKING_MAX].
+ * If `r` is not NULL, it must hold `epir_reply_r_count(dimension, packing, elem_size)` scalars.
  */
 typedef void (epir_reply_mock_fn)(
 	unsigned char *reply,

@@ -49,8 +49,8 @@ void checkIsArrayBuffer(const Napi::Value val, const size_t expectedLength);
 #define CHECK_IS_ARRAY_BUFFER(val, expectedLength) CHECK_IS_ARRAY_BUFFER_WITH_RETURN(val, expectedLength, DEFAULT_RETURN_ON_ERROR)
 #define CHECK_IS_ARRAY_BUFFER_NO_RETURN(val, expectedLength) CHECK_IS_ARRAY_BUFFER_WITH_RETURN(val, expectedLength, /**/)
 
-#define CHECK_DIMENSION_RANGE(dimension, allowZero) \
-	if((!(allowZero) && (dimension) == 0) || (dimension) > UINT8_MAX) { \
+#define CHECK_DIMENSION_RANGE(dimension) \
+	if((dimension) < 1 || (dimension) > UINT8_MAX) { \
 		THROW_RANGE_ERROR("The parameter 'dimension' is out of range."); \
 	}
 #define CHECK_PACKING_RANGE(packing) \
