@@ -15,10 +15,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Cache ~/.cargo
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: ${{ env.HOME }}/.cargo
         key: cargo-${{ runner.os }}
@@ -33,7 +33,7 @@ jobs:
 
     - name: Cache mG.bin
       id: cache-mG
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: ~/.EllipticPIR
         key: mG.bin
@@ -43,15 +43,14 @@ jobs:
       shell: bash
       run: cargo run --bin gen_mg --release
 
-    - name: Install stable toolchain
-      uses: actions-rs/toolchain@v1
+    - name: Install cargo-tarpaulin
+      uses: taiki-e/install-action@v2
       with:
-        toolchain: stable
-        override: true
+        tool: cargo-tarpaulin
 
     - name: Run cargo-tarpaulin
-      uses: actions-rs/tarpaulin@v0.1
+      run: cargo tarpaulin --out Xml
 
     - name: Upload to codecov.io
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v5
 
