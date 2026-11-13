@@ -19,6 +19,10 @@ import {
 import { arrayBufferConcat, getRandomScalar, getRandomScalarsConcat } from './util';
 import { createLibEpirHelper, LibEpirHelper } from './wasm.libepir';
 import { SelectorFactory } from './wasm.SelectorFactory';
+import {
+	WorkerPool, DEFAULT_MAX_WORKERS, createWorkerPool, getDefaultWorkerPool, getDefaultWorkerCount, setDefaultWorkerCount,
+	resolveWorkerPool,
+} from './wasm.workers';
 import * as wasm from '../src_rs/pkg/epir';
 
 // wasm-bindgen returns `Uint8Array<ArrayBufferLike>`; return its bytes as a plain ArrayBuffer.
@@ -29,19 +33,22 @@ const toArrayBuffer = (u8: Uint8Array): ArrayBuffer => {
 	return u8.slice().buffer;
 };
 
-const createEpirWorker = (): Worker =>
-	new Worker(new URL('./wasm.worker.ts', import.meta.url), { type: 'module' });
+export { WorkerPool, DEFAULT_MAX_WORKERS, createWorkerPool, getDefaultWorkerPool, getDefaultWorkerCount, setDefaultWorkerCount };
 
 export class DecryptionContext implements DecryptionContextBase {
 	
 	mG_: number;
 	mmax: number;
-	workers: Worker[] = [];
+	readonly pool: WorkerPool;
 	
-	constructor(public helper: LibEpirHelper, mG: ArrayBuffer, nThreads: number = navigator.hardwareConcurrency) {
+	/**
+	 * @param workers The worker pool to use, or a worker count to create a dedicated pool.
+	 *                Defaults to the pool shared with Epir and SelectorFactory.
+	 */
+	constructor(public helper: LibEpirHelper, mG: ArrayBuffer, workers?: WorkerPool | number) {
 		this.mG_ = helper.malloc(mG);
 		this.mmax = mG.byteLength / MG_SIZE;
-		for(let t=0; t<nThreads; t++) this.workers.push(createEpirWorker());
+		this.pool = resolveWorkerPool(workers);
 	}
 	
 	//finalize() {
@@ -84,25 +91,15 @@ export class DecryptionContext implements DecryptionContextBase {
 	}
 	
 	async decryptMany(ciphers: ArrayBuffer, privkey: ArrayBuffer, packing: number): Promise<ArrayBuffer> {
-		const nThreads = this.workers.length;
+		const nThreads = this.pool.size;
 		const ciphersCount = ciphers.byteLength / CIPHER_SIZE;
-		const mGs = await Promise.all(this.workers.map((worker, i): Promise<ArrayBuffer> => {
-			return new Promise((resolve) => {
-				worker.onmessage = (ev) => {
-					switch(ev.data.method) {
-						case 'decrypt_mG_many':
-							resolve(ev.data.mG);
-							break;
-					}
-				};
-				const ciphersPerThread = Math.ceil(ciphersCount / nThreads);
-				const begin = i * ciphersPerThread;
-				const end = Math.min(ciphersCount + 1, (i + 1) * ciphersPerThread);
-				const ciphersMy = ciphers.slice(begin * CIPHER_SIZE, end * CIPHER_SIZE);
-				worker.postMessage({
-					method: 'decrypt_mG_many', ciphers: ciphersMy, privkey: privkey,
-				}, [ciphersMy]);
-			});
+		const ciphersPerThread = Math.ceil(ciphersCount / nThreads);
+		const mGs = await Promise.all([...Array(nThreads).keys()].map(async (i): Promise<ArrayBuffer> => {
+			const begin = i * ciphersPerThread;
+			const end = Math.min(ciphersCount, (i + 1) * ciphersPerThread);
+			const ciphersMy = ciphers.slice(begin * CIPHER_SIZE, Math.max(begin, end) * CIPHER_SIZE);
+			const res = await this.pool.run(i, { method: 'decrypt_mG_many', ciphers: ciphersMy, privkey: privkey }, [ciphersMy]);
+			return res.mG;
 		}));
 		const ms: number[] = [];
 		for(const mG of mGs) {
@@ -153,46 +150,33 @@ const mGGeneratePrepare = (helper: LibEpirHelper, nThreads: number, mmax: number
 	return { ctx: ctx, mG: mG, mG_p3: mG_p3 };
 };
 
-const mGGenerate = async (helper: LibEpirHelper, cb: undefined | DecryptionContextCallback, mmax: number): Promise<ArrayBuffer> => {
-	const nThreads = navigator.hardwareConcurrency;
-	const workers: Worker[] = [];
-	for(let i=0; i<nThreads; i++) {
-		workers.push(createEpirWorker());
-	}
+const mGGenerate = async (
+	helper: LibEpirHelper, cb: undefined | DecryptionContextCallback, mmax: number, pool: WorkerPool): Promise<ArrayBuffer> => {
+	const nThreads = pool.size;
 	const prepare = mGGeneratePrepare(helper, nThreads, mmax, cb);
 	const pointsComputed: number[] = [];
 	for(let t=0; t<nThreads; t++) {
 		pointsComputed[t] = 0;
 	}
 	let pcLastReported = cb ? Math.floor(nThreads / cb.interval) : 0;
-	const promises = workers.map(async (worker, workerId) => {
-		return new Promise<ArrayBuffer>((resolve) => {
-			worker.onmessage = (ev) => {
-				switch(ev.data.method) {
-					case 'mg_generate_cb': {
-						if(!cb) break;
-						pointsComputed[workerId] = ev.data.pointsComputed;
-						const pcAll = pointsComputed.reduce((acc, v) => acc + v, 0) + nThreads;
-						for(; pcLastReported+cb.interval<=pcAll; pcLastReported+=cb.interval) {
-							cb.cb(pcLastReported+cb.interval);
-						}
-						if(pcAll === mmax && pcLastReported !== mmax) {
-							cb.cb(mmax);
-						}
-						break;
-					}
-					case 'mg_generate_compute': {
-						resolve(ev.data.mG);
-						break;
-					}
-				}
-			};
-			workers[workerId].postMessage({
-				method: 'mg_generate_compute', nThreads: nThreads, mmax: mmax,
-				ctx: prepare.ctx, mG_p3: prepare.mG_p3.slice(GE25519_P3_SIZE * workerId, GE25519_P3_SIZE * (workerId + 1)),
-				threadId: workerId, cbInterval: cb ? Math.max(1, Math.floor(cb.interval / nThreads)) : Number.MAX_SAFE_INTEGER,
-			});
-		});
+	const onProgress = (workerId: number) => (data: { pointsComputed?: number }) => {
+		if(!cb || data.pointsComputed === undefined) return;
+		pointsComputed[workerId] = data.pointsComputed;
+		const pcAll = pointsComputed.reduce((acc, v) => acc + v, 0) + nThreads;
+		for(; pcLastReported+cb.interval<=pcAll; pcLastReported+=cb.interval) {
+			cb.cb(pcLastReported+cb.interval);
+		}
+		if(pcAll === mmax && pcLastReported !== mmax) {
+			cb.cb(mmax);
+		}
+	};
+	const promises = [...Array(nThreads).keys()].map(async (workerId): Promise<ArrayBuffer> => {
+		const res = await pool.run(workerId, {
+			method: 'mg_generate_compute', nThreads: nThreads, mmax: mmax,
+			ctx: prepare.ctx, mG_p3: prepare.mG_p3.slice(GE25519_P3_SIZE * workerId, GE25519_P3_SIZE * (workerId + 1)),
+			threadId: workerId, cbInterval: cb ? Math.max(1, Math.floor(cb.interval / nThreads)) : Number.MAX_SAFE_INTEGER,
+		}, [], onProgress(workerId));
+		return res.mG;
 	});
 	const mGCounts: number[] = [];
 	const mGConcat = new Uint8Array(mmax * MG_SIZE);
@@ -220,7 +204,7 @@ const getMG = async (helper: LibEpirHelper, param: undefined | string | Decrypti
 	if(typeof param == 'string') {
 		return new Uint8Array(await (await import('fs')).promises.readFile(param)).buffer;
 	} else {
-		return mGGenerate(helper, param, mmax);
+		return mGGenerate(helper, param, mmax, getDefaultWorkerPool());
 	}
 }
 
@@ -264,11 +248,15 @@ export { SelectorFactory };
 
 export class Epir implements EpirBase {
 	
-	workers: Worker[] = [];
+	readonly pool: WorkerPool;
 	
-	constructor(public helper: LibEpirHelper, nThreads: number = navigator.hardwareConcurrency) {
+	/**
+	 * @param workers The worker pool to use, or a worker count to create a dedicated pool.
+	 *                Defaults to the pool shared with DecryptionContext and SelectorFactory.
+	 */
+	constructor(public helper: LibEpirHelper, workers?: WorkerPool | number) {
 		this.helper = helper;
-		for(let t=0; t<nThreads; t++) this.workers.push(createEpirWorker());
+		this.pool = resolveWorkerPool(workers);
 	}
 	
 	createPrivkey(): ArrayBuffer {
@@ -312,29 +300,20 @@ export class Epir implements EpirBase {
 	
 	async selector_create_(
 		key: ArrayBuffer, index_counts: number[], idx: number, r: ArrayBuffer | undefined, isFast: boolean): Promise<ArrayBuffer> {
-		const nThreads = this.workers.length;
+		const nThreads = this.pool.size;
 		const promises: Promise<ArrayBuffer>[] = [];
 		const random = new Uint8Array(r ? r : getRandomScalarsConcat(this.ciphersCount(index_counts)));
 		const choices = this.create_choice(index_counts, idx);
+		const ciphersPerThread = Math.ceil(choices.byteLength / nThreads);
 		for(let t=0; t<nThreads; t++) {
-			promises.push(new Promise((resolve) => {
-				this.workers[t].onmessage = (ev) => {
-					switch(ev.data.method) {
-						case 'selector_create':
-							resolve(ev.data.selector);
-							break;
-					}
-				};
-			}));
-			const ciphersPerThread = Math.ceil(choices.byteLength / nThreads);
-			const begin = t * ciphersPerThread;
-			const end = Math.min(choices.byteLength + 1, (t + 1) * ciphersPerThread);
+			const begin = Math.min(choices.byteLength, t * ciphersPerThread);
+			const end = Math.min(choices.byteLength, (t + 1) * ciphersPerThread);
 			const choices_t = choices.slice(begin, end);
 			const random_t = random.slice(begin * SCALAR_SIZE, end * SCALAR_SIZE).buffer;
-			this.workers[t].postMessage({
+			promises.push(this.pool.run(t, {
 				method: 'selector_create',
 				choices: choices_t, key: key, random: random_t, isFast: isFast
-			}, [choices_t, random_t]);
+			}, [choices_t, random_t]).then((res) => res.selector));
 		}
 		const selectors = await Promise.all(promises);
 		return arrayBufferConcat(selectors);
