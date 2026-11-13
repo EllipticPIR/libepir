@@ -1,11 +1,13 @@
 
 import { arrayBufferConcat, getRandomScalarsConcat } from './util';
 import { SelectorFactoryBase, DEFAULT_CAPACITIES, CIPHER_SIZE } from './types';
-import SelectorFactoryWorker from './wasm.SelectorFactory.worker.ts';
+
+const createSelectorFactoryWorker = (): Worker =>
+	new Worker(new URL('./wasm.SelectorFactory.worker.ts', import.meta.url), { type: 'module' });
 
 export class SelectorFactory implements SelectorFactoryBase {
 	
-	workers: SelectorFactoryWorker[][] = [[], []];
+	workers: Worker[][] = [[], []];
 	ciphers: ArrayBuffer[][] = [[], []];
 	
 	constructor(
@@ -14,8 +16,8 @@ export class SelectorFactory implements SelectorFactoryBase {
 		public readonly capacities: number[] = DEFAULT_CAPACITIES,
 		nThreads = navigator.hardwareConcurrency) {
 		for(let i=0; i<nThreads; i++) {
-			this.workers[0][i] = new SelectorFactoryWorker();
-			this.workers[1][i] = new SelectorFactoryWorker();
+			this.workers[0][i] = createSelectorFactoryWorker();
+			this.workers[1][i] = createSelectorFactoryWorker();
 		}
 	}
 	

@@ -40,8 +40,3 @@ harness = false
 name = "reply"
 path = "src/benches/reply.rs"
 harness = false
-
-# The demo site is bundled with webpack 4, whose wasm parser only supports the MVP
-# feature set. Lower post-MVP instructions so that the generated module can be parsed.
-[package.metadata.wasm-pack.profile.release]
-wasm-opt = ["-O", "--signext-lowering", "--llvm-memory-copy-fill-lowering", "--llvm-nontrapping-fptoint-lowering"]
