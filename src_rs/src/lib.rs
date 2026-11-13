@@ -11,6 +11,10 @@ pub const CIPHER_SIZE: usize = 2 * POINT_SIZE;
 pub const DEFAULT_MMAX_MOD: u8 = 24;
 /// The maximum number of entries in `mG.bin`.
 pub const DEFAULT_MMAX: u32 = 1 << DEFAULT_MMAX_MOD;
+/// The maximum packing count (the number of bytes packed into one ciphertext).
+/// Same as `EPIR_PACKING_MAX` in `epir.h`: a decrypted plaintext must fit in a
+/// non-negative `int32_t` in the C implementation, so at most 3 bytes fit.
+pub const PACKING_MAX: u8 = 3;
 /// The default data directory name.
 pub const DEFAULT_DATA_DIR: &str = ".EllipticPIR";
 
